@@ -1,0 +1,13 @@
+{
+    "TimeFormat":"2006-01-02 15:04:05",
+     "File": {
+      "filename": "./log/relayer.log",
+      "level": "DEBG",
+      "daily": true,
+      "maxlines": 1000000,
+      "maxsize": 1,
+      "maxdays": -3,
+      "append": true,
+      "permit": "0660"
+    }
+}
