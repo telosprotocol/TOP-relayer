@@ -19,7 +19,7 @@ func NewHeaderSyncHandler(config *config.HeaderSyncConfig) *HeaderSyncHandler {
 	var handler HeaderSyncHandler
 	relayers := make(map[uint64]IChainRelayer)
 
-	for _, chain := range config.Config.Chains {
+	for _, chain := range config.Config.RelayerConfig {
 		relayers[chain.SubmitChainId] = GetRelayer(chain.SubmitChainId)
 	}
 	handler.relayers = relayers
@@ -30,7 +30,7 @@ func NewHeaderSyncHandler(config *config.HeaderSyncConfig) *HeaderSyncHandler {
 
 func (h *HeaderSyncHandler) Init(wg *sync.WaitGroup, chainpass map[uint64]string) (err error) {
 	h.wg = wg
-	for _, chain := range h.conf.Config.Chains {
+	for _, chain := range h.conf.Config.RelayerConfig {
 		err = h.relayers[chain.SubmitChainId].Init(
 			chain.SubmitUrl,
 			chain.ListenUrl,
@@ -50,11 +50,11 @@ func (h *HeaderSyncHandler) Init(wg *sync.WaitGroup, chainpass map[uint64]string
 }
 
 func (h *HeaderSyncHandler) StartRelayer() (err error) {
-	h.wg.Add(len(h.conf.Config.Chains))
-	for _, chain := range h.conf.Config.Chains {
-		if chain.Start {
+	for _, relayer := range h.conf.Config.RelayerConfig {
+		if relayer.Start {
+			h.wg.Add(1)
 			go func() {
-				err = h.relayers[chain.SubmitChainId].StartRelayer(h.wg)
+				err = h.relayers[relayer.SubmitChainId].StartRelayer(h.wg)
 			}()
 			if err != nil {
 				return err

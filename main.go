@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 	"sync"
 	"toprelayer/base"
@@ -13,8 +14,6 @@ import (
 )
 
 func main() {
-	logger.SetLogger("./log/logconfig.json")
-
 	app := &cli.App{
 		Name:   "xrelayer",
 		Usage:  "block chain relayer",
@@ -22,7 +21,7 @@ func main() {
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "config",
-				Value: "./config/config.json",
+				Value: "./config/relayerconfig.json",
 				Usage: "configuration file",
 			},
 			&cli.StringFlag{
@@ -35,12 +34,18 @@ func main() {
 				Value: "",
 				Usage: "top relayer keystore pass word",
 			},
+			&cli.StringFlag{
+				Name:  "logconfig",
+				Value: "./config/logconfig.json",
+				Usage: "log config path",
+			},
 		},
 	}
 
 	err := app.Run(os.Args)
 	if err != nil {
-		logger.Fatal("Run relayer error:", err)
+		log.Println("Run relayer error:", err)
+		os.Exit(1)
 	}
 }
 
@@ -50,7 +55,8 @@ func start(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-
+	logger.SetLogger(handlercfg.Config.LogConfig)
+	logger.Debug("check------")
 	err = relayer.StartRelayer(wg, handlercfg, getchainpass(c, handlercfg))
 	if err != nil {
 		return err
@@ -61,7 +67,7 @@ func start(c *cli.Context) error {
 
 func getchainpass(c *cli.Context, handlercfg *config.HeaderSyncConfig) map[uint64]string {
 	chainpass := make(map[uint64]string)
-	for _, chain := range handlercfg.Config.Chains {
+	for _, chain := range handlercfg.Config.RelayerConfig {
 		switch chain.SubmitChainId {
 		case base.ETH:
 			chainpass[base.ETH] = c.String("ethpass")

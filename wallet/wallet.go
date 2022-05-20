@@ -35,6 +35,9 @@ func NewWallet(url, path, pass string, chainid uint64) (IWallet, error) {
 }
 
 func newkeystore(path, pass string) (*keystore.KeyStore, error) {
+	if path == "" {
+		return nil, fmt.Errorf("empty keypath")
+	}
 	store := keystore.NewKeyStore(path, keystore.StandardScryptN, keystore.StandardScryptP)
 	_, err := os.Stat(path)
 	if err != nil {

@@ -6,12 +6,11 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 )
 
-var pass = defaultPass
 var DEFAULTPATH = "../.relayer/wallet/eth"
 
 func TestCreateAccount(t *testing.T) {
 	store := keystore.NewKeyStore(DEFAULTPATH, keystore.StandardScryptN, keystore.StandardScryptP)
-	acc, err := createAccount(store, pass)
+	acc, err := createAccount(store, defaultPass)
 	if err != nil {
 		t.Fatal("CreateAccount error:", err)
 	}
@@ -20,7 +19,7 @@ func TestCreateAccount(t *testing.T) {
 
 func TestLoadAccount(t *testing.T) {
 	store := keystore.NewKeyStore(DEFAULTPATH, keystore.StandardScryptN, keystore.StandardScryptP)
-	acc, err := loadAccount(store, DEFAULTPATH, pass)
+	acc, err := loadAccount(store, DEFAULTPATH, defaultPass)
 	if err != nil {
 		t.Fatal("load accounts failed,error:", err)
 	}
@@ -30,14 +29,14 @@ func TestLoadAccount(t *testing.T) {
 
 func TestUnlockAccount(t *testing.T) {
 	store := keystore.NewKeyStore(DEFAULTPATH, keystore.StandardScryptN, keystore.StandardScryptP)
-	acc, err := loadAccount(store, DEFAULTPATH, pass)
+	acc, err := loadAccount(store, DEFAULTPATH, defaultPass)
 	if err != nil {
 		t.Fatal("load accounts failed,error:", err)
 	}
 
 	p := &KeyStoreProvider{
 		KeyStore: store,
-		pass:     pass,
+		pass:     defaultPass,
 	}
 	err = p.UnlockAccount(acc)
 	if err != nil {

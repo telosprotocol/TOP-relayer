@@ -15,7 +15,8 @@ var (
 )
 
 type Config struct {
-	Chains []*ChainsConfig `josn:"chains"`
+	LogConfig     string     `json:"logconfig"`
+	RelayerConfig []*Relayer `josn:"relayerconfig"`
 }
 
 func newConfig(path string) (*Config, error) {
@@ -47,13 +48,13 @@ func newConfig(path string) (*Config, error) {
 	return config, nil
 }
 
-type ChainsConfig struct {
+type Relayer struct {
 	//listen config
-	ListenChainId uint64 `json:"listenchainid"`
+	ListenChainId uint64 `json:"chainFrom"`
 	ListenUrl     string `json:"listenurl"`
 
 	//submit config
-	SubmitChainId  uint64 `json:"submitchainid"`
+	SubmitChainId  uint64 `json:"chainTo"`
 	SubmitUrl      string `json:"submiturl"`
 	Contract       string `json:"contract"`
 	KeyPath        string `json:"keypath"`

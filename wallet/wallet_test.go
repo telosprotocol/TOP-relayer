@@ -29,7 +29,7 @@ func newWallet() (*Wallet, error) {
 	w.chainId = CHAINID
 	w.sdk = sdk
 
-	err = w.initWallet(DEFAULTPATH, pass)
+	err = w.initWallet(DEFAULTPATH, defaultPass)
 	if err != nil {
 		return nil, err
 	}
@@ -46,11 +46,11 @@ func newsdkWallet() (*Wallet, error) {
 }
 
 func TestGetBalance(t *testing.T) {
-	iw, err := NewWallet(url, DEFAULTPATH, pass, CHAINID)
+	w, err := NewWallet(url, DEFAULTPATH, defaultPass, CHAINID)
 	if err != nil {
 		t.Fatalf("new wallet error:%v", err)
 	}
-	w := iw.(IWallet_ETH)
+
 	acc := w.CurrentAccount()
 	b, err := w.GetBalance()
 	if err != nil {
@@ -66,11 +66,10 @@ func TestGasPrice(t *testing.T) {
 		t.Fatalf("new wallet error:%v", err)
 	} */
 
-	iw, err := NewWallet(url, DEFAULTPATH, pass, CHAINID)
+	w, err := NewWallet(url, DEFAULTPATH, defaultPass, CHAINID)
 	if err != nil {
 		t.Fatalf("new wallet error:%v", err)
 	}
-	w := iw.(IWallet_ETH)
 
 	pric, err := w.GasPrice(context.Background())
 	if err != nil {
