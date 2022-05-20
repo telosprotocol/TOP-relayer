@@ -56,7 +56,6 @@ func start(c *cli.Context) error {
 		return err
 	}
 	logger.SetLogger(handlercfg.Config.LogConfig)
-	logger.Debug("check------")
 	err = relayer.StartRelayer(wg, handlercfg, getchainpass(c, handlercfg))
 	if err != nil {
 		return err

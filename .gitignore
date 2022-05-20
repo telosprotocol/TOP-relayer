@@ -7,7 +7,7 @@
 
 # Test binary, built with `go test -c`
 *.test
-./log
+*log
 .relayer
 xrelayer
 
