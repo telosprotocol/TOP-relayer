@@ -6,7 +6,7 @@ import (
 )
 
 func TestNewethsdk(t *testing.T) {
-	url := "http://0.0.0.0:37399"
+	url := "http://192.168.30.200:19086"
 	sdk, err := NewEthSdk(url)
 	if err != nil {
 		t.Fatal(err)

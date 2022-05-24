@@ -21,13 +21,12 @@ type Wallet struct {
 	chainId  uint64
 	provider Provider
 	account  accounts.Account // active account
-	nonce    uint64           // account nonces
 	sdk      *sdk.SDK
 }
 
 //basic interface
 type IWallet interface {
-	GetBalance() (balance *big.Int, err error)
+	GetBalance(address common.Address) (balance *big.Int, err error)
 	CurrentAccount() accounts.Account
 	GetNonce(address common.Address) (uint64, error)
 

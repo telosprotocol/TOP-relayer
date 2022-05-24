@@ -24,7 +24,7 @@ const (
 	METHOD_GETCURRENTBLOCKHEIGHT        = "getCurrentBlockHeight"
 	CONFIRMSUCCESS               string = "0x1"
 
-	SUCCESSDELAY int64 = 5  //mainnet 1000
+	SUCCESSDELAY int64 = 10 //mainnet 1000
 	FATALTIMEOUT int64 = 24 //hours
 	FORKDELAY    int64 = 5  //mainnet 3000 seconds
 	ERRDELAY     int64 = 5
@@ -92,11 +92,11 @@ func (te *Top2EthRelayer) submitTopHeader(headers []byte, nonce uint64) (*types.
 	//test mock
 	gaslimit := uint64(500000)
 
-	balance, err := te.wallet.GetBalance()
+	balance, err := te.wallet.GetBalance(te.wallet.CurrentAccount().Address)
 	if err != nil {
 		return nil, err
 	}
-	logger.Info("account balance:%v,nonce:%v,gasprice:%v,gaslimit:%v", balance.Uint64(), nonce, gaspric.Uint64(), gaslimit)
+	logger.Info("account[%v] balance:%v,nonce:%v,gasprice:%v,gaslimit:%v", te.wallet.CurrentAccount().Address, balance.Uint64(), nonce, gaspric.Uint64(), gaslimit)
 	if balance.Uint64() <= gaspric.Uint64()*gaslimit {
 		return nil, fmt.Errorf("account[%v] not sufficient funds,balance:%v", te.wallet.CurrentAccount().Address, balance.Uint64())
 	}
@@ -107,9 +107,11 @@ func (te *Top2EthRelayer) submitTopHeader(headers []byte, nonce uint64) (*types.
 		Nonce:    big.NewInt(0).SetUint64(nonce),
 		GasPrice: gaspric,
 		GasLimit: gaslimit,
-		Signer:   te.signTransaction,
-		Context:  context.Background(),
-		NoSend:   true,
+		//GasFeeCap: big.NewInt(0).SetUint64(2000000000),
+		//GasTipCap: big.NewInt(0).SetUint64(1000000000),
+		Signer:  te.signTransaction,
+		Context: context.Background(),
+		NoSend:  true,
 	}
 
 	contractcaller, err := hsc.NewHscTransactor(te.contract, te.ethsdk)
@@ -178,12 +180,12 @@ func (te *Top2EthRelayer) StartRelayer(wg *sync.WaitGroup) error {
 	logger.Info("Start Top2EthRelayer relayer... chainid:%v", te.chainId)
 	defer wg.Done()
 
-	tdur := time.Duration(time.Second * 100) //test mock
-	//tdur := time.Duration(time.Hour * FATALTIMEOUT)
-	timeout := time.NewTimer(tdur)
+	timeoutDur := time.Duration(time.Second * 300) //test mock
+	//timeoutDur := time.Duration(time.Hour * FATALTIMEOUT)
+	timeout := time.NewTimer(timeoutDur)
 	defer timeout.Stop()
 
-	go func(tdur time.Duration, timeout *time.Timer) {
+	go func(timeoutDur time.Duration, timeout *time.Timer) {
 		var syncStartHeight uint64 = 1
 		//test mock
 		var topConfirmedBlockHeight uint64 = 1000
@@ -220,8 +222,8 @@ func (te *Top2EthRelayer) StartRelayer(wg *sync.WaitGroup) error {
 				logger.Info("Top2EthRelayer sent block header from %v to :%v", syncStartHeight, topConfirmedBlockHeight)
 				delay = time.Duration(SUCCESSDELAY * int64(len(hashes)))
 				syncStartHeight = topConfirmedBlockHeight + 1 //test mock
-				timeout.Reset(tdur)
-				logger.Debug("timeout.Reset:%v", tdur)
+				timeout.Reset(timeoutDur)
+				logger.Debug("timeout.Reset:%v", timeoutDur)
 				topConfirmedBlockHeight += 500
 				continue
 			}
@@ -235,7 +237,7 @@ func (te *Top2EthRelayer) StartRelayer(wg *sync.WaitGroup) error {
 			//logger.Error("top chain revert? syncStartHeight[%v] > topConfirmedBlockHeight[%v]", syncStartHeight, topConfirmedBlockHeight)
 			//delay = time.Duration(FORKDELAY)
 		}
-	}(tdur, timeout)
+	}(timeoutDur, timeout)
 
 	<-timeout.C
 	logger.Error("relayer [%v] timeout.", te.chainId)

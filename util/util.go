@@ -71,7 +71,10 @@ func VerifyEthSignature(ethtx *types.Transaction) error {
 		return fmt.Errorf("eth signature lenght error:%v", len(sign))
 	}
 
-	signer := types.NewEIP155Signer(ethtx.ChainId())
+	//signer := types.NewEIP155Signer(ethtx.ChainId())
+	//signer := types.NewEIP155Signer(ethtx.ChainId())
+	signer := types.NewLondonSigner(ethtx.ChainId())
+
 	sighash := signer.Hash(ethtx)
 	pub, err := crypto.Ecrecover(sighash[:], sign)
 	if err != nil {
@@ -79,8 +82,6 @@ func VerifyEthSignature(ethtx *types.Transaction) error {
 	}
 
 	{
-
-		signer := types.NewEIP155Signer(ethtx.ChainId())
 		msg, _ := ethtx.AsMessage(signer, nil)
 
 		p, err := crypto.SigToPub(sighash[:], sign)
@@ -92,6 +93,7 @@ func VerifyEthSignature(ethtx *types.Transaction) error {
 		if msg.From() != addr {
 			return fmt.Errorf("verify sender failed! want:%v,got:%v", addr, msg.From())
 		}
+		//fmt.Println("sender:", addr)
 	}
 
 	if !crypto.VerifySignature(pub, sighash[:], sign[:64]) {

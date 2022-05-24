@@ -12,10 +12,8 @@ import (
 	"toprelayer/msg"
 	"toprelayer/sdk/ethsdk"
 	"toprelayer/sdk/topsdk"
-	"toprelayer/util"
 	"toprelayer/wallet"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/wonderivan/logger"
@@ -25,7 +23,7 @@ const (
 	METHOD_GETBRIDGESTATE        = "getbridgestate"
 	BRIDIGESTATESUCCESS   string = "0x1"
 
-	SUCCESSDELAY int64 = 2  //mainnet 120
+	SUCCESSDELAY int64 = 10 //mainnet 120
 	FATALTIMEOUT int64 = 24 //hours
 	FORKDELAY    int64 = 5  //mainnet 10000 seconds
 	ERRDELAY     int64 = 5
@@ -95,52 +93,79 @@ func (et *Eth2TopRelayer) submitEthHeader(header []byte, nonce uint64) (*types.T
 	//test mock
 	gaslimit := uint64(300000)
 
-	/* balance, err := et.wallet.GetBalance()
+	balance, err := et.wallet.GetBalance(et.wallet.CurrentAccount().Address)
 	if err != nil {
 		return nil, err
 	}
-
-	if balance.Uint64() <= gaspric.Uint64()*gaslimit {
+	logger.Info("account[%v] balance:%v,nonce:%v", et.wallet.CurrentAccount().Address, balance.Uint64(), nonce)
+	/* if balance.Uint64() <= gaspric.Uint64()*gaslimit {
 		return nil, fmt.Errorf("account not sufficient funds,balance:%v", balance.Uint64())
-	} */
+	}  */
 
-	//must init ops as bellow
-	ops := &bind.TransactOpts{
-		From:  et.wallet.CurrentAccount().Address,
-		Nonce: big.NewInt(0).SetUint64(nonce),
-		//GasPrice: gaspric,
-		GasLimit:  gaslimit,
-		GasFeeCap: big.NewInt(0).SetUint64(2000000000),
-		GasTipCap: big.NewInt(0).SetUint64(1000000000),
-		Signer:    et.signTransaction,
-		Context:   context.Background(),
-		NoSend:    true, //false: Send the transaction to the target chain by default; true: don't send
+	gastip := big.NewInt(0).SetUint64(1000000000)
+	capfee := big.NewInt(0).SetUint64(2000000000)
+
+	baseTx := &types.DynamicFeeTx{
+		To:        &et.contract,
+		Nonce:     nonce,
+		GasFeeCap: capfee,
+		GasTipCap: gastip,
+		Gas:       gaslimit,
+		Value:     nil,
+		Data:      header,
 	}
 
-	contractcaller, err := bridge.NewBridgeTransactor(et.contract, et.topsdk)
+	tx := types.NewTx(baseTx)
+	sigTx, err := et.wallet.SignTx(tx)
 	if err != nil {
+		logger.Error("Eth2TopRelayer SignTx error:%v", err)
 		return nil, err
 	}
 
-	sigTx, err := contractcaller.AddLightClientBlock(ops, header)
+	err = et.topsdk.SendBlockHeadTransaction(context.Background(), sigTx)
 	if err != nil {
-		logger.Error("Eth2TopRelayer AddLightClientBlock:%v", err)
+		logger.Error("Eth2TopRelayer SendBlockHeadTransaction:%v", err)
 		return nil, err
 	}
-	logger.Debug("============", sigTx.To())
-	if ops.NoSend {
-		err = util.VerifyEthSignature(sigTx)
+
+	/*
+		//must init ops as bellow
+		ops := &bind.TransactOpts{
+			From:  et.wallet.CurrentAccount().Address,
+			Nonce: big.NewInt(0).SetUint64(nonce),
+			//GasPrice: gaspric,
+			GasLimit:  gaslimit,
+			GasFeeCap: capfee,
+			GasTipCap: gastip,
+			Signer:    et.signTransaction,
+			Context:   context.Background(),
+			NoSend:    true, //false: Send the transaction to the target chain by default; true: don't send
+		}
+
+		contractcaller, err := bridge.NewBridgeTransactor(et.contract, et.topsdk)
 		if err != nil {
-			logger.Error("Eth2TopRelayer VerifyEthSignature:%v", err)
 			return nil, err
 		}
 
-		err := et.topsdk.SendBlockHeadTransaction(ops.Context, sigTx)
+		sigTx, err := contractcaller.AddLightClientBlock(ops, header)
 		if err != nil {
-			logger.Error("Eth2TopRelayer SendBlockHeadTransaction:%v", err)
+			logger.Error("Eth2TopRelayer AddLightClientBlock:%v", err)
 			return nil, err
 		}
-	}
+
+		if ops.NoSend {
+			// err = util.VerifyEthSignature(sigTx)
+			// if err != nil {
+			// 	logger.Error("Eth2TopRelayer VerifyEthSignature:%v", err)
+			// 	return nil, err
+			// }
+
+			err := et.topsdk.SendBlockHeadTransaction(ops.Context, sigTx)
+			if err != nil {
+				logger.Error("Eth2TopRelayer SendBlockHeadTransaction:%v", err)
+				return nil, err
+			}
+		} */
 	return sigTx, nil
 }
 
@@ -181,12 +206,12 @@ func (et *Eth2TopRelayer) StartRelayer(wg *sync.WaitGroup) error {
 	logger.Info("Start Eth2TopRelayer... chainid:%v", et.chainId)
 	defer wg.Done()
 
-	tdur := time.Duration(time.Second * 100) //test mock
-	//tdur := time.Duration(time.Hour * FATALTIMEOUT)
-	timeout := time.NewTimer(tdur)
+	timeoutDur := time.Duration(time.Second * 300) //test mock
+	//timeoutDur := time.Duration(time.Hour * FATALTIMEOUT)
+	timeout := time.NewTimer(timeoutDur)
 	defer timeout.Stop()
 
-	go func(tdur time.Duration, timeout *time.Timer) {
+	go func(timeoutDur time.Duration, timeout *time.Timer) {
 		var syncStartHeight uint64 = 1
 		var delay time.Duration = time.Duration(1)
 		for {
@@ -216,8 +241,8 @@ func (et *Eth2TopRelayer) StartRelayer(wg *sync.WaitGroup) error {
 				if len(hashes) > 0 {
 					logger.Info("Eth2TopRelayer sent block header from %v to :%v", syncStartHeight, ethConfirmedBlockHeight)
 					delay = time.Duration(SUCCESSDELAY * int64(len(hashes)))
-					timeout.Reset(tdur)
-					logger.Debug("timeout.Reset:%v", tdur)
+					timeout.Reset(timeoutDur)
+					logger.Debug("timeout.Reset:%v", timeoutDur)
 					syncStartHeight = ethConfirmedBlockHeight + 1 //test mock
 					continue
 				}
@@ -231,7 +256,7 @@ func (et *Eth2TopRelayer) StartRelayer(wg *sync.WaitGroup) error {
 			logger.Warn("eth chain reverted?,syncStartHeight[%v] > ethConfirmedBlockHeight[%v]", syncStartHeight, ethConfirmedBlockHeight)
 			delay = time.Duration(FORKDELAY)
 		}
-	}(tdur, timeout)
+	}(timeoutDur, timeout)
 
 	<-timeout.C
 	logger.Error("relayer [%v] timeout.", et.chainId)
@@ -255,22 +280,22 @@ func (et *Eth2TopRelayer) batch(headers []*types.Header, nonce uint64) (common.H
 		logger.Error("Eth2TopRelayer submitHeaders failed:", err)
 		return common.Hash{}, err
 	}
-	logger.Debug("nonce:%v,hash:%v", nonce, tx.Hash())
+	logger.Debug("hash:%v", tx.Hash())
 	return tx.Hash(), nil
 }
 
 //test mock
-var nonce uint64 = 1
+//var nonce uint64 = 1
 
 func (et *Eth2TopRelayer) signAndSendTransactions(lo, hi uint64) ([]common.Hash, error) {
 	logger.Info("signAndSendTransactions height from:%v,to:%v", lo, hi)
 	var batchHeaders []*types.Header
 	var hashes []common.Hash
-	/* nonce, err := et.wallet.GetNonce(et.wallet.CurrentAccount().Address)
+	nonce, err := et.wallet.GetNonce(et.wallet.CurrentAccount().Address)
 	if err != nil {
+		logger.Error(err)
 		return hashes, err
 	}
-	*/
 	h := lo
 	for ; h <= hi; h++ {
 		header, err := et.ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(h))

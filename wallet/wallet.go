@@ -74,12 +74,6 @@ func (w *Wallet) initWallet(path, pass string) error {
 	if w.sdk == nil {
 		return fmt.Errorf("fatal error: nil sdk!")
 	}
-	nc, err := w.getNonceAt()
-	if err != nil {
-		fmt.Println("check err2:", err)
-		return err
-	}
-	w.nonce = nc
 	return w.verifyChainId()
 }
 func (w *Wallet) getNonceAt() (uint64, error) {
@@ -88,7 +82,6 @@ func (w *Wallet) getNonceAt() (uint64, error) {
 func (w *Wallet) verifyChainId() error {
 	chainId, err := w.sdk.ChainID(context.Background())
 	if err != nil {
-		fmt.Println("check err3:", err)
 		return err
 	}
 	if chainId == nil {
@@ -100,8 +93,8 @@ func (w *Wallet) verifyChainId() error {
 	}
 	return nil
 }
-func (w *Wallet) GetBalance() (balance *big.Int, err error) {
-	return w.sdk.BalanceAt(context.Background(), w.account.Address, nil)
+func (w *Wallet) GetBalance(address common.Address) (balance *big.Int, err error) {
+	return w.sdk.BalanceAt(context.Background(), address, nil)
 }
 func (w *Wallet) GetNonce(address common.Address) (uint64, error) {
 	return w.getNonceAt()

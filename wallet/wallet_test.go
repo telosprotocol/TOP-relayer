@@ -4,69 +4,54 @@ import (
 	"context"
 	"math/big"
 	"testing"
-	"toprelayer/sdk"
+	"toprelayer/base"
+	"toprelayer/msg"
 	"toprelayer/util"
+
+	"github.com/ethereum/go-ethereum/common/hexutil"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
-const CHAINID uint64 = 1337
+var URL string = "http://192.168.50.235:8545"
 
-var url string = "http://192.168.30.32:8545"
+//var URL string = "http://192.168.50.204:19086"
 
-func newsdk() (*sdk.SDK, error) {
-	return sdk.NewSDK(url)
-}
-
-func newWallet() (*Wallet, error) {
-	sdk, err := newsdk()
-	if err != nil {
-		return nil, err
-	}
-
-	w := new(Wallet)
-	w.chainId = CHAINID
-	w.sdk = sdk
-
-	err = w.initWallet(DEFAULTPATH, defaultPass)
-	if err != nil {
-		return nil, err
-	}
-
-	return w, nil
-}
-
-func newsdkWallet() (*Wallet, error) {
-	sdk, err := newsdk()
-	if err != nil {
-		return nil, err
-	}
-	return &Wallet{sdk: sdk}, nil
-}
+//var URL string = "http://127.0.0.1:37399"
 
 func TestGetBalance(t *testing.T) {
-	w, err := NewWallet(url, DEFAULTPATH, defaultPass, CHAINID)
+	w, err := NewWallet(URL, DEFAULTPATH, defaultPass, base.ETH)
 	if err != nil {
 		t.Fatalf("new wallet error:%v", err)
 	}
 
-	acc := w.CurrentAccount()
-	b, err := w.GetBalance()
+	addr := w.CurrentAccount().Address
+	//addr := common.HexToAddress("0xd8aE0197425C0eA651264b06978580DcB62f3c91")
+	b, err := w.GetBalance(addr)
 	if err != nil {
-		t.Fatalf("get[%v] balance error:%v", acc.Address, err)
+		t.Fatalf("get[%v] balance error:%v", addr, err)
 	}
-	//acc1 := "0xd7c8e1e98a4985c4be72f605f91ae31bea074b24"
-	t.Logf("addr[%v] balance:%v", acc.Address, b.Uint64())
+	t.Logf("addr[%v] balance:%v", addr, b.Uint64())
+}
+
+func TestGetNonce(t *testing.T) {
+	w, err := NewWallet(URL, DEFAULTPATH, defaultPass, base.ETH)
+	if err != nil {
+		t.Fatalf("new wallet error:%v", err)
+	}
+
+	//addr := w.CurrentAccount().Address
+	addr := common.HexToAddress("0xd8aE0197425C0eA651264b06978580DcB62f3c91")
+	nonce, err := w.GetNonce(addr)
+	if err != nil {
+		t.Fatalf("get[%v] balance error:%v", addr, err)
+	}
+	t.Logf("addr[%v] nonce:%v", addr, nonce)
 }
 
 func TestGasPrice(t *testing.T) {
-	/* w, err := newsdkWallet()
-	if err != nil {
-		t.Fatalf("new wallet error:%v", err)
-	} */
-
-	w, err := NewWallet(url, DEFAULTPATH, defaultPass, CHAINID)
+	w, err := NewWallet(URL, DEFAULTPATH, defaultPass, base.TOP)
 	if err != nil {
 		t.Fatalf("new wallet error:%v", err)
 	}
@@ -79,12 +64,9 @@ func TestGasPrice(t *testing.T) {
 }
 
 func TestGasTip(t *testing.T) {
-	w, err := newsdkWallet()
+	w, err := NewWallet(URL, DEFAULTPATH, defaultPass, base.TOP)
 	if err != nil {
 		t.Fatalf("new wallet error:%v", err)
-	}
-	if w.sdk == nil {
-		t.Fatal("fatal error: nil sdk!")
 	}
 	tip, err := w.GasTipCap(context.Background())
 	if err != nil {
@@ -94,20 +76,20 @@ func TestGasTip(t *testing.T) {
 }
 
 func TestSendTransaction(t *testing.T) {
-	w, err := newWallet()
+	w, err := NewWallet(URL, DEFAULTPATH, defaultPass, base.TOP)
 	if err != nil {
 		t.Fatalf("new wallet error:%v", err)
 	}
 
-	to := "0xd8aE0197425C0eA651264b06978580DcB62f3c91"
+	contract := common.HexToAddress("0xa3e165d80c949833C5c82550D697Ab31Fd3BB446")
 	gasprice, err := w.GasPrice(context.Background())
 	if err != nil {
 		t.Fatal("gas price error:", err)
 	}
 	amount := big.NewInt(1000)
-	var gaslimit uint64 = 30000
+	var gaslimit uint64 = 500000
 
-	acc := w.currentAccount()
+	acc := w.CurrentAccount()
 	t.Log("current account:", acc.Address.Hex())
 
 	nonce, err := w.GetNonce(acc.Address)
@@ -115,9 +97,14 @@ func TestSendTransaction(t *testing.T) {
 		t.Fatal("GetNonce error:", err)
 	}
 
-	t.Log("nonce:", nonce, "gaslimit:", gaslimit)
+	balance, err := w.GetBalance(acc.Address)
+	if err != nil {
+		t.Fatalf("GetBalance error:%v", err)
+	}
 
-	etx := types.NewTransaction(nonce, common.HexToAddress(to), amount, gaslimit, gasprice, nil)
+	t.Log("account:", acc.Address, "balance:", balance, "nonce:", nonce, "gaslimit:", gaslimit, "gasprice:", gasprice)
+
+	etx := types.NewTransaction(nonce, contract, amount, gaslimit, gasprice, []byte{2, 4, 44, 63, 22, 120})
 	stx, err := w.SignTx(etx)
 	if err != nil {
 		t.Fatalf("Failed to sign with unlocked account: %v", err)
@@ -127,10 +114,115 @@ func TestSendTransaction(t *testing.T) {
 	if err != nil {
 		t.Fatalf("VerifyEthSignature error: %v", err)
 	}
-	err = w.sdk.SendTransaction(context.Background(), stx)
+
+	data, err := stx.MarshalBinary()
+	if err != nil {
+		t.Fatal("MarshalBinary error:", err)
+	}
+	rawtx := hexutil.Encode(data)
+
+	t.Log("To:", stx.To())
+
+	t.Log("rawtx:", rawtx)
+
+	err = w.SendTransaction(context.Background(), stx)
+	if err != nil {
+		t.Fatal("SendTransaction error:", err)
+	}
+	t.Log("SendTransaction success hash:", stx.Hash())
+}
+
+func TestSendDynamicTx(t *testing.T) {
+	contract := common.HexToAddress("0xa3e165d80c949833C5c82550D697Ab31Fd3BB446")
+
+	w, err := NewWallet(URL, DEFAULTPATH, defaultPass, base.TOP)
+	if err != nil {
+		t.Fatalf("new wallet error:%v", err)
+	}
+	acc := w.CurrentAccount()
+
+	balance, err := w.GetBalance(acc.Address)
+	if err != nil {
+		t.Fatalf("GetBalance error:%v", err)
+	}
+
+	/* nonce, err := w.GetNonce(acc.Address)
+	if err != nil {
+		t.Fatal("GetNonce error:", err)
+	}
+	*/
+	nonce := uint64(1)
+	// gastip, err := w.GasTipCap(context.Background())
+	// if err != nil {
+	// 	t.Fatal("GasTipCap error:", err)
+	// }
+	gastip := big.NewInt(0).SetUint64(1000000000)
+	capfee := big.NewInt(0).SetUint64(2000000000)
+
+	// gaspric, err := w.GasPrice(context.Background())
+	// if err != nil {
+	// 	t.Fatal("GasPrice error:", err)
+	// }
+
+	// msg := ethereum.CallMsg{
+	// 	From:     acc.Address,
+	// 	To:       &contract,
+	// 	GasPrice: gaspric,
+	// 	Value:    big.NewInt(1000),
+	// 	Data:     []byte{2, 4, 44, 63, 22, 120},
+	// }
+
+	// gaslimit, err := w.EstimateGas(context.Background(), msg)
+	// if err != nil {
+	// 	t.Fatal("EstimateGas error:", err)
+	// }
+	var gaslimit uint64 = 500000
+
+	t.Log("account:", acc.Address, "balance:", balance, "nonce:", nonce, "gastipfee:", gastip, "gaslimit:", gaslimit)
+
+	var headers []*types.Header
+	for i := 1; i <= 2; i++ {
+		headers = append(headers, &types.Header{Number: big.NewInt(int64(i))})
+	}
+
+	data, err := msg.EncodeHeaders(&headers)
+	if err != nil {
+		t.Fatal("EncodeToBytes:", err)
+	}
+
+	baseTx := &types.DynamicFeeTx{
+		To:        &contract,
+		Nonce:     nonce,
+		GasFeeCap: capfee,
+		GasTipCap: gastip,
+		Gas:       gaslimit,
+		Value:     big.NewInt(1000),
+		Data:      data,
+	}
+
+	tx := types.NewTx(baseTx)
+
+	stx, err := w.SignTx(tx)
+	if err != nil {
+		t.Fatal("SignTx error:", err)
+	}
+	// err = util.VerifyEthSignature(stx)
+	// if err != nil {
+	// 	t.Fatalf("VerifyEthSignature error: %v", err)
+	// }
+
+	t.Log("transaction:", stx)
+	err = w.SendTransaction(context.Background(), stx)
 	if err != nil {
 		t.Fatal("SendTransaction error:", err)
 	}
 
-	t.Log("SendTransaction success!!! hash:", stx.Hash(), "nonce:", nonce, "gaslimit:", gaslimit)
+	byt, err := stx.MarshalBinary()
+	if err != nil {
+		t.Fatal("MarshalBinary error:", err)
+	}
+	rawtx := hexutil.Encode(byt)
+	t.Log("stx hash:", stx.Hash(), "type:", stx.Type())
+	t.Log("rawtx:", rawtx)
+
 }
