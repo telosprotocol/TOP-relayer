@@ -1,9 +1,12 @@
 package eth2top
 
 import (
+	"context"
 	"math/big"
+	"sync"
 	"testing"
 	"toprelayer/base"
+	"toprelayer/msg"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -22,11 +25,11 @@ func TestSubmitHeader(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	/* 	wg := &sync.WaitGroup{}
-	   	err = sub.StartRelayer(wg)
-	   	if err != nil {
-	   		t.Fatal(err)
-	   	} */
+	wg := &sync.WaitGroup{}
+	err = sub.StartRelayer(wg)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	/* 	hashes, err := sub.signAndSendTransactions(1, 10)
 	   	if err != nil {
@@ -34,7 +37,7 @@ func TestSubmitHeader(t *testing.T) {
 	   	}
 	   	t.Log("hashes:", hashes) */
 
-	nonce, err := sub.wallet.GetNonce(sub.wallet.CurrentAccount().Address)
+	/* nonce, err := sub.wallet.GetNonce(sub.wallet.CurrentAccount().Address)
 	if err != nil {
 		t.Fatal("GetNonce error:", err)
 	}
@@ -52,7 +55,7 @@ func TestSubmitHeader(t *testing.T) {
 	if err != nil {
 		t.Fatal("batch error:", err)
 	}
-	t.Log("stx hash:", hash)
+	t.Log("stx hash:", hash) */
 
 	/* data, err := msg.EncodeHeaders(&headers)
 	if err != nil {
@@ -74,4 +77,29 @@ func TestSubmitHeader(t *testing.T) {
 		t.Fatal("MarshalBinary error:", err)
 	}
 	t.Log("rawtx:", hexutil.Encode(byt)) */
+}
+
+func TestestimateGas(t *testing.T) {
+	sub := &Eth2TopRelayer{}
+	err := sub.Init(SUBMITTERURL, LISTENURL, DEFAULTPATH, "", base.TOP, CONTRACT, 90, 0, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	header := &types.Header{Number: big.NewInt(int64(1))}
+	data, err := msg.EncodeHeaders(header)
+	if err != nil {
+		t.Fatal("EncodeToBytes:", err)
+	}
+
+	pric, err := sub.wallet.GasPrice(context.Background())
+	if err != nil {
+		t.Fatal("GasPrice:", err)
+	}
+
+	gaslimit, err := sub.estimateGas(pric, data)
+	if err != nil {
+		t.Fatal("estimateGas:", err)
+	}
+	t.Log("gaslimit:", gaslimit)
 }

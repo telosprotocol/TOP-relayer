@@ -1,10 +1,10 @@
 package base
 
-func GetChainGasLimit(chain uint64) uint64 {
+func GetChainGasCapFee(chain uint64) uint64 {
 	switch chain {
 	case ETH:
 		return 300000
 	default:
-		return 10000000000000
+		return 2000000000
 	}
 }

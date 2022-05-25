@@ -14,6 +14,8 @@ import (
 	"toprelayer/sdk/topsdk"
 	"toprelayer/wallet"
 
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/wonderivan/logger"
@@ -21,12 +23,13 @@ import (
 
 const (
 	METHOD_GETBRIDGESTATE        = "getbridgestate"
+	SYNCHEADERS                  = "addLightClientBlock"
 	BRIDIGESTATESUCCESS   string = "0x1"
 
-	SUCCESSDELAY int64 = 10 //mainnet 120
+	SUCCESSDELAY int64 = 15 //mainnet 120
 	FATALTIMEOUT int64 = 24 //hours
 	FORKDELAY    int64 = 5  //mainnet 10000 seconds
-	ERRDELAY     int64 = 5
+	ERRDELAY     int64 = 10
 )
 
 type Eth2TopRelayer struct {
@@ -72,100 +75,46 @@ func (et *Eth2TopRelayer) ChainId() uint64 {
 
 func (et *Eth2TopRelayer) submitEthHeader(header []byte, nonce uint64) (*types.Transaction, error) {
 	logger.Info("submitEthHeader length:%v,chainid:%v", len(header), et.chainId)
-	// gaspric, err := et.wallet.GasPrice(context.Background())
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	/* msg := ethereum.CallMsg{
-		From:     et.wallet.CurrentAccount().Address,
-		To:       &et.contract,
-		GasPrice: gaspric,
-		Value:    big.NewInt(0),
-		Data:     header,
+	gaspric, err := et.wallet.GasPrice(context.Background())
+	if err != nil {
+		return nil, err
 	}
 
-	gaslimit, err := et.wallet.EstimateGas(context.Background(), msg)
+	/* gaslimit, err := et.estimateGas(header)
 	if err != nil {
 		return nil, err
 	} */
 
 	//test mock
 	gaslimit := uint64(300000)
+	capfee := big.NewInt(0).SetUint64(gaspric.Uint64() * gaslimit * 2)
+	logger.Info("account[%v] nonce:%v", et.wallet.CurrentAccount().Address, nonce)
 
-	balance, err := et.wallet.GetBalance(et.wallet.CurrentAccount().Address)
-	if err != nil {
-		return nil, err
-	}
-	logger.Info("account[%v] balance:%v,nonce:%v", et.wallet.CurrentAccount().Address, balance.Uint64(), nonce)
-	/* if balance.Uint64() <= gaspric.Uint64()*gaslimit {
-		return nil, fmt.Errorf("account not sufficient funds,balance:%v", balance.Uint64())
-	}  */
-
-	gastip := big.NewInt(0).SetUint64(1000000000)
-	capfee := big.NewInt(0).SetUint64(2000000000)
-
-	baseTx := &types.DynamicFeeTx{
-		To:        &et.contract,
-		Nonce:     nonce,
+	//must init ops as bellow
+	ops := &bind.TransactOpts{
+		From:  et.wallet.CurrentAccount().Address,
+		Nonce: big.NewInt(0).SetUint64(nonce),
+		//GasPrice: gaspric,
+		GasLimit:  gaslimit,
 		GasFeeCap: capfee,
-		GasTipCap: gastip,
-		Gas:       gaslimit,
-		Value:     nil,
-		Data:      header,
+		GasTipCap: big.NewInt(0),
+		Signer:    et.signTransaction,
+		Context:   context.Background(),
+		NoSend:    false, //false: Send the transaction to the target chain by default; true: don't send
 	}
 
-	tx := types.NewTx(baseTx)
-	sigTx, err := et.wallet.SignTx(tx)
+	contractcaller, err := bridge.NewBridgeTransactor(et.contract, et.topsdk)
 	if err != nil {
-		logger.Error("Eth2TopRelayer SignTx error:%v", err)
 		return nil, err
 	}
 
-	err = et.topsdk.SendBlockHeadTransaction(context.Background(), sigTx)
+	sigTx, err := contractcaller.AddLightClientBlock(ops, header)
 	if err != nil {
-		logger.Error("Eth2TopRelayer SendBlockHeadTransaction:%v", err)
+		logger.Error("Eth2TopRelayer AddLightClientBlock:%v", err)
 		return nil, err
 	}
 
-	/*
-		//must init ops as bellow
-		ops := &bind.TransactOpts{
-			From:  et.wallet.CurrentAccount().Address,
-			Nonce: big.NewInt(0).SetUint64(nonce),
-			//GasPrice: gaspric,
-			GasLimit:  gaslimit,
-			GasFeeCap: capfee,
-			GasTipCap: gastip,
-			Signer:    et.signTransaction,
-			Context:   context.Background(),
-			NoSend:    true, //false: Send the transaction to the target chain by default; true: don't send
-		}
-
-		contractcaller, err := bridge.NewBridgeTransactor(et.contract, et.topsdk)
-		if err != nil {
-			return nil, err
-		}
-
-		sigTx, err := contractcaller.AddLightClientBlock(ops, header)
-		if err != nil {
-			logger.Error("Eth2TopRelayer AddLightClientBlock:%v", err)
-			return nil, err
-		}
-
-		if ops.NoSend {
-			// err = util.VerifyEthSignature(sigTx)
-			// if err != nil {
-			// 	logger.Error("Eth2TopRelayer VerifyEthSignature:%v", err)
-			// 	return nil, err
-			// }
-
-			err := et.topsdk.SendBlockHeadTransaction(ops.Context, sigTx)
-			if err != nil {
-				logger.Error("Eth2TopRelayer SendBlockHeadTransaction:%v", err)
-				return nil, err
-			}
-		} */
+	logger.Debug("hash:%v", sigTx.Hash())
 	return sigTx, nil
 }
 
@@ -212,7 +161,7 @@ func (et *Eth2TopRelayer) StartRelayer(wg *sync.WaitGroup) error {
 	defer timeout.Stop()
 
 	go func(timeoutDur time.Duration, timeout *time.Timer) {
-		var syncStartHeight uint64 = 1
+		var syncStartHeight uint64 = 6000
 		var delay time.Duration = time.Duration(1)
 		for {
 			time.Sleep(time.Second * delay)
@@ -280,7 +229,6 @@ func (et *Eth2TopRelayer) batch(headers []*types.Header, nonce uint64) (common.H
 		logger.Error("Eth2TopRelayer submitHeaders failed:", err)
 		return common.Hash{}, err
 	}
-	logger.Debug("hash:%v", tx.Hash())
 	return tx.Hash(), nil
 }
 
@@ -332,4 +280,26 @@ func (et *Eth2TopRelayer) signAndSendTransactions(lo, hi uint64) ([]common.Hash,
 
 func (et *Eth2TopRelayer) verifyBlocks(header *types.Header) error {
 	return nil
+}
+
+func (et *Eth2TopRelayer) estimateGas(gasprice *big.Int, headers []byte) (uint64, error) {
+	/* rd := []byte{}
+	ABI, err := abi.JSON(rd)
+	if err != nil {
+		return 0, err
+	}
+
+	data, err := ABI.Pack(SYNCHEADERS, headers)
+	if err != nil {
+		return 0, err
+	} */
+
+	callmsg := ethereum.CallMsg{
+		From:     et.wallet.CurrentAccount().Address,
+		To:       &et.contract,
+		GasPrice: gasprice,
+		Data:     []byte{},
+	}
+
+	return et.topsdk.EstimateGas(context.Background(), callmsg)
 }

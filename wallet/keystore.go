@@ -23,12 +23,11 @@ const (
 
 type KeyStoreProvider struct {
 	*keystore.KeyStore
-	pass string
 }
 
 type Provider interface {
 	SignTx(account accounts.Account, tx *types.Transaction, chainID *big.Int) (*types.Transaction, error)
-	UnlockAccount(accounts.Account) error
+	UnlockAccount(accounts.Account, string) error
 }
 
 type encryptedKeyJSONV3 struct {
@@ -39,17 +38,14 @@ type encryptedKeyJSONV3 struct {
 }
 
 func newKeyStoreProvider(store *keystore.KeyStore, pass string) *KeyStoreProvider {
+	return &KeyStoreProvider{KeyStore: store}
+}
+
+func (p *KeyStoreProvider) UnlockAccount(account accounts.Account, pass string) error {
 	if pass == "" {
 		pass = defaultPass
 	}
-	return &KeyStoreProvider{KeyStore: store, pass: pass}
-}
-
-func (p *KeyStoreProvider) UnlockAccount(account accounts.Account) error {
-	if p.pass == "" {
-		p.pass = defaultPass
-	}
-	return p.Unlock(account, p.pass)
+	return p.Unlock(account, pass)
 }
 
 func createAccount(store *keystore.KeyStore, pass string) (accounts.Account, error) {

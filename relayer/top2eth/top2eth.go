@@ -24,10 +24,10 @@ const (
 	METHOD_GETCURRENTBLOCKHEIGHT        = "getCurrentBlockHeight"
 	CONFIRMSUCCESS               string = "0x1"
 
-	SUCCESSDELAY int64 = 10 //mainnet 1000
+	SUCCESSDELAY int64 = 15 //mainnet 1000
 	FATALTIMEOUT int64 = 24 //hours
 	FORKDELAY    int64 = 5  //mainnet 3000 seconds
-	ERRDELAY     int64 = 5
+	ERRDELAY     int64 = 10
 )
 
 type Top2EthRelayer struct {
@@ -107,11 +107,9 @@ func (te *Top2EthRelayer) submitTopHeader(headers []byte, nonce uint64) (*types.
 		Nonce:    big.NewInt(0).SetUint64(nonce),
 		GasPrice: gaspric,
 		GasLimit: gaslimit,
-		//GasFeeCap: big.NewInt(0).SetUint64(2000000000),
-		//GasTipCap: big.NewInt(0).SetUint64(1000000000),
-		Signer:  te.signTransaction,
-		Context: context.Background(),
-		NoSend:  true,
+		Signer:   te.signTransaction,
+		Context:  context.Background(),
+		NoSend:   true,
 	}
 
 	contractcaller, err := hsc.NewHscTransactor(te.contract, te.ethsdk)
@@ -139,6 +137,7 @@ func (te *Top2EthRelayer) submitTopHeader(headers []byte, nonce uint64) (*types.
 			return nil, err
 		}
 	}
+	logger.Debug("hash:%v", sigTx.Hash())
 	return sigTx, nil
 }
 
@@ -221,10 +220,10 @@ func (te *Top2EthRelayer) StartRelayer(wg *sync.WaitGroup) error {
 			if len(hashes) > 0 {
 				logger.Info("Top2EthRelayer sent block header from %v to :%v", syncStartHeight, topConfirmedBlockHeight)
 				delay = time.Duration(SUCCESSDELAY * int64(len(hashes)))
-				syncStartHeight = topConfirmedBlockHeight + 1 //test mock
 				timeout.Reset(timeoutDur)
 				logger.Debug("timeout.Reset:%v", timeoutDur)
-				topConfirmedBlockHeight += 500
+				syncStartHeight = topConfirmedBlockHeight + 1
+				topConfirmedBlockHeight += 500 //test mock
 				continue
 			}
 			if err != nil {
@@ -234,7 +233,7 @@ func (te *Top2EthRelayer) StartRelayer(wg *sync.WaitGroup) error {
 			}
 			// }
 			//top fork?
-			//logger.Error("top chain revert? syncStartHeight[%v] > topConfirmedBlockHeight[%v]", syncStartHeight, topConfirmedBlockHeight)
+			//logger.Error("eth chain revert? syncStartHeight[%v] > topConfirmedBlockHeight[%v]", syncStartHeight, topConfirmedBlockHeight)
 			//delay = time.Duration(FORKDELAY)
 		}
 	}(timeoutDur, timeout)
@@ -257,7 +256,6 @@ func (te *Top2EthRelayer) batch(headers []*msg.TopElectBlockHeader, nonce uint64
 		logger.Error("Top2EthRelayer submitHeaders failed:", err)
 		return common.Hash{}, err
 	}
-	logger.Debug("nonce:%v,hash:%v", nonce, tx.Hash())
 	return tx.Hash(), nil
 }
 

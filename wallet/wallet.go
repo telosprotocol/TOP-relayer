@@ -66,7 +66,7 @@ func (w *Wallet) initWallet(path, pass string) error {
 		return fmt.Errorf("keystore provider is nil")
 	}
 	w.provider = p
-	err = p.UnlockAccount(w.account)
+	err = p.UnlockAccount(w.account, pass)
 	if err != nil {
 		return err
 	}

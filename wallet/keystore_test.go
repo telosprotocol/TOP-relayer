@@ -6,8 +6,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 )
 
-var DEFAULTPATH = "../.relayer/wallet/eth"
-
 func TestCreateAccount(t *testing.T) {
 	store := keystore.NewKeyStore(DEFAULTPATH, keystore.StandardScryptN, keystore.StandardScryptP)
 	acc, err := createAccount(store, defaultPass)
@@ -36,9 +34,8 @@ func TestUnlockAccount(t *testing.T) {
 
 	p := &KeyStoreProvider{
 		KeyStore: store,
-		pass:     defaultPass,
 	}
-	err = p.UnlockAccount(acc)
+	err = p.UnlockAccount(acc, defaultPass)
 	if err != nil {
 		t.Fatal(err)
 	}

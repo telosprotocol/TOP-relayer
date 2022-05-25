@@ -14,14 +14,18 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
-var URL string = "http://192.168.50.235:8545"
+var (
+	DEFAULTPATH = "../.relayer/wallet/top"
+	chainid     = base.TOP
 
-//var URL string = "http://192.168.50.204:19086"
+	//URL string = "http://192.168.50.235:8545"
+	URL string = "http://192.168.50.204:19086"
+	//URL string = "http://127.0.0.1:37399"
 
-//var URL string = "http://127.0.0.1:37399"
+)
 
 func TestGetBalance(t *testing.T) {
-	w, err := NewWallet(URL, DEFAULTPATH, defaultPass, base.ETH)
+	w, err := NewWallet(URL, DEFAULTPATH, defaultPass, chainid)
 	if err != nil {
 		t.Fatalf("new wallet error:%v", err)
 	}
@@ -36,13 +40,13 @@ func TestGetBalance(t *testing.T) {
 }
 
 func TestGetNonce(t *testing.T) {
-	w, err := NewWallet(URL, DEFAULTPATH, defaultPass, base.ETH)
+	w, err := NewWallet(URL, DEFAULTPATH, defaultPass, chainid)
 	if err != nil {
 		t.Fatalf("new wallet error:%v", err)
 	}
 
-	//addr := w.CurrentAccount().Address
-	addr := common.HexToAddress("0xd8aE0197425C0eA651264b06978580DcB62f3c91")
+	addr := w.CurrentAccount().Address
+	//addr := common.HexToAddress("0xd8aE0197425C0eA651264b06978580DcB62f3c91")
 	nonce, err := w.GetNonce(addr)
 	if err != nil {
 		t.Fatalf("get[%v] balance error:%v", addr, err)
@@ -51,7 +55,7 @@ func TestGetNonce(t *testing.T) {
 }
 
 func TestGasPrice(t *testing.T) {
-	w, err := NewWallet(URL, DEFAULTPATH, defaultPass, base.TOP)
+	w, err := NewWallet(URL, DEFAULTPATH, defaultPass, chainid)
 	if err != nil {
 		t.Fatalf("new wallet error:%v", err)
 	}
@@ -64,7 +68,7 @@ func TestGasPrice(t *testing.T) {
 }
 
 func TestGasTip(t *testing.T) {
-	w, err := NewWallet(URL, DEFAULTPATH, defaultPass, base.TOP)
+	w, err := NewWallet(URL, DEFAULTPATH, defaultPass, chainid)
 	if err != nil {
 		t.Fatalf("new wallet error:%v", err)
 	}
@@ -76,7 +80,7 @@ func TestGasTip(t *testing.T) {
 }
 
 func TestSendTransaction(t *testing.T) {
-	w, err := NewWallet(URL, DEFAULTPATH, defaultPass, base.TOP)
+	w, err := NewWallet(URL, DEFAULTPATH, defaultPass, chainid)
 	if err != nil {
 		t.Fatalf("new wallet error:%v", err)
 	}
@@ -135,7 +139,7 @@ func TestSendTransaction(t *testing.T) {
 func TestSendDynamicTx(t *testing.T) {
 	contract := common.HexToAddress("0xa3e165d80c949833C5c82550D697Ab31Fd3BB446")
 
-	w, err := NewWallet(URL, DEFAULTPATH, defaultPass, base.TOP)
+	w, err := NewWallet(URL, DEFAULTPATH, defaultPass, chainid)
 	if err != nil {
 		t.Fatalf("new wallet error:%v", err)
 	}
