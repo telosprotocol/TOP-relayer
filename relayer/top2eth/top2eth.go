@@ -3,6 +3,7 @@ package top2eth
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"math/big"
 	"strings"
 	"sync"
@@ -14,6 +15,8 @@ import (
 	"toprelayer/util"
 	"toprelayer/wallet"
 
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -21,8 +24,9 @@ import (
 )
 
 const (
-	METHOD_GETCURRENTBLOCKHEIGHT        = "getCurrentBlockHeight"
-	CONFIRMSUCCESS               string = "0x1"
+	METHOD_GETBRIDGESTATE        = "getCurrentBlockHeight"
+	SYNCHEADERS                  = "syncBlockHeader"
+	CONFIRMSUCCESS        string = "0x1"
 
 	SUCCESSDELAY int64 = 15 //mainnet 1000
 	FATALTIMEOUT int64 = 24 //hours
@@ -39,6 +43,7 @@ type Top2EthRelayer struct {
 	topsdk          *topsdk.TopSdk
 	certaintyBlocks int
 	subBatch        int
+	abi             abi.ABI
 }
 
 func (te *Top2EthRelayer) Init(ethUrl, topUrl, keypath, pass string, chainid uint64, contract common.Address, batch, cert int, verify bool) error {
@@ -62,7 +67,20 @@ func (te *Top2EthRelayer) Init(ethUrl, topUrl, keypath, pass string, chainid uin
 		return err
 	}
 	te.wallet = w
+	a, err := initABI("../../contract/eth/hsc/hsc.abi")
+	if err != nil {
+		return err
+	}
+	te.abi = a
 	return nil
+}
+
+func initABI(abifile string) (abi.ABI, error) {
+	abidata, err := ioutil.ReadFile(abifile)
+	if err != nil {
+		return abi.ABI{}, err
+	}
+	return abi.JSON(strings.NewReader(string(abidata)))
 }
 
 func (te *Top2EthRelayer) ChainId() uint64 {
@@ -75,22 +93,13 @@ func (te *Top2EthRelayer) submitTopHeader(headers []byte, nonce uint64) (*types.
 	if err != nil {
 		return nil, err
 	}
-	/* msg := ethereum.CallMsg{
-		From:     te.wallet.CurrentAccount().Address,
-		To:       &te.contract,
-		GasPrice: gaspric,
-		Value:    big.NewInt(0),
-		Data:     headers,
-	}
 
-	gaslimit, err := te.wallet.EstimateGas(context.Background(), msg)
+	gaslimit, err := te.estimateGas(gaspric, headers)
 	if err != nil {
-		fmt.Println("EstimateGas error:", err)
 		return nil, err
-	} */
-
+	}
 	//test mock
-	gaslimit := uint64(500000)
+	//gaslimit := uint64(500000)
 
 	balance, err := te.wallet.GetBalance(te.wallet.CurrentAccount().Address)
 	if err != nil {
@@ -154,15 +163,15 @@ func (te *Top2EthRelayer) signTransaction(addr common.Address, tx *types.Transac
 	return nil, fmt.Errorf("address:%v not available", addr)
 }
 
-func (te *Top2EthRelayer) getEthBridgeState() (*msg.BridgeState, error) {
-	hscaller, err := hsc.NewHscCaller(te.contract, te.ethsdk)
+func (te *Top2EthRelayer) getEthBridgeState() (uint64, error) {
+	/* hscaller, err := hsc.NewHscCaller(te.contract, te.ethsdk)
 	if err != nil {
 		return nil, err
 	}
 
 	hscRaw := hsc.HscCallerRaw{Contract: hscaller}
 	result := make([]interface{}, 1)
-	err = hscRaw.Call(nil, &result, METHOD_GETCURRENTBLOCKHEIGHT, te.chainId)
+	err = hscRaw.Call(nil, &result, METHOD_GETBRIDGESTATE)
 	if err != nil {
 		return nil, err
 	}
@@ -170,9 +179,27 @@ func (te *Top2EthRelayer) getEthBridgeState() (*msg.BridgeState, error) {
 	state, success := result[0].(msg.BridgeState)
 	if !success {
 		return nil, err
+	} */
+
+	input, err := te.abi.Pack(METHOD_GETBRIDGESTATE, te.chainId)
+	if err != nil {
+		return 0, err
 	}
 
-	return &state, nil
+	msg := ethereum.CallMsg{
+		From: te.wallet.CurrentAccount().Address,
+		To:   &te.contract,
+		Data: input,
+	}
+
+	ret, err := te.ethsdk.CallContract(context.Background(), msg, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	logger.Debug("getEthBridgeState height:", ret, common.Bytes2Hex(ret))
+
+	return big.NewInt(0).SetBytes(ret).Uint64(), nil
 }
 
 func (te *Top2EthRelayer) StartRelayer(wg *sync.WaitGroup) error {
@@ -185,9 +212,8 @@ func (te *Top2EthRelayer) StartRelayer(wg *sync.WaitGroup) error {
 	defer timeout.Stop()
 
 	go func(timeoutDur time.Duration, timeout *time.Timer) {
-		var syncStartHeight uint64 = 1
-		//test mock
-		var topConfirmedBlockHeight uint64 = 1000
+		var syncStartHeight uint64 = 1            //test mock
+		var topConfirmedBlockHeight uint64 = 1000 //test mock
 		var delay time.Duration = time.Duration(1)
 
 		for {
@@ -199,13 +225,6 @@ func (te *Top2EthRelayer) StartRelayer(wg *sync.WaitGroup) error {
 				continue
 			}
 
-			if bridgeState.ConfirmState == CONFIRMSUCCESS {
-				syncStartHeight = bridgeState.LatestSyncedHeight.Uint64() + 1
-			} else {
-				logger.Warn("eth bridge confirm top header failed,height:%v.", bridgeState.LatestConfirmedHeight.Uint64()+1)
-				syncStartHeight = bridgeState.LatestConfirmedHeight.Uint64()
-			}
-
 			topCurrentHeight, err := te.topsdk.GetLatestTopElectBlockHeight()
 			if err != nil {
 				logger.Error(err)
@@ -215,7 +234,7 @@ func (te *Top2EthRelayer) StartRelayer(wg *sync.WaitGroup) error {
 			topConfirmedBlockHeight := topCurrentHeight - 2 - uint64(te.certaintyBlocks)
 			*/
 
-			//if syncStartHeight <= topConfirmedBlockHeight {
+			//if bridgeState.CurrentHeight+1 <= topConfirmedBlockHeight {
 			hashes, err := te.signAndSendTransactions(syncStartHeight, topConfirmedBlockHeight)
 			if len(hashes) > 0 {
 				logger.Info("Top2EthRelayer sent block header from %v to :%v", syncStartHeight, topConfirmedBlockHeight)
@@ -301,4 +320,21 @@ func (te *Top2EthRelayer) signAndSendTransactions(lo, hi uint64) ([]common.Hash,
 	}
 
 	return hashes, nil
+}
+
+func (te *Top2EthRelayer) estimateGas(price *big.Int, data []byte) (uint64, error) {
+	input, err := te.abi.Pack(SYNCHEADERS, data)
+	if err != nil {
+		return 0, err
+	}
+
+	msg := ethereum.CallMsg{
+		From:     te.wallet.CurrentAccount().Address,
+		To:       &te.contract,
+		GasPrice: price,
+		Value:    big.NewInt(0),
+		Data:     input,
+	}
+
+	return te.wallet.EstimateGas(context.Background(), msg)
 }
