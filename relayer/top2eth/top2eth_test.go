@@ -17,11 +17,12 @@ const LISTENURL string = "http://192.168.50.204:19086"
 
 var DEFAULTPATH = "../../.relayer/wallet/eth"
 
-var CONTRACT common.Address = common.HexToAddress("0xC78f29Abb15c016cf562821E988f6C1431C5469A")
+var CONTRACT common.Address = common.HexToAddress("0x346709accE41FF93Bbd34A788C88BcC8bF79Ac4C")
+var abipath string = "../../contract/eth/hsc/hsc.abi"
 
 func TestSubmitHeader(t *testing.T) {
 	sub := new(Top2EthRelayer)
-	err := sub.Init(SUBMITTERURL, LISTENURL, DEFAULTPATH, "", base.ETH, CONTRACT, 100, 0, false)
+	err := sub.Init(SUBMITTERURL, LISTENURL, DEFAULTPATH, "", abipath, base.ETH, CONTRACT, 100, 0, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +52,7 @@ func TestSubmitHeader(t *testing.T) {
 
 func TestEstimateGas(t *testing.T) {
 	sub := &Top2EthRelayer{}
-	err := sub.Init(SUBMITTERURL, LISTENURL, DEFAULTPATH, "", base.ETH, CONTRACT, 90, 0, false)
+	err := sub.Init(SUBMITTERURL, LISTENURL, DEFAULTPATH, "", abipath, base.ETH, CONTRACT, 90, 0, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,8 +74,21 @@ func TestEstimateGas(t *testing.T) {
 	}
 	t.Log("gaslimit:", gaslimit)
 
-	_, err = sub.getEthBridgeState()
+	_, err = sub.getEthBridgeCurrentHeight()
 	if err != nil {
-		t.Fatal("getEthBridgeState:", err)
+		t.Fatal("getEthBridgeCurrentHeight:", err)
 	}
+}
+
+func TestGetETHBridgeState(t *testing.T) {
+	sub := &Top2EthRelayer{}
+	err := sub.Init(SUBMITTERURL, LISTENURL, DEFAULTPATH, "", abipath, base.ETH, CONTRACT, 90, 0, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	curr, err := sub.getEthBridgeCurrentHeight()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("current height:", curr)
 }

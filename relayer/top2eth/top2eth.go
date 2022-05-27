@@ -46,7 +46,7 @@ type Top2EthRelayer struct {
 	abi             abi.ABI
 }
 
-func (te *Top2EthRelayer) Init(ethUrl, topUrl, keypath, pass string, chainid uint64, contract common.Address, batch, cert int, verify bool) error {
+func (te *Top2EthRelayer) Init(ethUrl, topUrl, keypath, pass, abipath string, chainid uint64, contract common.Address, batch, cert int, verify bool) error {
 	ethsdk, err := ethsdk.NewEthSdk(ethUrl)
 	if err != nil {
 		return err
@@ -67,7 +67,7 @@ func (te *Top2EthRelayer) Init(ethUrl, topUrl, keypath, pass string, chainid uin
 		return err
 	}
 	te.wallet = w
-	a, err := initABI("../../contract/eth/hsc/hsc.abi")
+	a, err := initABI(abipath)
 	if err != nil {
 		return err
 	}
@@ -163,7 +163,7 @@ func (te *Top2EthRelayer) signTransaction(addr common.Address, tx *types.Transac
 	return nil, fmt.Errorf("address:%v not available", addr)
 }
 
-func (te *Top2EthRelayer) getEthBridgeState() (uint64, error) {
+func (te *Top2EthRelayer) getEthBridgeCurrentHeight() (uint64, error) {
 	/* hscaller, err := hsc.NewHscCaller(te.contract, te.ethsdk)
 	if err != nil {
 		return nil, err
@@ -197,7 +197,7 @@ func (te *Top2EthRelayer) getEthBridgeState() (uint64, error) {
 		return 0, err
 	}
 
-	logger.Debug("getEthBridgeState height:", ret, common.Bytes2Hex(ret))
+	logger.Debug("getEthBridgeCurrentHeight height:", ret, common.Bytes2Hex(ret))
 
 	return big.NewInt(0).SetBytes(ret).Uint64(), nil
 }
@@ -206,58 +206,71 @@ func (te *Top2EthRelayer) StartRelayer(wg *sync.WaitGroup) error {
 	logger.Info("Start Top2EthRelayer relayer... chainid:%v", te.chainId)
 	defer wg.Done()
 
-	timeoutDur := time.Duration(time.Second * 300) //test mock
-	//timeoutDur := time.Duration(time.Hour * FATALTIMEOUT)
-	timeout := time.NewTimer(timeoutDur)
-	defer timeout.Stop()
+	done := make(chan struct{})
+	defer close(done)
 
-	go func(timeoutDur time.Duration, timeout *time.Timer) {
+	go func(done chan struct{}) {
+		timeoutDur := time.Duration(time.Second * 300) //test mock
+		//timeoutDur := time.Duration(time.Hour * FATALTIMEOUT)
+		timeout := time.NewTimer(timeoutDur)
+		defer timeout.Stop()
+
 		var syncStartHeight uint64 = 1            //test mock
 		var topConfirmedBlockHeight uint64 = 1000 //test mock
 		var delay time.Duration = time.Duration(1)
 
 		for {
 			time.Sleep(time.Second * delay)
-			/* bridgeState, err := te.getEthBridgeState()
-			if err != nil {
-				logger.Error(err)
-				delay = time.Duration(ERRDELAY)
-				continue
-			}
+			select {
+			case <-timeout.C:
+				done <- struct{}{}
+				return
+			default:
+				/* bridgeState, err := te.getEthBridgeCurrentHeight()
+				if err != nil {
+					logger.Error(err)
+					delay = time.Duration(ERRDELAY)
+					break
+				}
 
-			topCurrentHeight, err := te.topsdk.GetLatestTopElectBlockHeight()
-			if err != nil {
-				logger.Error(err)
-				delay = time.Duration(ERRDELAY)
-				continue
-			}
-			topConfirmedBlockHeight := topCurrentHeight - 2 - uint64(te.certaintyBlocks)
-			*/
+				topCurrentHeight, err := te.topsdk.GetLatestTopElectBlockHeight()
+				if err != nil {
+					logger.Error(err)
+					delay = time.Duration(ERRDELAY)
+					break
+				}
+				topConfirmedBlockHeight := topCurrentHeight - 2 - uint64(te.certaintyBlocks)
+				*/
 
-			//if bridgeState.CurrentHeight+1 <= topConfirmedBlockHeight {
-			hashes, err := te.signAndSendTransactions(syncStartHeight, topConfirmedBlockHeight)
-			if len(hashes) > 0 {
-				logger.Info("Top2EthRelayer sent block header from %v to :%v", syncStartHeight, topConfirmedBlockHeight)
-				delay = time.Duration(SUCCESSDELAY * int64(len(hashes)))
-				timeout.Reset(timeoutDur)
-				logger.Debug("timeout.Reset:%v", timeoutDur)
-				syncStartHeight = topConfirmedBlockHeight + 1
-				topConfirmedBlockHeight += 500 //test mock
-				continue
+				//if bridgeState.CurrentHeight+1 <= topConfirmedBlockHeight {
+				hashes, err := te.signAndSendTransactions(syncStartHeight, topConfirmedBlockHeight)
+				if len(hashes) > 0 {
+					if set := timeout.Reset(timeoutDur); !set {
+						logger.Error("reset timeout falied!")
+						delay = time.Duration(ERRDELAY)
+						break
+					}
+					logger.Debug("timeout.Reset:%v", timeoutDur)
+					logger.Info("Top2EthRelayer sent block header from %v to :%v", syncStartHeight, topConfirmedBlockHeight)
+					delay = time.Duration(SUCCESSDELAY * int64(len(hashes)))
+					syncStartHeight = topConfirmedBlockHeight + 1
+					topConfirmedBlockHeight += 500 //test mock
+					break
+				}
+				if err != nil {
+					logger.Error("Top2EthRelayer signAndSendTransactions failed:%v", err)
+					delay = time.Duration(ERRDELAY)
+					break
+				}
+				// }
+				//top fork?
+				//logger.Error("eth chain revert? syncStartHeight[%v] > topConfirmedBlockHeight[%v]", syncStartHeight, topConfirmedBlockHeight)
+				//delay = time.Duration(FORKDELAY)
 			}
-			if err != nil {
-				logger.Error("Top2EthRelayer signAndSendTransactions failed:%v", err)
-				delay = time.Duration(ERRDELAY)
-				continue
-			}
-			// }
-			//top fork?
-			//logger.Error("eth chain revert? syncStartHeight[%v] > topConfirmedBlockHeight[%v]", syncStartHeight, topConfirmedBlockHeight)
-			//delay = time.Duration(FORKDELAY)
 		}
-	}(timeoutDur, timeout)
+	}(done)
 
-	<-timeout.C
+	<-done
 	logger.Error("relayer [%v] timeout.", te.chainId)
 	return nil
 }

@@ -11,7 +11,8 @@
             "blockcertainty": 0,
             "subBatch": 80,
             "verifyblock": false,
-            "start": true
+            "start": false,
+            "abipath": "./contract/top/bridge/bridge.abi"
         },
         {
             "chainFrom": 1023,
@@ -23,7 +24,8 @@
             "blockcertainty": 60,
             "subBatch": 500,
             "verifyblock": false,
-            "start": true
+            "start": true,
+            "abipath": "./contract/eth/hsc/hsc.abi"
         }
     ]
 }

@@ -5,6 +5,6 @@ func GetChainGasCapFee(chain uint64) uint64 {
 	case ETH:
 		return 300000
 	default:
-		return 2000000000
+		return 200000000
 	}
 }

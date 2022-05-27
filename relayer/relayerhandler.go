@@ -31,22 +31,25 @@ func NewHeaderSyncHandler(config *config.HeaderSyncConfig) *HeaderSyncHandler {
 func (h *HeaderSyncHandler) Init(wg *sync.WaitGroup, chainpass map[uint64]string) (err error) {
 	h.wg = wg
 	for _, chain := range h.conf.Config.RelayerConfig {
-		err = h.relayers[chain.SubmitChainId].Init(
-			chain.SubmitUrl,
-			chain.ListenUrl,
-			chain.KeyPath,
-			chainpass[chain.SubmitChainId],
-			chain.SubmitChainId,
-			common.HexToAddress(chain.Contract),
-			chain.SubBatch,
-			chain.BlockCertainty,
-			chain.VerifyBlock,
-		)
-		if err != nil {
-			return err
+		if chain.Start {
+			err = h.relayers[chain.SubmitChainId].Init(
+				chain.SubmitUrl,
+				chain.ListenUrl,
+				chain.KeyPath,
+				chainpass[chain.SubmitChainId],
+				chain.AbiPath,
+				chain.SubmitChainId,
+				common.HexToAddress(chain.Contract),
+				chain.SubBatch,
+				chain.BlockCertainty,
+				chain.VerifyBlock,
+			)
+			if err != nil {
+				return err
+			}
 		}
 	}
-	return
+	return nil
 }
 
 func (h *HeaderSyncHandler) StartRelayer() (err error) {

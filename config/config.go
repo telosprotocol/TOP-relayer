@@ -62,6 +62,7 @@ type Relayer struct {
 	SubBatch       int    `json:"subBatch"`
 	VerifyBlock    bool   `json:"verifyblock"`
 	Start          bool   `json:"start"`
+	AbiPath        string `json:"abipath"`
 }
 
 type HeaderSyncConfig struct {
