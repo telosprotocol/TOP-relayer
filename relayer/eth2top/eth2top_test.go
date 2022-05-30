@@ -44,6 +44,8 @@ func TestSubmitHeader(t *testing.T) {
 		t.Fatal("EncodeToBytes:", err)
 	}
 
+	t.Log("header data:", data)
+
 	nonce, err := sub.wallet.GetNonce(sub.wallet.CurrentAccount().Address)
 	if err != nil {
 		t.Fatal("GasPrice:", err)

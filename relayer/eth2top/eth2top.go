@@ -95,12 +95,12 @@ func (et *Eth2TopRelayer) submitEthHeader(header []byte, nonce uint64) (*types.T
 	if err != nil {
 		return nil, err
 	}
-	/*
-		gaslimit, err := et.estimateGas(gaspric, header)
-		if err != nil {
-			logger.Error("estimateGas error:", err)
-			return nil, err
-		}*/
+
+	/* gaslimit, err := et.estimateGas(gaspric, header)
+	if err != nil {
+		logger.Error("estimateGas error:", err)
+		return nil, err
+	} */
 
 	gaslimit := uint64(50000) //test mock
 	capfee := big.NewInt(0).SetUint64(gaspric.Uint64() * gaslimit * 2)
@@ -194,13 +194,14 @@ func (et *Eth2TopRelayer) StartRelayer(wg *sync.WaitGroup) error {
 					break
 				}
 				syncStartHeight := bridgeCurrentHeight + 1
-				ethCurrentHeight, err := et.ethsdk.BlockNumber(context.Background())
+				/* ethCurrentHeight, err := et.ethsdk.BlockNumber(context.Background())
 				if err != nil {
 					logger.Error(err)
 					delay = time.Duration(ERRDELAY)
 					break
 				}
-				ethConfirmedBlockHeight := ethCurrentHeight - uint64(et.certaintyBlocks)
+				ethConfirmedBlockHeight := ethCurrentHeight - uint64(et.certaintyBlocks) */
+				var ethConfirmedBlockHeight uint64 = 1000
 				if syncStartHeight <= ethConfirmedBlockHeight {
 					hashes, err := et.signAndSendTransactions(syncStartHeight, ethConfirmedBlockHeight)
 					if len(hashes) > 0 {
