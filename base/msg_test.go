@@ -1,4 +1,4 @@
-package msg
+package base
 
 import (
 	"math/big"

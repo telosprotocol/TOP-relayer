@@ -3,10 +3,8 @@ package top2eth
 import (
 	"context"
 	"math/big"
-	"sync"
 	"testing"
 	"toprelayer/base"
-	"toprelayer/msg"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -27,10 +25,41 @@ func TestSubmitHeader(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = sub.StartRelayer(&sync.WaitGroup{})
+	var batchHeaders []string
+
+	header, err := sub.topsdk.GetTopElectBlockHeadByHeight(10) // .HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(100))
 	if err != nil {
 		t.Fatal(err)
 	}
+	batchHeaders = append(batchHeaders, header)
+	/* header2, err := sub.ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(101))
+	if err != nil {
+		t.Fatal(err)
+	}
+	batchHeaders = append(batchHeaders, header2) */
+
+	data, err := base.EncodeHeaders(batchHeaders)
+	if err != nil {
+		t.Fatal("EncodeToBytes:", err)
+	}
+
+	t.Log("header data:", data)
+
+	nonce, err := sub.wallet.GetNonce(sub.wallet.CurrentAccount().Address)
+	if err != nil {
+		t.Fatal("GasPrice:", err)
+	}
+
+	tx, err := sub.submitTopHeader(data, nonce)
+	if err != nil {
+		t.Fatal("submitEthHeader:", err)
+	}
+	t.Log("hash:", tx.Hash())
+
+	/* err = sub.StartRelayer(&sync.WaitGroup{})
+	if err != nil {
+		t.Fatal(err)
+	} */
 
 	/* var headers []*types.Header //[]*msg.TopElectBlockHeader
 	for i := 1; i <= 150; i++ {
@@ -58,7 +87,7 @@ func TestEstimateGas(t *testing.T) {
 	}
 
 	header := &types.Header{Number: big.NewInt(int64(1))}
-	data, err := msg.EncodeHeaders(header)
+	data, err := base.EncodeHeaders(header)
 	if err != nil {
 		t.Fatal("EncodeToBytes:", err)
 	}

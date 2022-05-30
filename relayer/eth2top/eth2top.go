@@ -10,15 +10,16 @@ import (
 	"time"
 	"toprelayer/base"
 	"toprelayer/contract/top/bridge"
-	"toprelayer/msg"
 	"toprelayer/sdk/ethsdk"
 	"toprelayer/sdk/topsdk"
+	"toprelayer/util"
 	"toprelayer/wallet"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/wonderivan/logger"
 )
@@ -115,7 +116,7 @@ func (et *Eth2TopRelayer) submitEthHeader(header []byte, nonce uint64) (*types.T
 		GasTipCap: big.NewInt(0),
 		Signer:    et.signTransaction,
 		Context:   context.Background(),
-		NoSend:    false, //false: Send the transaction to the target chain by default; true: don't send
+		NoSend:    true, //false: Send the transaction to the target chain by default; true: don't send
 	}
 
 	contractcaller, err := bridge.NewBridgeTransactor(et.contract, et.topsdk)
@@ -127,6 +128,27 @@ func (et *Eth2TopRelayer) submitEthHeader(header []byte, nonce uint64) (*types.T
 	if err != nil {
 		logger.Error("Eth2TopRelayer AddLightClientBlock:%v", err)
 		return nil, err
+	}
+	{
+		byt, err := sigTx.MarshalBinary()
+		if err != nil {
+			logger.Error("MarshalBinary error:", err)
+		}
+		logger.Debug("rawtx:", hexutil.Encode(byt))
+	}
+
+	if ops.NoSend {
+		err = util.VerifyEthSignature(sigTx)
+		if err != nil {
+			logger.Error("Top2EthRelayer VerifyEthSignature error:", err)
+			return nil, err
+		}
+
+		err := et.ethsdk.SendTransaction(ops.Context, sigTx)
+		if err != nil {
+			logger.Error("Top2EthRelayer SendTransaction error:", err)
+			return nil, err
+		}
 	}
 
 	logger.Debug("hash:%v", sigTx.Hash())
@@ -243,7 +265,7 @@ func (et *Eth2TopRelayer) batch(headers []*types.Header, nonce uint64) (common.H
 			et.verifyBlocks(header)
 		}
 	}
-	data, err := msg.EncodeHeaders(headers)
+	data, err := base.EncodeHeaders(headers)
 	if err != nil {
 		logger.Error("Eth2TopRelayer EncodeHeaders failed:", err)
 		return common.Hash{}, err

@@ -8,8 +8,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"toprelayer/base"
 	"toprelayer/contract/eth/hsc"
-	"toprelayer/msg"
 	"toprelayer/sdk/ethsdk"
 	"toprelayer/sdk/topsdk"
 	"toprelayer/util"
@@ -118,7 +118,7 @@ func (te *Top2EthRelayer) submitTopHeader(headers []byte, nonce uint64) (*types.
 		GasLimit: gaslimit,
 		Signer:   te.signTransaction,
 		Context:  context.Background(),
-		NoSend:   true,
+		NoSend:   false,
 	}
 
 	contractcaller, err := hsc.NewHscTransactor(te.contract, te.ethsdk)
@@ -176,7 +176,7 @@ func (te *Top2EthRelayer) getEthBridgeCurrentHeight() (uint64, error) {
 		return nil, err
 	}
 
-	state, success := result[0].(msg.BridgeState)
+	state, success := result[0].(base.BridgeState)
 	if !success {
 		return nil, err
 	} */
@@ -275,9 +275,9 @@ func (te *Top2EthRelayer) StartRelayer(wg *sync.WaitGroup) error {
 	return nil
 }
 
-func (te *Top2EthRelayer) batch(headers []*msg.TopElectBlockHeader, nonce uint64) (common.Hash, error) {
+func (te *Top2EthRelayer) batch(headers []*base.TopElectBlockHeader, nonce uint64) (common.Hash, error) {
 	logger.Info("batch headers number:", len(headers))
-	data, err := msg.EncodeHeaders(headers)
+	data, err := base.EncodeHeaders(headers)
 	if err != nil {
 		logger.Error("Top2EthRelayer EncodeHeaders failed:", err)
 		return common.Hash{}, err
@@ -293,7 +293,7 @@ func (te *Top2EthRelayer) batch(headers []*msg.TopElectBlockHeader, nonce uint64
 
 func (te *Top2EthRelayer) signAndSendTransactions(lo, hi uint64) ([]common.Hash, error) {
 	logger.Info("signAndSendTransactions height form:%v,to%v", lo, hi)
-	var batchHeaders []*msg.TopElectBlockHeader
+	var batchHeaders []*base.TopElectBlockHeader
 	var hashes []common.Hash
 	nonce, err := te.wallet.GetNonce(te.wallet.CurrentAccount().Address)
 	if err != nil {
@@ -308,7 +308,7 @@ func (te *Top2EthRelayer) signAndSendTransactions(lo, hi uint64) ([]common.Hash,
 			return hashes, err
 		} */
 		//test mock
-		header := &msg.TopElectBlockHeader{BlockNumber: uint64(h)}
+		header := &base.TopElectBlockHeader{BlockNumber: uint64(h)}
 
 		batchHeaders = append(batchHeaders, header)
 		if (h-lo+1)%uint64(te.subBatch) == 0 {
@@ -316,7 +316,7 @@ func (te *Top2EthRelayer) signAndSendTransactions(lo, hi uint64) ([]common.Hash,
 			if err != nil {
 				return hashes, err
 			}
-			batchHeaders = []*msg.TopElectBlockHeader{}
+			batchHeaders = []*base.TopElectBlockHeader{}
 			hashes = append(hashes, hash)
 			nonce++
 		}
@@ -327,7 +327,7 @@ func (te *Top2EthRelayer) signAndSendTransactions(lo, hi uint64) ([]common.Hash,
 			if err != nil {
 				return hashes, err
 			}
-			batchHeaders = []*msg.TopElectBlockHeader{}
+			batchHeaders = []*base.TopElectBlockHeader{}
 			hashes = append(hashes, hash)
 		}
 	}

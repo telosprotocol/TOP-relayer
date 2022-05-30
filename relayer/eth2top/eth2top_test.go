@@ -6,7 +6,6 @@ import (
 	"sync"
 	"testing"
 	"toprelayer/base"
-	"toprelayer/msg"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -39,7 +38,7 @@ func TestSubmitHeader(t *testing.T) {
 	}
 	batchHeaders = append(batchHeaders, header2) */
 
-	data, err := msg.EncodeHeaders(batchHeaders)
+	data, err := base.EncodeHeaders(batchHeaders)
 	if err != nil {
 		t.Fatal("EncodeToBytes:", err)
 	}
@@ -83,7 +82,7 @@ func TestSubmitHeader(t *testing.T) {
 	}
 	t.Log("stx hash:", hash) */
 
-	/* data, err := msg.EncodeHeaders(&headers)
+	/* data, err := base.EncodeHeaders(&headers)
 	if err != nil {
 		t.Fatal("EncodeToBytes:", err)
 	}
@@ -113,7 +112,7 @@ func TestEstimateGas(t *testing.T) {
 	}
 
 	header := &types.Header{Number: big.NewInt(int64(1))}
-	data, err := msg.EncodeHeaders(header)
+	data, err := base.EncodeHeaders(header)
 	if err != nil {
 		t.Fatal("EncodeToBytes:", err)
 	}

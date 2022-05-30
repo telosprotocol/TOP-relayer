@@ -3,14 +3,13 @@ package topsdk
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
-	"toprelayer/msg"
 	"toprelayer/sdk"
 	"toprelayer/util"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -28,8 +27,8 @@ const (
 
 const (
 	GETLATESTETTOPELECTBLOCKHEADER = "getLatestTopElectBlockHeader"
-	GETTOPELECTBLOCKHEADBYHEIGHT   = "getTopElectBlockHeadByHeight"
-	GETLATESTTOPELECTBLOCKHEIGHT   = "getLatestTopElectBlockHeight"
+	GETTOPELECTBLOCKHEADBYHEIGHT   = "top_getBlockByNumber"
+	GETLATESTTOPELECTBLOCKHEIGHT   = "top_blockNumber"
 )
 
 func NewTopSdk(url string) (*TopSdk, error) {
@@ -72,27 +71,19 @@ func (t *TopSdk) GetTransactionReceipt(hash common.Hash) (*types.Receipt, error)
 	return t.TransactionReceipt(context.Background(), hash)
 }
 
-func (t *TopSdk) GetTopElectBlockHeadByHeight(height uint64, tag ElectBlockType) (*msg.TopElectBlockHeader, error) {
-	return t.getTopElectBlockHeadByHeight(height, tag)
+func (t *TopSdk) GetTopElectBlockHeadByHeight(height uint64) (string, error) {
+	return t.getTopElectBlockHeadByHeight(height)
 }
 
-func (t *TopSdk) getTopElectBlockHeadByHeight(height uint64, tag ElectBlockType) (*msg.TopElectBlockHeader, error) {
-	if tag == ElectBlock_Current || tag == ElectBlock_Next {
-		var data json.RawMessage
-		err := t.Rpc.CallContext(context.Background(), &data, GETTOPELECTBLOCKHEADBYHEIGHT, util.Uint64ToHexString(height), util.Uint64ToHexString(uint64(tag)))
-		if err != nil {
-			return nil, err
-		} else if len(data) == 0 {
-			return nil, ethereum.NotFound
-		}
-		// Decode header and transactions.
-		var head msg.TopElectBlockHeader
-		if err := json.Unmarshal(data, &head); err != nil {
-			return nil, err
-		}
-		return &head, nil
+func (t *TopSdk) getTopElectBlockHeadByHeight(height uint64) (string, error) {
+	var result hexutil.Bytes
+	err := t.Rpc.CallContext(context.Background(), &result, GETTOPELECTBLOCKHEADBYHEIGHT, util.Uint64ToHexString(height))
+	if err != nil {
+		return "", err
+	} else if len(result) == 0 {
+		return "", ethereum.NotFound
 	}
-	return nil, fmt.Errorf("Unsupport tag:%v,expect[%v or %v]", tag, ElectBlock_Current, ElectBlock_Next)
+	return result.String(), nil
 }
 
 func (t *TopSdk) GetLatestTopElectBlockHeight() (uint64, error) {
