@@ -12,7 +12,7 @@
             "subBatch": 80,
             "verifyblock": false,
             "start": false,
-            "abipath": "./contract/top/bridge/bridge.abi"
+            "abipath": "./contract/topbridge/topbridge.abi"
         },
         {
             "chainFrom": 1023,
@@ -25,7 +25,7 @@
             "subBatch": 500,
             "verifyblock": false,
             "start": true,
-            "abipath": "./contract/eth/hsc/hsc.abi"
+            "abipath": "./contract/ethbridge/ethbridge.abi"
         }
     ]
 }

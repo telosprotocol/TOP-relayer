@@ -16,7 +16,7 @@ const LISTENURL string = "http://192.168.50.204:19086"
 var DEFAULTPATH = "../../.relayer/wallet/eth"
 
 var CONTRACT common.Address = common.HexToAddress("0x346709accE41FF93Bbd34A788C88BcC8bF79Ac4C")
-var abipath string = "../../contract/eth/hsc/hsc.abi"
+var abipath string = "../../contract/ethbridge/ethbridge.abi"
 
 func TestSubmitHeader(t *testing.T) {
 	sub := new(Top2EthRelayer)
@@ -26,23 +26,21 @@ func TestSubmitHeader(t *testing.T) {
 	}
 
 	var batchHeaders []string
-
-	header, err := sub.topsdk.GetTopElectBlockHeadByHeight(10) // .HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(100))
+	h, err := sub.topsdk.GetLatestTopElectBlockHeight()
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("GetLatestTopElectBlockHeight failed,error:%v", err)
+	}
+
+	header, err := sub.topsdk.GetTopElectBlockHeadByHeight(h)
+	if err != nil {
+		t.Fatalf("GetTopElectBlockHeadByHeight failed,error:%v", err)
 	}
 	batchHeaders = append(batchHeaders, header)
-	/* header2, err := sub.ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(101))
-	if err != nil {
-		t.Fatal(err)
-	}
-	batchHeaders = append(batchHeaders, header2) */
 
 	data, err := base.EncodeHeaders(batchHeaders)
 	if err != nil {
 		t.Fatal("EncodeToBytes:", err)
 	}
-
 	t.Log("header data:", data)
 
 	nonce, err := sub.wallet.GetNonce(sub.wallet.CurrentAccount().Address)

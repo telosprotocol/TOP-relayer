@@ -44,40 +44,30 @@ func zeroBytes() []byte {
 
 //parse eth signature
 func parseEthSignature(ethtx *types.Transaction) []byte {
-	big8 := big.NewInt(8)
 	v, r, s := ethtx.RawSignatureValues()
-	fmt.Println("v 1:", v.Uint64())
-	v = new(big.Int).Sub(v, new(big.Int).Mul(ethtx.ChainId(), big.NewInt(2)))
-	fmt.Println("v 2:", v.Uint64())
 
 	rBytes := r.Bytes()
-	fmt.Println("rBytes len:", len(rBytes))
-	sBytes := s.Bytes()
-	fmt.Println("sBytes len:", len(sBytes))
-	fmt.Println("tx type:", ethtx.Type())
-
-	var vBytes byte
-	if ethtx.Type() == types.LegacyTxType {
-		if n := len(rBytes); n < 32 {
-			rBytes = append(zeroBytes()[:32-n], rBytes...)
-		}
-
-		if n := len(sBytes); n < 32 {
-			sBytes = append(zeroBytes()[:32-n], sBytes...)
-		}
-		v.Sub(v, big8)
-		vBytes = byte(v.Uint64() - 27)
-	} else if ethtx.Type() == types.DynamicFeeTxType {
-		/* V := new(big.Int).Add(v, big.NewInt(27))
-		vBytes = V.Bytes() */
+	if n := len(rBytes); n < 32 {
+		rBytes = append(zeroBytes()[:32-n], rBytes...)
 	}
 
-	fmt.Println("v 3:", v.Uint64())
+	sBytes := s.Bytes()
+	if n := len(sBytes); n < 32 {
+		sBytes = append(zeroBytes()[:32-n], sBytes...)
+	}
+
+	var vBytes byte
+	big8 := big.NewInt(8)
+	if ethtx.Type() == types.LegacyTxType {
+		v = new(big.Int).Sub(v, new(big.Int).Mul(ethtx.ChainId(), big.NewInt(2)))
+		v.Sub(v, big8)
+		vBytes = byte(v.Uint64() - 27)
+	}
+
 	var sign []byte
 	sign = append(sign, rBytes...)
 	sign = append(sign, sBytes...)
 	sign = append(sign, vBytes)
-	fmt.Println("sign len:", len(sign))
 	return sign
 }
 
@@ -102,22 +92,6 @@ func VerifyEthSignature(ethtx *types.Transaction) error {
 	if err != nil {
 		fmt.Println("Ecrecover error:", err)
 		return err
-	}
-
-	{
-		/* msg, _ := ethtx.AsMessage(signer, nil)
-
-		p, err := crypto.SigToPub(ethtx.Hash().Bytes(), sign) //sighash[:], sign)
-		if err != nil {
-			fmt.Println("SigToPub error:", err)
-			return err
-		}
-
-		addr := crypto.PubkeyToAddress(*p)
-		if msg.From() != addr {
-			return fmt.Errorf("verify sender failed! want:%v,got:%v", addr, msg.From())
-		}
-		fmt.Println("sender:", addr) */
 	}
 
 	if !crypto.VerifySignature(pub, sighash[:], sign[:len(sign)-1]) {

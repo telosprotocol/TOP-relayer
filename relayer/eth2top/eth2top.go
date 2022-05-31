@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 	"toprelayer/base"
-	"toprelayer/contract/top/bridge"
+	"toprelayer/contract/topbridge"
 	"toprelayer/sdk/ethsdk"
 	"toprelayer/sdk/topsdk"
 	"toprelayer/util"
@@ -119,7 +119,7 @@ func (et *Eth2TopRelayer) submitEthHeader(header []byte, nonce uint64) (*types.T
 		NoSend:    true, //false: Send the transaction to the target chain by default; true: don't send
 	}
 
-	contractcaller, err := bridge.NewBridgeTransactor(et.contract, et.topsdk)
+	contractcaller, err := topbridge.NewTopBridgeTransactor(et.contract, et.topsdk)
 	if err != nil {
 		return nil, err
 	}
@@ -140,13 +140,13 @@ func (et *Eth2TopRelayer) submitEthHeader(header []byte, nonce uint64) (*types.T
 	if ops.NoSend {
 		err = util.VerifyEthSignature(sigTx)
 		if err != nil {
-			logger.Error("Top2EthRelayer VerifyEthSignature error:", err)
+			logger.Error("Eth2TopRelayer VerifyEthSignature error:", err)
 			return nil, err
 		}
 
-		err := et.ethsdk.SendTransaction(ops.Context, sigTx)
+		err := et.topsdk.SendTransaction(ops.Context, sigTx)
 		if err != nil {
-			logger.Error("Top2EthRelayer SendTransaction error:", err)
+			logger.Error("Eth2TopRelayer SendTransaction error:", err)
 			return nil, err
 		}
 	}

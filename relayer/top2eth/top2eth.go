@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 	"toprelayer/base"
-	"toprelayer/contract/eth/hsc"
+	"toprelayer/contract/ethbridge"
 	"toprelayer/sdk/ethsdk"
 	"toprelayer/sdk/topsdk"
 	"toprelayer/util"
@@ -25,7 +25,7 @@ import (
 
 const (
 	METHOD_GETBRIDGESTATE        = "getCurrentBlockHeight"
-	SYNCHEADERS                  = "syncBlockHeader"
+	SYNCHEADERS                  = "addLightClientBlock"
 	CONFIRMSUCCESS        string = "0x1"
 
 	SUCCESSDELAY int64 = 15 //mainnet 1000
@@ -94,12 +94,12 @@ func (te *Top2EthRelayer) submitTopHeader(headers []byte, nonce uint64) (*types.
 		return nil, err
 	}
 
-	gaslimit, err := te.estimateGas(gaspric, headers)
+	/* gaslimit, err := te.estimateGas(gaspric, headers)
 	if err != nil {
 		return nil, err
-	}
+	} */
 	//test mock
-	//gaslimit := uint64(500000)
+	gaslimit := uint64(500000)
 
 	balance, err := te.wallet.GetBalance(te.wallet.CurrentAccount().Address)
 	if err != nil {
@@ -118,16 +118,16 @@ func (te *Top2EthRelayer) submitTopHeader(headers []byte, nonce uint64) (*types.
 		GasLimit: gaslimit,
 		Signer:   te.signTransaction,
 		Context:  context.Background(),
-		NoSend:   false,
+		NoSend:   true,
 	}
 
-	contractcaller, err := hsc.NewHscTransactor(te.contract, te.ethsdk)
+	contractcaller, err := ethbridge.NewEthBridgeTransactor(te.contract, te.ethsdk)
 	if err != nil {
 		logger.Error("Top2EthRelayer NewBridgeTransactor:", err)
 		return nil, err
 	}
 
-	sigTx, err := contractcaller.SyncBlockHeader(ops, headers)
+	sigTx, err := contractcaller.AddLightClientBlock(ops, headers)
 	if err != nil {
 		logger.Error("Top2EthRelayer AddLightClientBlock error:", err)
 		return nil, err

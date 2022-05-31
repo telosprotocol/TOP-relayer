@@ -7,7 +7,7 @@ func newtopsdk() (*TopSdk, error) {
 	return NewTopSdk(url)
 }
 
-func TsetGetTopElectBlockHeadByHeight(t *testing.T) {
+func TestGetTopElectBlockHeadByHeight(t *testing.T) {
 	sdk, err := newtopsdk()
 	if err != nil {
 		t.Fatalf("NewSDK failed,error:%v", err)
@@ -25,7 +25,7 @@ func TsetGetTopElectBlockHeadByHeight(t *testing.T) {
 	t.Logf("GetTopElectBlockHeadByHeight ok,result:%v", result)
 }
 
-func GetLatestTopElectBlockHeight(t *testing.T) {
+func TestGetLatestTopElectBlockHeight(t *testing.T) {
 	sdk, err := newtopsdk()
 	if err != nil {
 		t.Fatalf("NewSDK failed,error:%v", err)

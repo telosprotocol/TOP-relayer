@@ -17,7 +17,7 @@ const LISTENURL string = "http://192.168.50.235:8545"
 
 var DEFAULTPATH = "../../.relayer/wallet/top"
 var CONTRACT common.Address = common.HexToAddress("0xa3e165d80c949833C5c82550D697Ab31Fd3BB446")
-var abipath string = "../../contract/top/bridge/bridge.abi"
+var abipath string = "../../contract/topbridge/topbridge.abi"
 
 func TestSubmitHeader(t *testing.T) {
 	sub := &Eth2TopRelayer{}
@@ -27,16 +27,31 @@ func TestSubmitHeader(t *testing.T) {
 	}
 	var batchHeaders []*types.Header
 
-	header, err := sub.ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(100))
+	currH, err := sub.getTopBridgeCurrentHeight()
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Log("bridge contract current height:", currH)
+
+	header, err := sub.ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(currH+1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	{
+		bt, _ := header.MarshalJSON()
+		t.Log("header:", string(bt))
+	}
+
 	batchHeaders = append(batchHeaders, header)
-	/* header2, err := sub.ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(101))
+	header2, err := sub.ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(currH+2))
 	if err != nil {
 		t.Fatal(err)
 	}
-	batchHeaders = append(batchHeaders, header2) */
+	{
+		bt, _ := header2.MarshalJSON()
+		t.Log("header2:", string(bt))
+	}
+	batchHeaders = append(batchHeaders, header2)
 
 	data, err := base.EncodeHeaders(batchHeaders)
 	if err != nil {
