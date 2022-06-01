@@ -20,6 +20,10 @@ func EncodeHeaders(headers interface{}) ([]byte, error) {
 	return rlp.EncodeToBytes(headers)
 }
 
+func DecodeHeaders(data []byte, v interface{}) error {
+	return rlp.DecodeBytes(data, v)
+}
+
 type BridgeState struct {
 	LatestConfirmedHeight *big.Int `json:"latestconfrimedheight"`
 	LatestSyncedHeight    *big.Int `json:"latestsyncedheight"`

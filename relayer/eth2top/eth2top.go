@@ -223,7 +223,7 @@ func (et *Eth2TopRelayer) StartRelayer(wg *sync.WaitGroup) error {
 					break
 				}
 				ethConfirmedBlockHeight := ethCurrentHeight - uint64(et.certaintyBlocks) */
-				var ethConfirmedBlockHeight uint64 = 1000
+				var ethConfirmedBlockHeight uint64 = 1000 //test mock
 				if syncStartHeight <= ethConfirmedBlockHeight {
 					hashes, err := et.signAndSendTransactions(syncStartHeight, ethConfirmedBlockHeight)
 					if len(hashes) > 0 {
@@ -277,9 +277,6 @@ func (et *Eth2TopRelayer) batch(headers []*types.Header, nonce uint64) (common.H
 	}
 	return tx.Hash(), nil
 }
-
-//test mock
-//var nonce uint64 = 1
 
 func (et *Eth2TopRelayer) signAndSendTransactions(lo, hi uint64) ([]common.Hash, error) {
 	logger.Info("signAndSendTransactions height from:%v,to:%v", lo, hi)
