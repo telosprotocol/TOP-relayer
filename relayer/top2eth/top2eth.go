@@ -1,6 +1,7 @@
 package top2eth
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
@@ -8,7 +9,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"toprelayer/base"
 	"toprelayer/contract/ethbridge"
 	"toprelayer/sdk/ethsdk"
 	"toprelayer/sdk/topsdk"
@@ -277,14 +277,9 @@ func (te *Top2EthRelayer) StartRelayer(wg *sync.WaitGroup) error {
 	return nil
 }
 
-func (te *Top2EthRelayer) batch(headers []string, nonce uint64) (common.Hash, error) {
+func (te *Top2EthRelayer) batch(headers [][]byte, nonce uint64) (common.Hash, error) {
 	logger.Info("batch headers number:", len(headers))
-	data, err := base.EncodeHeaders(headers)
-	if err != nil {
-		logger.Error("Top2EthRelayer EncodeHeaders failed:", err)
-		return common.Hash{}, err
-	}
-
+	data := bytes.Join(headers, []byte{})
 	tx, err := te.submitTopHeader(data, nonce)
 	if err != nil {
 		logger.Error("Top2EthRelayer submitHeaders failed:", err)
@@ -295,7 +290,7 @@ func (te *Top2EthRelayer) batch(headers []string, nonce uint64) (common.Hash, er
 
 func (te *Top2EthRelayer) signAndSendTransactions(lo, hi uint64) ([]common.Hash, error) {
 	logger.Info("signAndSendTransactions height form:%v,to%v", lo, hi)
-	var batchHeaders []string
+	var batchHeaders [][]byte
 	var hashes []common.Hash
 	nonce, err := te.wallet.GetNonce(te.wallet.CurrentAccount().Address)
 	if err != nil {
@@ -316,7 +311,7 @@ func (te *Top2EthRelayer) signAndSendTransactions(lo, hi uint64) ([]common.Hash,
 			if err != nil {
 				return hashes, err
 			}
-			batchHeaders = []string{}
+			batchHeaders = [][]byte{}
 			hashes = append(hashes, hash)
 			nonce++
 		}
@@ -327,7 +322,7 @@ func (te *Top2EthRelayer) signAndSendTransactions(lo, hi uint64) ([]common.Hash,
 			if err != nil {
 				return hashes, err
 			}
-			batchHeaders = []string{}
+			batchHeaders = [][]byte{}
 			hashes = append(hashes, hash)
 		}
 	}

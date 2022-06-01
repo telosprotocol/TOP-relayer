@@ -71,19 +71,19 @@ func (t *TopSdk) GetTransactionReceipt(hash common.Hash) (*types.Receipt, error)
 	return t.TransactionReceipt(context.Background(), hash)
 }
 
-func (t *TopSdk) GetTopElectBlockHeadByHeight(height uint64) (string, error) {
+func (t *TopSdk) GetTopElectBlockHeadByHeight(height uint64) ([]byte, error) {
 	return t.getTopElectBlockHeadByHeight(height)
 }
 
-func (t *TopSdk) getTopElectBlockHeadByHeight(height uint64) (string, error) {
+func (t *TopSdk) getTopElectBlockHeadByHeight(height uint64) ([]byte, error) {
 	var result hexutil.Bytes
 	err := t.Rpc.CallContext(context.Background(), &result, GETTOPELECTBLOCKHEADBYHEIGHT, util.Uint64ToHexString(height))
 	if err != nil {
-		return "", err
+		return []byte{}, err
 	} else if len(result) == 0 {
-		return "", ethereum.NotFound
+		return []byte{}, ethereum.NotFound
 	}
-	return result.String(), nil
+	return result[:], nil
 }
 
 func (t *TopSdk) GetLatestTopElectBlockHeight() (uint64, error) {
