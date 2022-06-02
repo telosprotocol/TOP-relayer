@@ -1,0 +1,31 @@
+{
+    "logconfig": "./config/logconfig.json",
+    "relayerconfig":[
+        {
+            "chainFrom": 1337,
+            "listenurl": "http://192.168.50.235:8545",
+            "chainTo": 1023,
+            "submiturl": "http://192.168.50.204:19086",
+            "contract": "0xfd56903be64ef9707ffc0892cb41dcc569433a62",
+            "keypath": ".relayer/wallet/top",
+            "blockcertainty": 0,
+            "subBatch": 80,
+            "verifyblock": false,
+            "start": false,
+            "abipath": "./contract/topbridge/topbridge.abi"
+        },
+        {
+            "chainFrom": 1023,
+            "listenurl": "http://192.168.50.204:19086",
+            "chainTo": 1337,
+            "submiturl": "http://192.168.50.235:8545",
+            "contract": "0xe8b713aee3e241831649a993f04c9f2026d99d55",
+            "keypath": ".relayer/wallet/eth",
+            "blockcertainty": 60,
+            "subBatch": 500,
+            "verifyblock": false,
+            "start": true,
+            "abipath": "./contract/ethbridge/ethbridge.abi"
+        }
+    ]
+}
