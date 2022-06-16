@@ -12,7 +12,7 @@ func TestInitConfig(t *testing.T) {
 		t.Fatal("newConfig error:", err)
 	}
 	t.Log("config:", config)
-	for _, chain := range config.Chains {
+	for _, chain := range config.RelayerConfig {
 		t.Log("chain:", chain)
 	}
 }

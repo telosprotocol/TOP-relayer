@@ -7,7 +7,7 @@
 				"type": "bytes"
 			}
 		],
-		"name": "addLightClientBlock",
+		"name": "addLightClientBlocks",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
@@ -62,13 +62,6 @@
 		],
 		"name": "BlockHashReverted",
 		"type": "event"
-	},
-	{
-		"inputs": [],
-		"name": "deposit",
-		"outputs": [],
-		"stateMutability": "payable",
-		"type": "function"
 	},
 	{
 		"inputs": [
@@ -232,13 +225,6 @@
 	},
 	{
 		"inputs": [],
-		"name": "withdraw",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [],
 		"name": "_initialized",
 		"outputs": [
 			{
@@ -324,17 +310,17 @@
 	{
 		"inputs": [
 			{
-				"internalType": "uint64",
-				"name": "height",
-				"type": "uint64"
+				"internalType": "bytes32",
+				"name": "",
+				"type": "bytes32"
 			}
 		],
 		"name": "blockHashes",
 		"outputs": [
 			{
-				"internalType": "bytes32",
-				"name": "res",
-				"type": "bytes32"
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
 			}
 		],
 		"stateMutability": "view",
@@ -344,7 +330,26 @@
 		"inputs": [
 			{
 				"internalType": "uint64",
-				"name": "height",
+				"name": "",
+				"type": "uint64"
+			}
+		],
+		"name": "blockHeights",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint64",
+				"name": "",
 				"type": "uint64"
 			}
 		],
@@ -352,7 +357,7 @@
 		"outputs": [
 			{
 				"internalType": "bytes32",
-				"name": "res",
+				"name": "",
 				"type": "bytes32"
 			}
 		],
@@ -419,38 +424,6 @@
 		"inputs": [
 			{
 				"internalType": "bytes32",
-				"name": "hashCode",
-				"type": "bytes32"
-			}
-		],
-		"name": "getHeightByHash",
-		"outputs": [
-			{
-				"internalType": "uint64",
-				"name": "height",
-				"type": "uint64"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "getMaxHeight",
-		"outputs": [
-			{
-				"internalType": "uint64",
-				"name": "height",
-				"type": "uint64"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "bytes32",
 				"name": "role",
 				"type": "bytes32"
 			}
@@ -505,12 +478,38 @@
 	},
 	{
 		"inputs": [],
+		"name": "lastSubmitter",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
 		"name": "lockEthAmount",
 		"outputs": [
 			{
 				"internalType": "uint256",
 				"name": "",
 				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "maxMainHeight",
+		"outputs": [
+			{
+				"internalType": "uint64",
+				"name": "",
+				"type": "uint64"
 			}
 		],
 		"stateMutability": "view",

@@ -1,7 +1,6 @@
 package top2eth
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
@@ -9,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"toprelayer/base"
 	"toprelayer/contract/ethbridge"
 	"toprelayer/sdk/ethsdk"
 	"toprelayer/sdk/topsdk"
@@ -24,11 +24,11 @@ import (
 )
 
 const (
-	METHOD_GETBRIDGESTATE        = "getMaxHeight"
-	SYNCHEADERS                  = "addLightClientBlock"
+	METHOD_GETBRIDGESTATE        = "maxMainHeight"
+	SYNCHEADERS                  = "addLightClientBlocks"
 	CONFIRMSUCCESS        string = "0x1"
 
-	SUCCESSDELAY int64 = 15 //mainnet 1000
+	SUCCESSDELAY int64 = 60 //mainnet 1000
 	FATALTIMEOUT int64 = 24 //hours
 	FORKDELAY    int64 = 5  //mainnet 3000 seconds
 	ERRDELAY     int64 = 10
@@ -88,7 +88,7 @@ func (te *Top2EthRelayer) ChainId() uint64 {
 }
 
 func (te *Top2EthRelayer) submitTopHeader(headers []byte, nonce uint64) (*types.Transaction, error) {
-	logger.Info("submitTopHeader length:%v,chainid:%v", len(headers), te.chainId)
+	logger.Info("Top2EthRelayer submitTopHeader length: %v,chainid: %v", len(headers), te.chainId)
 	gaspric, err := te.wallet.GasPrice(context.Background())
 	if err != nil {
 		return nil, err
@@ -127,9 +127,9 @@ func (te *Top2EthRelayer) submitTopHeader(headers []byte, nonce uint64) (*types.
 		return nil, err
 	}
 
-	sigTx, err := contractcaller.AddLightClientBlock(ops, headers)
+	sigTx, err := contractcaller.AddLightClientBlocks(ops, headers)
 	if err != nil {
-		logger.Error("Top2EthRelayer AddLightClientBlock error:", err)
+		logger.Error("Top2EthRelayer AddLightClientBlocks error:", err)
 		return nil, err
 	}
 
@@ -146,7 +146,7 @@ func (te *Top2EthRelayer) submitTopHeader(headers []byte, nonce uint64) (*types.
 			return nil, err
 		}
 	}
-	logger.Debug("hash:%v", sigTx.Hash())
+	logger.Info("hash:%v", sigTx.Hash())
 	return sigTx, nil
 }
 
@@ -199,26 +199,23 @@ func (te *Top2EthRelayer) getEthBridgeCurrentHeight() (uint64, error) {
 		return 0, err
 	}
 
-	logger.Debug("getEthBridgeCurrentHeight height:", ret, common.Bytes2Hex(ret))
+	// logger.Debug("getEthBridgeCurrentHeight height:", ret, common.Bytes2Hex(ret))
 
 	return big.NewInt(0).SetBytes(ret).Uint64(), nil
 }
 
 func (te *Top2EthRelayer) StartRelayer(wg *sync.WaitGroup) error {
-	logger.Info("Start Top2EthRelayer relayer... chainid:%v", te.chainId)
+	logger.Info("Start Top2EthRelayer relayer... chainid: %v, subBatch: %v certaintyBlocks: %v", te.chainId, te.subBatch, te.certaintyBlocks)
 	defer wg.Done()
 
 	done := make(chan struct{})
 	defer close(done)
 
 	go func(done chan struct{}) {
-		timeoutDur := time.Duration(time.Second * 300) //test mock
-		//timeoutDur := time.Duration(time.Hour * FATALTIMEOUT)
-		timeout := time.NewTimer(timeoutDur)
+		timeoutDuration := time.Duration(FATALTIMEOUT) * time.Hour
+		timeout := time.NewTimer(timeoutDuration)
 		defer timeout.Stop()
-
-		var syncStartHeight uint64 = 1            //test mock
-		var topConfirmedBlockHeight uint64 = 1000 //test mock
+		logger.Info("Top2EthRelayer set timeout: %v hours", FATALTIMEOUT)
 		var delay time.Duration = time.Duration(1)
 
 		for {
@@ -228,46 +225,53 @@ func (te *Top2EthRelayer) StartRelayer(wg *sync.WaitGroup) error {
 				done <- struct{}{}
 				return
 			default:
-				/* bridgeCurrentHeight, err := te.getEthBridgeCurrentHeight()
+				toHeight, err := te.getEthBridgeCurrentHeight()
 				if err != nil {
 					logger.Error(err)
 					delay = time.Duration(ERRDELAY)
 					break
 				}
-				syncStartHeight := bridgeCurrentHeight + 1
-				topCurrentHeight, err := te.topsdk.GetLatestTopElectBlockHeight()
+				logger.Info("Top2EthRelayer to ethHeight: %v", toHeight)
+				fromHeight, err := te.topsdk.GetLatestTopElectBlockHeight()
 				if err != nil {
 					logger.Error(err)
 					delay = time.Duration(ERRDELAY)
 					break
 				}
-				topConfirmedBlockHeight := topCurrentHeight - 2 - uint64(te.certaintyBlocks)
-				*/
+				logger.Info("Top2EthRelayer from topHeight: %v", fromHeight)
 
-				//if bridgeState.CurrentHeight+1 <= topConfirmedBlockHeight {
-				hashes, err := te.signAndSendTransactions(syncStartHeight, topConfirmedBlockHeight)
-				if len(hashes) > 0 {
-					if set := timeout.Reset(timeoutDur); !set {
+				if toHeight+1+uint64(te.certaintyBlocks) > fromHeight {
+					if set := timeout.Reset(timeoutDuration); !set {
 						logger.Error("reset timeout falied!")
 						delay = time.Duration(ERRDELAY)
 						break
 					}
-					logger.Debug("timeout.Reset:%v", timeoutDur)
-					logger.Info("Top2EthRelayer sent block header from %v to :%v", syncStartHeight, topConfirmedBlockHeight)
-					delay = time.Duration(SUCCESSDELAY * int64(len(hashes)))
-					syncStartHeight = topConfirmedBlockHeight + 1 //test mock
-					topConfirmedBlockHeight += 500                //test mock
-					break
-				}
-				if err != nil {
-					logger.Error("Top2EthRelayer signAndSendTransactions failed:%v", err)
+					logger.Debug("height not satisfied, delay")
 					delay = time.Duration(ERRDELAY)
 					break
 				}
-				// }
-				//top fork?
-				//logger.Error("eth chain revert? syncStartHeight[%v] > topConfirmedBlockHeight[%v]", syncStartHeight, topConfirmedBlockHeight)
-				//delay = time.Duration(FORKDELAY)
+				syncStartHeight := toHeight + 1
+				syncNum := fromHeight - uint64(te.certaintyBlocks) - toHeight
+				if syncNum > uint64(te.subBatch*5) {
+					syncNum = uint64(te.subBatch * 5)
+				}
+				syncEndHeight := syncStartHeight + syncNum - 1
+
+				hashes, err := te.signAndSendTransactions(syncStartHeight, syncEndHeight)
+				if len(hashes) > 0 {
+					if set := timeout.Reset(timeoutDuration); !set {
+						logger.Error("reset timeout falied!")
+						delay = time.Duration(ERRDELAY)
+						break
+					}
+					logger.Info("Top2EthRelayer sent block header from %v to %v success", syncStartHeight, syncEndHeight)
+					delay = time.Duration(SUCCESSDELAY)
+					break
+				}
+				if err != nil {
+					logger.Error("Top2EthRelayer signAndSendTransactions failed: %v", err)
+					delay = time.Duration(ERRDELAY)
+				}
 			}
 		}
 	}(done)
@@ -278,8 +282,18 @@ func (te *Top2EthRelayer) StartRelayer(wg *sync.WaitGroup) error {
 }
 
 func (te *Top2EthRelayer) batch(headers [][]byte, nonce uint64) (common.Hash, error) {
-	logger.Info("batch headers number:", len(headers))
-	data := bytes.Join(headers, []byte{})
+	// logger.Info("batch headers number:", len(headers))
+	// data := bytes.Join(headers, []byte{})
+	data, err := base.EncodeHeaders(headers)
+	if err != nil {
+		logger.Error("Eth2TopRelayer EncodeHeaders failed:", err)
+		return common.Hash{}, err
+	}
+	// {
+	// 	hd := common.Bytes2Hex(data)
+	// 	logger.Debug("hex: ", hd)
+	// }
+
 	tx, err := te.submitTopHeader(data, nonce)
 	if err != nil {
 		logger.Error("Top2EthRelayer submitHeaders failed:", err)
@@ -289,7 +303,6 @@ func (te *Top2EthRelayer) batch(headers [][]byte, nonce uint64) (common.Hash, er
 }
 
 func (te *Top2EthRelayer) signAndSendTransactions(lo, hi uint64) ([]common.Hash, error) {
-	logger.Info("signAndSendTransactions height form:%v,to%v", lo, hi)
 	var batchHeaders [][]byte
 	var hashes []common.Hash
 	nonce, err := te.wallet.GetNonce(te.wallet.CurrentAccount().Address)
@@ -315,6 +328,7 @@ func (te *Top2EthRelayer) signAndSendTransactions(lo, hi uint64) ([]common.Hash,
 			hashes = append(hashes, hash)
 			nonce++
 		}
+		time.Sleep(time.Second * 1)
 	}
 	if h > hi {
 		if len(batchHeaders) > 0 {

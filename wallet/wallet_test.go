@@ -5,7 +5,6 @@ import (
 	"math/big"
 	"testing"
 	"toprelayer/base"
-	"toprelayer/msg"
 	"toprelayer/util"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -189,7 +188,7 @@ func TestSendDynamicTx(t *testing.T) {
 		headers = append(headers, &types.Header{Number: big.NewInt(int64(i))})
 	}
 
-	data, err := msg.EncodeHeaders(&headers)
+	data, err := base.EncodeHeaders(&headers)
 	if err != nil {
 		t.Fatal("EncodeToBytes:", err)
 	}
