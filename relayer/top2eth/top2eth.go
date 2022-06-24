@@ -89,6 +89,7 @@ func (te *Top2EthRelayer) ChainId() uint64 {
 
 func (te *Top2EthRelayer) submitTopHeader(headers []byte, nonce uint64) (*types.Transaction, error) {
 	logger.Info("Top2EthRelayer submitTopHeader length: %v,chainid: %v", len(headers), te.chainId)
+	logger.Info("Top2EthRelayer raw data: %v", common.Bytes2Hex(headers))
 	gaspric, err := te.wallet.GasPrice(context.Background())
 	if err != nil {
 		return nil, err
@@ -252,8 +253,8 @@ func (te *Top2EthRelayer) StartRelayer(wg *sync.WaitGroup) error {
 				}
 				syncStartHeight := toHeight + 1
 				syncNum := fromHeight - uint64(te.certaintyBlocks) - toHeight
-				if syncNum > uint64(te.subBatch*5) {
-					syncNum = uint64(te.subBatch * 5)
+				if syncNum > uint64(te.subBatch) {
+					syncNum = uint64(te.subBatch)
 				}
 				syncEndHeight := syncStartHeight + syncNum - 1
 
