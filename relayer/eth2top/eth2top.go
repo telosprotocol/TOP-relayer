@@ -21,6 +21,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/wonderivan/logger"
 )
 
@@ -398,38 +399,47 @@ func (et *Eth2TopRelayer) detailsByNumber(h uint64, header *types.Header) (ethas
 	return ethashapp.EthashWithProofs(h, header)
 }
 
-func (et *Eth2TopRelayer) signAndSendTransactions(lo, hi uint64) ([]common.Hash, error) {
-	logger.Info("signAndSendTransactions height from:%v,to:%v", lo, hi)
-	var batchHeaders []*types.Header
-	var hashes []common.Hash
+func (et *Eth2TopRelayer) signAndSendTransactions(lo, hi uint64) (common.Hash, error) {
+	// logger.Info("signAndSendTransactions height from:%v,to:%v", lo, hi)
+	// var batchHeaders []*types.Header
+	var hash common.Hash
 	nonce, err := et.wallet.GetNonce(et.wallet.CurrentAccount().Address)
 	if err != nil {
 		logger.Error(err)
-		return hashes, err
+		return hash, err
 	}
-	h := lo
-	for ; h <= hi; h++ {
-		header, err := et.ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(h))
-		if err != nil {
-			logger.Error(err)
-			return hashes, err
-		}
-		// ethashproof, err := ethashapp.EthashWithProofs(h, header)
-		// if err != nil {
-		// 	logger.Error(err)
-		// 	return hashes, err
-		// }
-		// // fmt.Printf("ethashproof: %v", ethashproof)
-		// // os.Exit(0)
-		batchHeaders = append(batchHeaders, header)
-	}
-	hash, err := et.batch(batchHeaders, nonce)
+	// h := lo
+	// for ; h <= hi; h++ {
+	header, err := et.ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(lo))
 	if err != nil {
-		return hashes, err
+		logger.Error(err)
+		return hash, err
+	}
+	ethashproof, err := ethashapp.EthashWithProofs(lo, header)
+	if err != nil {
+		logger.Error(err)
+		return hash, err
+	}
+	// batchHeaders = append(batchHeaders, header)
+	// }
+	// hash, err := et.batch(header, nonce)
+	// if err != nil {
+	// 	return hashes, err
+	// }
+
+	// maybe verify block
+	data, err := rlp.EncodeToBytes(ethashproof)
+	if err != nil {
+		logger.Error("Eth2TopRelayer EncodeHeaders failed:", err)
+		return hash, err
+	}
+	tx, err := et.submitEthHeader(data, nonce)
+	if err != nil {
+		logger.Error("Eth2TopRelayer submitHeaders failed:", err)
+		return hash, err
 	}
 
-	hashes = append(hashes, hash)
-	return hashes, nil
+	return tx.Hash(), nil
 }
 
 func (et *Eth2TopRelayer) verifyBlocks(header *types.Header) error {
