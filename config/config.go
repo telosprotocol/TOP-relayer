@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+
+	"github.com/wonderivan/logger"
 )
 
 var (
@@ -75,4 +77,10 @@ func InitHeaderSyncConfig(path string) (*HeaderSyncConfig, error) {
 		return nil, err
 	}
 	return &HeaderSyncConfig{Config: cfg}, nil
+}
+
+func InitLogConfig(config string) error {
+	os.Mkdir("log", os.ModePerm)
+	logger.SetLogger(config)
+	return nil
 }

@@ -8,6 +8,7 @@ import (
 	"toprelayer/util"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -188,7 +189,7 @@ func TestSendDynamicTx(t *testing.T) {
 		headers = append(headers, &types.Header{Number: big.NewInt(int64(i))})
 	}
 
-	data, err := base.EncodeHeaders(&headers)
+	data, err := rlp.EncodeToBytes(&headers)
 	if err != nil {
 		t.Fatal("EncodeToBytes:", err)
 	}

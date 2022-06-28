@@ -8,6 +8,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rlp"
 )
 
 func TestSubmitHeader(t *testing.T) {
@@ -75,7 +76,7 @@ func TestEstimateGas(t *testing.T) {
 	}
 
 	header := &types.Header{Number: big.NewInt(int64(1))}
-	data, err := base.EncodeHeaders(header)
+	data, err := rlp.EncodeToBytes(header)
 	if err != nil {
 		t.Fatal("EncodeToBytes:", err)
 	}

@@ -293,7 +293,7 @@ func (et *Eth2TopRelayer) batch(headers []*types.Header, nonce uint64) (common.H
 			et.verifyBlocks(header)
 		}
 	}
-	data, err := base.EncodeHeaders(headers)
+	data, err := rlp.EncodeToBytes(headers)
 	if err != nil {
 		logger.Error("Eth2TopRelayer EncodeHeaders failed:", err)
 		return common.Hash{}, err
@@ -305,91 +305,6 @@ func (et *Eth2TopRelayer) batch(headers []*types.Header, nonce uint64) (common.H
 	}
 	return tx.Hash(), nil
 }
-
-// func (et *Eth2TopRelayer) ethashProofs(h uint64, header *types.Header) (Output, error) {
-// 	// var header *types.Header
-// 	// if err := rlp.DecodeBytes(rlpheader, &header); err != nil {
-// 	// 	logger.Error("RLP decoding of header failed: ", err)
-// 	// 	return Output{}, err
-// 	// }
-// 	epoch := h / BLOCKS_PER_EPOCH
-// 	cache, err := ethashproof.LoadCache(int(epoch))
-// 	if err != nil {
-// 		logger.Info("Cache is missing, calculate dataset merkle tree to create the cache first...")
-// 		_, err = ethashproof.CalculateDatasetMerkleRoot(epoch, true)
-// 		if err != nil {
-// 			logger.Error("Creating cache failed: ", err)
-// 			return Output{}, err
-// 		}
-// 		cache, err = ethashproof.LoadCache(int(epoch))
-// 		if err != nil {
-// 			logger.Error("Getting cache failed after trying to create it, abort: ", err)
-// 			return Output{}, err
-// 		}
-// 	}
-
-// 	// Remove outdated epoch
-// 	if epoch > 1 {
-// 		outdatedEpoch := epoch - 2
-// 		err = os.Remove(ethash.PathToDAG(outdatedEpoch, ethash.DefaultDir))
-// 		if err != nil {
-// 			if os.IsNotExist(err) {
-// 				logger.Info("DAG for previous epoch does not exist, nothing to remove: ", outdatedEpoch)
-// 			} else {
-// 				logger.Error("Remove DAG: ", err)
-// 			}
-// 		}
-
-// 		err = os.Remove(ethashproof.PathToCache(outdatedEpoch))
-// 		if err != nil {
-// 			if os.IsNotExist(err) {
-// 				logger.Info("Cache for previous epoch does not exist, nothing to remove: ", outdatedEpoch)
-// 			} else {
-// 				logger.Error("Remove cache error: ", err)
-// 			}
-// 		}
-// 	}
-
-// 	logger.Debug("SealHash: ", ethash.Instance.SealHash(header))
-// 	indices := ethash.Instance.GetVerificationIndices(
-// 		h,
-// 		ethash.Instance.SealHash(header),
-// 		header.Nonce.Uint64(),
-// 	)
-// 	logger.Debug("Proof length: ", cache.ProofLength)
-// 	bytes, err := rlp.EncodeToBytes(header)
-// 	if err != nil {
-// 		logger.Error("RLP decoding of header failed: ", err)
-// 		return Output{}, err
-// 	}
-// 	output := Output{
-// 		HeaderRLP:    hexutil.Encode(bytes),
-// 		MerkleRoot:   cache.RootHash.Hex(),
-// 		Elements:     []string{},
-// 		MerkleProofs: []string{},
-// 		ProofLength:  cache.ProofLength,
-// 	}
-// 	for _, index := range indices {
-// 		element, proof, err := ethashproof.CalculateProof(h, index, cache)
-// 		if err != nil {
-// 			logger.Error("calculating the proofs failed for index: %d, error: %s", index, err)
-// 			return Output{}, err
-// 		}
-// 		es := element.ToUint256Array()
-// 		for _, e := range es {
-// 			output.Elements = append(output.Elements, hexutil.EncodeBig(e))
-// 		}
-// 		allProofs := []*big.Int{}
-// 		for _, be := range mtree.HashesToBranchesArray(proof) {
-// 			allProofs = append(allProofs, be.Big())
-// 		}
-// 		for _, pr := range allProofs {
-// 			output.MerkleProofs = append(output.MerkleProofs, hexutil.EncodeBig(pr))
-// 		}
-// 	}
-
-// 	return output, nil
-// }
 
 func (et *Eth2TopRelayer) detailsByNumber(h uint64, header *types.Header) (ethashapp.Output, error) {
 	// currentEpoch := h / BLOCKS_PER_EPOCH
@@ -452,7 +367,6 @@ func (et *Eth2TopRelayer) estimateGas(gasprice *big.Int, data []byte) (uint64, e
 		return 0, err
 	}
 
-	// capfee := big.NewInt(0).SetUint64(base.GetChainGasCapFee(et.chainId))
 	callmsg := ethereum.CallMsg{
 		From:      et.wallet.CurrentAccount().Address,
 		To:        &et.contract,

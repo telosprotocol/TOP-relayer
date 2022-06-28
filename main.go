@@ -4,13 +4,12 @@ import (
 	"log"
 	"os"
 	"sync"
-	"toprelayer/base"
 
 	"toprelayer/config"
 	"toprelayer/relayer"
+	"toprelayer/util"
 
 	"github.com/urfave/cli/v2"
-	"github.com/wonderivan/logger"
 )
 
 func main() {
@@ -25,16 +24,6 @@ func main() {
 				Usage: "configuration file",
 			},
 			&cli.StringFlag{
-				Name:  "ethpass",
-				Value: "",
-				Usage: "eth relayer keystore pass word",
-			},
-			&cli.StringFlag{
-				Name:  "toppass",
-				Value: "",
-				Usage: "top relayer keystore pass word",
-			},
-			&cli.StringFlag{
 				Name:  "logconfig",
 				Value: "./config/logconfig.json",
 				Usage: "log config path",
@@ -44,7 +33,7 @@ func main() {
 
 	err := app.Run(os.Args)
 	if err != nil {
-		log.Println("Run relayer error:", err)
+		log.Fatal("Run relayer error:", err)
 		os.Exit(1)
 	}
 }
@@ -55,24 +44,18 @@ func start(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	logger.SetLogger(handlercfg.Config.LogConfig)
-	err = relayer.StartRelayer(wg, handlercfg, getchainpass(c, handlercfg))
+	err = config.InitLogConfig(handlercfg.Config.LogConfig)
+	if err != nil {
+		return err
+	}
+	passes, err := util.Getchainpass(handlercfg)
+	if err != nil {
+		return err
+	}
+	err = relayer.StartRelayer(wg, handlercfg, passes)
 	if err != nil {
 		return err
 	}
 	wg.Wait()
 	return nil
-}
-
-func getchainpass(c *cli.Context, handlercfg *config.HeaderSyncConfig) map[uint64]string {
-	chainpass := make(map[uint64]string)
-	for _, chain := range handlercfg.Config.RelayerConfig {
-		switch chain.SubmitChainId {
-		case base.ETH:
-			chainpass[base.ETH] = c.String("ethpass")
-		case base.TOP:
-			chainpass[base.TOP] = c.String("toppass")
-		}
-	}
-	return chainpass
 }

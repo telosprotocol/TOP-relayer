@@ -52,7 +52,7 @@ func TestGetBatchHeadersRlp(t *testing.T) {
 		batchHeaders = append(batchHeaders, header)
 	}
 
-	data, err := base.EncodeHeaders(batchHeaders)
+	data, err := rlp.EncodeToBytes(batchHeaders)
 	if err != nil {
 		t.Fatal("EncodeToBytes:", err)
 	}

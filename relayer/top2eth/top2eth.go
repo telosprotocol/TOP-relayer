@@ -8,7 +8,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"toprelayer/base"
 	"toprelayer/contract/ethbridge"
 	"toprelayer/sdk/ethsdk"
 	"toprelayer/sdk/topsdk"
@@ -20,6 +19,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/wonderivan/logger"
 )
 
@@ -285,7 +285,7 @@ func (te *Top2EthRelayer) StartRelayer(wg *sync.WaitGroup) error {
 func (te *Top2EthRelayer) batch(headers [][]byte, nonce uint64) (common.Hash, error) {
 	// logger.Info("batch headers number:", len(headers))
 	// data := bytes.Join(headers, []byte{})
-	data, err := base.EncodeHeaders(headers)
+	data, err := rlp.EncodeToBytes(headers)
 	if err != nil {
 		logger.Error("Eth2TopRelayer EncodeHeaders failed:", err)
 		return common.Hash{}, err
