@@ -11,20 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
-const (
-// METHOD_GETBRIDGESTATE = "getCurrentBlockHeight"
-// SYNCHEADERS           = "syncBlockHeader"
-
-// SUCCESSDELAY int64 = 15 //mainnet 120
-// FATALTIMEOUT int64 = 24 //hours
-// FORKDELAY    int64 = 5  //mainnet 10000 seconds
-// ERRDELAY     int64 = 10
-// CONFIRMDELAY int64 = 5
-
-// BLOCKS_PER_EPOCH uint64 = 30000
-// BLOCKS_TO_END_OF_EPOCH uint64 = 5000
-)
-
 func TestGetHeaderWithProof(t *testing.T) {
 	var url string = "https://api.mycryptoapi.com/eth"
 	ethsdk, err := ethsdk.NewEthSdk(url)

@@ -2,7 +2,6 @@ package util
 
 import (
 	"fmt"
-	"os"
 	"testing"
 	"toprelayer/config"
 )

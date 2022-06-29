@@ -14,17 +14,7 @@ import (
 )
 
 const (
-	// METHOD_GETBRIDGESTATE = "getCurrentBlockHeight"
-	// SYNCHEADERS           = "syncBlockHeader"
-
-	// SUCCESSDELAY int64 = 15 //mainnet 120
-	// FATALTIMEOUT int64 = 24 //hours
-	// FORKDELAY    int64 = 5  //mainnet 10000 seconds
-	// ERRDELAY     int64 = 10
-	// CONFIRMDELAY int64 = 5
-
 	BLOCKS_PER_EPOCH uint64 = 30000
-	// BLOCKS_TO_END_OF_EPOCH uint64 = 5000
 )
 
 type Output struct {
@@ -74,7 +64,6 @@ func EthashWithProofs(h uint64, header *types.Header) (Output, error) {
 		err = os.Remove(ethash.PathToDAG(outdatedEpoch, ethash.DefaultDir))
 		if err != nil {
 			if os.IsNotExist(err) {
-				logger.Info("DAG for previous epoch does not exist, nothing to remove: ", outdatedEpoch)
 			} else {
 				logger.Error("Remove DAG: ", err)
 			}
@@ -83,20 +72,17 @@ func EthashWithProofs(h uint64, header *types.Header) (Output, error) {
 		err = os.Remove(ethashproof.PathToCache(outdatedEpoch))
 		if err != nil {
 			if os.IsNotExist(err) {
-				logger.Info("Cache for previous epoch does not exist, nothing to remove: ", outdatedEpoch)
 			} else {
 				logger.Error("Remove cache error: ", err)
 			}
 		}
 	}
 
-	logger.Debug("SealHash: ", ethash.Instance.SealHash(header))
 	indices := ethash.Instance.GetVerificationIndices(
 		h,
 		ethash.Instance.SealHash(header),
 		header.Nonce.Uint64(),
 	)
-	logger.Debug("Proof length: ", cache.ProofLength)
 	bytes, err := rlp.EncodeToBytes(header)
 	if err != nil {
 		logger.Error("RLP decoding of header failed: ", err)

@@ -13,7 +13,7 @@ import (
 )
 
 type IChainRelayer interface {
-	Init(fromUrl, toUrl, keypath, pass, abipath string, chainid uint64, contract common.Address, batch, cert int, verify bool) error
+	Init(fromUrl, toUrl, keypath, pass string, chainid uint64, contract common.Address, batch int) error
 	StartRelayer(*sync.WaitGroup) error
 	ChainId() uint64
 }

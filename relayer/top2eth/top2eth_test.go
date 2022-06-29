@@ -68,9 +68,8 @@ func TestEstimateGas(t *testing.T) {
 	const LISTENURL string = "http://192.168.50.204:19086"
 	var DEFAULTPATH = "../../.relayer/wallet/eth"
 	var CONTRACT common.Address = common.HexToAddress("0xd287F92c8cB8Cd54DC4C93a1619b04481E4a62F9")
-	var abipath string = "../../contract/ethbridge/ethbridge.abi"
 	sub := &Top2EthRelayer{}
-	err := sub.Init(SUBMITTERURL, LISTENURL, DEFAULTPATH, "", abipath, base.ETH, CONTRACT, 90, 0, false)
+	err := sub.Init(SUBMITTERURL, LISTENURL, DEFAULTPATH, "", base.ETH, CONTRACT, 5)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +85,7 @@ func TestEstimateGas(t *testing.T) {
 		t.Fatal("GasPrice:", err)
 	}
 
-	gaslimit, err := sub.estimateGas(pric, data)
+	gaslimit, err := sub.estimateSyncGas(pric, data)
 	if err != nil {
 		t.Fatal("estimateGas:", err)
 	}
@@ -103,9 +102,8 @@ func TestGetETHBridgeState(t *testing.T) {
 	const LISTENURL string = "http://192.168.50.204:19086"
 	var DEFAULTPATH = "../../.relayer/wallet/eth"
 	var CONTRACT common.Address = common.HexToAddress("0xd287F92c8cB8Cd54DC4C93a1619b04481E4a62F9")
-	var abipath string = "../../contract/ethbridge/ethbridge.abi"
 	sub := &Top2EthRelayer{}
-	err := sub.Init(SUBMITTERURL, LISTENURL, DEFAULTPATH, "", abipath, base.ETH, CONTRACT, 90, 0, false)
+	err := sub.Init(SUBMITTERURL, LISTENURL, DEFAULTPATH, "", base.ETH, CONTRACT, 5)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"sync"
@@ -44,11 +45,15 @@ func start(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	err = config.InitLogConfig(handlercfg.Config.LogConfig)
+	passes, err := util.Getchainpass(handlercfg)
 	if err != nil {
 		return err
 	}
-	passes, err := util.Getchainpass(handlercfg)
+
+	fmt.Println()
+	fmt.Println("starting relayer...")
+
+	err = config.InitLogConfig()
 	if err != nil {
 		return err
 	}

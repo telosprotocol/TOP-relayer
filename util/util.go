@@ -106,7 +106,6 @@ func VerifyEthSignature(ethtx *types.Transaction) error {
 }
 
 func readPassword(prompt string) (string, error) {
-	fmt.Println()
 	fmt.Print(prompt)
 	pass, err := terminal.ReadPassword(int(os.Stdin.Fd()))
 	if err != nil {

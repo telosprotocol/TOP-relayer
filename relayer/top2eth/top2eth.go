@@ -24,14 +24,17 @@ import (
 )
 
 const (
-	METHOD_GETBRIDGESTATE        = "maxMainHeight"
-	SYNCHEADERS                  = "addLightClientBlocks"
-	CONFIRMSUCCESS        string = "0x1"
+	METHOD_GETHEIGHT = "maxMainHeight"
+	METHOD_SYNC      = "addLightClientBlocks"
 
-	SUCCESSDELAY int64 = 60 //mainnet 1000
+	ABI_PATH = "contract/ethbridge/ethbridge.abi"
+
 	FATALTIMEOUT int64 = 24 //hours
-	FORKDELAY    int64 = 5  //mainnet 3000 seconds
+	SUCCESSDELAY int64 = 60
 	ERRDELAY     int64 = 10
+	WAITDELAY    int64 = 1000
+
+	CONFIRM_NUM int = 2
 )
 
 type Top2EthRelayer struct {
@@ -46,7 +49,7 @@ type Top2EthRelayer struct {
 	abi             abi.ABI
 }
 
-func (te *Top2EthRelayer) Init(ethUrl, topUrl, keypath, pass, abipath string, chainid uint64, contract common.Address, batch, cert int, verify bool) error {
+func (te *Top2EthRelayer) Init(ethUrl, topUrl, keypath, pass string, chainid uint64, contract common.Address, batch int) error {
 	ethsdk, err := ethsdk.NewEthSdk(ethUrl)
 	if err != nil {
 		return err
@@ -60,14 +63,14 @@ func (te *Top2EthRelayer) Init(ethUrl, topUrl, keypath, pass, abipath string, ch
 	te.contract = contract
 	te.chainId = chainid
 	te.subBatch = batch
-	te.certaintyBlocks = cert
+	te.certaintyBlocks = CONFIRM_NUM
 
 	w, err := wallet.NewWallet(ethUrl, keypath, pass, chainid)
 	if err != nil {
 		return err
 	}
 	te.wallet = w
-	a, err := initABI(abipath)
+	a, err := initABI(ABI_PATH)
 	if err != nil {
 		return err
 	}
@@ -95,7 +98,7 @@ func (te *Top2EthRelayer) submitTopHeader(headers []byte, nonce uint64) (*types.
 		return nil, err
 	}
 
-	gaslimit, err := te.estimateGas(gaspric, headers)
+	gaslimit, err := te.estimateSyncGas(gaspric, headers)
 	if err != nil {
 		return nil, err
 	}
@@ -164,47 +167,6 @@ func (te *Top2EthRelayer) signTransaction(addr common.Address, tx *types.Transac
 	return nil, fmt.Errorf("address:%v not available", addr)
 }
 
-func (te *Top2EthRelayer) getEthBridgeCurrentHeight() (uint64, error) {
-	/* hscaller, err := hsc.NewHscCaller(te.contract, te.ethsdk)
-	if err != nil {
-		return nil, err
-	}
-
-	hscRaw := hsc.HscCallerRaw{Contract: hscaller}
-	result := make([]interface{}, 1)
-	err = hscRaw.Call(nil, &result, METHOD_GETBRIDGESTATE)
-	if err != nil {
-		return nil, err
-	}
-
-	state, success := result[0].(base.BridgeState)
-	if !success {
-		return nil, err
-	} */
-
-	input, err := te.abi.Pack(METHOD_GETBRIDGESTATE)
-	if err != nil {
-		logger.Error("Pack:", err)
-		return 0, err
-	}
-
-	msg := ethereum.CallMsg{
-		From: te.wallet.CurrentAccount().Address,
-		To:   &te.contract,
-		Data: input,
-	}
-
-	ret, err := te.ethsdk.CallContract(context.Background(), msg, nil)
-	if err != nil {
-		logger.Error("CallContract:", err)
-		return 0, err
-	}
-
-	// logger.Debug("getEthBridgeCurrentHeight height:", ret, common.Bytes2Hex(ret))
-
-	return big.NewInt(0).SetBytes(ret).Uint64(), nil
-}
-
 func (te *Top2EthRelayer) StartRelayer(wg *sync.WaitGroup) error {
 	logger.Info("Start Top2EthRelayer relayer... chainid: %v, subBatch: %v certaintyBlocks: %v", te.chainId, te.subBatch, te.certaintyBlocks)
 	defer wg.Done()
@@ -232,14 +194,14 @@ func (te *Top2EthRelayer) StartRelayer(wg *sync.WaitGroup) error {
 					delay = time.Duration(ERRDELAY)
 					break
 				}
-				logger.Info("Top2EthRelayer to ethHeight: %v", toHeight)
+				logger.Info("Top2EthRelayer dest eth Height: %v", toHeight)
 				fromHeight, err := te.topsdk.GetLatestTopElectBlockHeight()
 				if err != nil {
 					logger.Error(err)
 					delay = time.Duration(ERRDELAY)
 					break
 				}
-				logger.Info("Top2EthRelayer from topHeight: %v", fromHeight)
+				logger.Info("Top2EthRelayer src top Height: %v", fromHeight)
 
 				if toHeight+1+uint64(te.certaintyBlocks) > fromHeight {
 					if set := timeout.Reset(timeoutDuration); !set {
@@ -247,8 +209,8 @@ func (te *Top2EthRelayer) StartRelayer(wg *sync.WaitGroup) error {
 						delay = time.Duration(ERRDELAY)
 						break
 					}
-					logger.Debug("height not satisfied, delay")
-					delay = time.Duration(ERRDELAY)
+					logger.Debug("wait src top update, delay")
+					delay = time.Duration(WAITDELAY)
 					break
 				}
 				syncStartHeight := toHeight + 1
@@ -345,8 +307,30 @@ func (te *Top2EthRelayer) signAndSendTransactions(lo, hi uint64) ([]common.Hash,
 	return hashes, nil
 }
 
-func (te *Top2EthRelayer) estimateGas(price *big.Int, data []byte) (uint64, error) {
-	input, err := te.abi.Pack(SYNCHEADERS, data)
+func (te *Top2EthRelayer) getEthBridgeCurrentHeight() (uint64, error) {
+	input, err := te.abi.Pack(METHOD_GETHEIGHT)
+	if err != nil {
+		logger.Error("Pack:", err)
+		return 0, err
+	}
+
+	msg := ethereum.CallMsg{
+		From: te.wallet.CurrentAccount().Address,
+		To:   &te.contract,
+		Data: input,
+	}
+
+	ret, err := te.ethsdk.CallContract(context.Background(), msg, nil)
+	if err != nil {
+		logger.Error("CallContract:", err)
+		return 0, err
+	}
+
+	return big.NewInt(0).SetBytes(ret).Uint64(), nil
+}
+
+func (te *Top2EthRelayer) estimateSyncGas(price *big.Int, data []byte) (uint64, error) {
+	input, err := te.abi.Pack(METHOD_SYNC, data)
 	if err != nil {
 		return 0, err
 	}

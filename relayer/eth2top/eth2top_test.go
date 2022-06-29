@@ -10,8 +10,8 @@ import (
 	"toprelayer/sdk/ethsdk"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/wonderivan/logger"
 )
 
 func TestGetHeaderRlp(t *testing.T) {
@@ -29,32 +29,6 @@ func TestGetHeaderRlp(t *testing.T) {
 	data, err := rlp.EncodeToBytes(header)
 	if err != nil {
 		t.Fatal("EncodeToBytes: ", err)
-	}
-	t.Log("headers hex data:", common.Bytes2Hex(data))
-}
-
-func TestGetBatchHeadersRlp(t *testing.T) {
-	const url string = "https://api.mycryptoapi.com/eth"
-	ethsdk, err := ethsdk.NewEthSdk(url)
-	if err != nil {
-		t.Fatal("NewEthSdk: ", err)
-	}
-
-	var currH uint64 = 12970000
-	var num uint64 = 5
-	var batchHeaders []*types.Header
-
-	for i := uint64(1); i <= num; i++ {
-		header, err := ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(currH+i))
-		if err != nil {
-			t.Fatal("HeaderByNumber", err)
-		}
-		batchHeaders = append(batchHeaders, header)
-	}
-
-	data, err := rlp.EncodeToBytes(batchHeaders)
-	if err != nil {
-		t.Fatal("EncodeToBytes:", err)
 	}
 	t.Log("headers hex data:", common.Bytes2Hex(data))
 }
@@ -83,18 +57,107 @@ func TestGetHeaderWithProofsRlp(t *testing.T) {
 	fmt.Println("rlp output: ", common.Bytes2Hex(rlp_bytes))
 }
 
+func TestGetHeaderTxData(t *testing.T) {
+	var height uint64 = 12969999
+	var url string = "https://api.mycryptoapi.com/eth"
+	var abiPath string = "../../contract/topbridge/topbridge.abi"
+
+	ethsdk, err := ethsdk.NewEthSdk(url)
+	if err != nil {
+		t.Fatal("NewEthSdk: ", err)
+	}
+	header, err := ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(height))
+	if err != nil {
+		t.Fatal("HeaderByNumber: ", err)
+	}
+	rlp_bytes, err := rlp.EncodeToBytes(header)
+	if err != nil {
+		t.Fatal("EncodeToBytes: ", err)
+	}
+	abi, err := initABI(abiPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input, err := abi.Pack("sync", rlp_bytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	logger.Debug("data:", common.Bytes2Hex(input))
+}
+
+func TestGetHeaderWithProofsRlpTxData(t *testing.T) {
+	// changable
+	var height uint64 = 12970000
+	var listenUrl string = "https://api.mycryptoapi.com/eth"
+	var abiPath string = "../../contract/topbridge/topbridge.abi"
+
+	ethsdk, err := ethsdk.NewEthSdk(listenUrl)
+	if err != nil {
+		t.Fatal("NewEthSdk: ", err)
+	}
+	header, err := ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(height))
+	if err != nil {
+		t.Fatal("HeaderByNumber: ", err)
+	}
+	out, err := ethashapp.EthashWithProofs(height, header)
+	if err != nil {
+		t.Fatal("HeaderByNumber: ", err)
+	}
+	rlp_bytes, err := rlp.EncodeToBytes(out)
+	if err != nil {
+		t.Fatal("rlp encode error: ", err)
+	}
+	abi, err := initABI(abiPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input, err := abi.Pack("sync", rlp_bytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	logger.Debug("data:", common.Bytes2Hex(input))
+}
+
+func TestGetHeightTxData(t *testing.T) {
+	var abiPath string = "../../contract/topbridge/topbridge.abi"
+
+	abi, err := initABI(abiPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input, err := abi.Pack(METHOD_GETHEIGHT)
+	if err != nil {
+		t.Fatal(err)
+	}
+	logger.Debug("data:", common.Bytes2Hex(input))
+}
+
+func TestIsConfirmedTxData(t *testing.T) {
+	hash := common.Hex2Bytes("13049bb8cfd97fe2333829f06df37c569db68d42c23097fbac64f2c61471f281")
+	var abiPath string = "../../contract/topbridge/topbridge.abi"
+
+	abi, err := initABI(abiPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input, err := abi.Pack("is_confirmed", hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	logger.Debug("data:", common.Bytes2Hex(input))
+}
+
 func TestSyncHeaderWithProofsRlp(t *testing.T) {
 	// changable
 	var height uint64 = 12970000
 	var contract common.Address = common.HexToAddress("0x0eD0BA13032aDD72398042B931aecCEFCc66A826")
-	var submitUrl string = "http://192.168.30.200:8080"
+	var submitUrl string = "http://192.168.50.204:8080"
 	var accountPath = "../../.relayer/wallet/top"
 	// fix
 	var listenUrl string = "https://api.mycryptoapi.com/eth"
-	var abiPath string = "../../contract/topbridge/topbridge.abi"
 
 	sub := &Eth2TopRelayer{}
-	err := sub.Init(submitUrl, listenUrl, accountPath, "", abiPath, base.TOP, contract, 5, 0, false)
+	err := sub.Init(submitUrl, listenUrl, accountPath, "", base.TOP, contract, 5)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,11 +181,10 @@ func TestSyncHeaderWithProofsRlp(t *testing.T) {
 	if err != nil {
 		t.Fatal("GasPrice:", err)
 	}
-	tx, err := sub.submitEthHeader(rlp_bytes, nonce)
+	err = sub.submitEthHeader(rlp_bytes, nonce)
 	if err != nil {
 		t.Fatal("submitEthHeader:", err)
 	}
-	t.Log("hash:", tx.Hash())
 }
 
 func TestSyncHeaderWithProofsRlpGas(t *testing.T) {
@@ -132,10 +194,9 @@ func TestSyncHeaderWithProofsRlpGas(t *testing.T) {
 	var accountPath = "../../.relayer/wallet/top"
 	// fix
 	var listenUrl string = "https://api.mycryptoapi.com/eth"
-	var abiPath string = "../../contract/topbridge/topbridge.abi"
 
 	sub := &Eth2TopRelayer{}
-	err := sub.Init(submitUrl, listenUrl, accountPath, "", abiPath, base.TOP, contract, 5, 0, false)
+	err := sub.Init(submitUrl, listenUrl, accountPath, "", base.TOP, contract, 5)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +222,7 @@ func TestSyncHeaderWithProofsRlpGas(t *testing.T) {
 	}
 	fmt.Println("data_len: ", len(rlp_bytes))
 	fmt.Println("price: ", gaspric)
-	gaslimit, err := sub.estimateGas(gaspric, rlp_bytes)
+	gaslimit, err := sub.estimateSyncGas(gaspric, rlp_bytes)
 	if err != nil {
 		t.Fatal("GasPrice error: ", err)
 	}
@@ -175,10 +236,9 @@ func TestGetTopBridgeHeight(t *testing.T) {
 	var accountPath = "../../.relayer/wallet/top"
 	// fix
 	var listenUrl string = "https://api.mycryptoapi.com/eth"
-	var abiPath string = "../../contract/topbridge/topbridge.abi"
 
 	sub := &Eth2TopRelayer{}
-	err := sub.Init(submitUrl, listenUrl, accountPath, "", abiPath, base.TOP, contract, 90, 0, false)
+	err := sub.Init(submitUrl, listenUrl, accountPath, "", base.TOP, contract, 5)
 	if err != nil {
 		t.Fatal(err)
 	}

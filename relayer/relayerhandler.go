@@ -37,12 +37,9 @@ func (h *HeaderSyncHandler) Init(wg *sync.WaitGroup, chainpass map[uint64]string
 				chain.ListenUrl,
 				chain.KeyPath,
 				chainpass[chain.SubmitChainId],
-				chain.AbiPath,
 				chain.SubmitChainId,
 				common.HexToAddress(chain.Contract),
 				chain.SubBatch,
-				chain.BlockCertainty,
-				chain.VerifyBlock,
 			)
 			if err != nil {
 				return err
