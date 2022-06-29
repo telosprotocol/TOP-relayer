@@ -30,7 +30,7 @@ var (
 
 // TopBridgeMetaData contains all meta data concerning the TopBridge contract.
 var TopBridgeMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[{\"internalType\":\"uint64\",\"name\":\"chainId\",\"type\":\"uint64\"},{\"internalType\":\"uint64\",\"name\":\"height\",\"type\":\"uint64\"}],\"name\":\"getBlockBashByHeight\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"hashcode\",\"type\":\"bytes\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint64\",\"name\":\"chainId\",\"type\":\"uint64\"}],\"name\":\"getCurrentBlockHeight\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"height\",\"type\":\"uint64\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"genesis\",\"type\":\"bytes\"},{\"internalType\":\"string\",\"name\":\"emitter\",\"type\":\"string\"}],\"name\":\"initGenesisHeader\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"blockHeader\",\"type\":\"bytes\"}],\"name\":\"syncBlockHeader\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_bridgeLight\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"bridgeLight\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
+	ABI: "[{\"inputs\":[],\"name\":\"get_height\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"height\",\"type\":\"uint64\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"blockHeader\",\"type\":\"bytes\"}],\"name\":\"sync\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
 }
 
 // TopBridgeABI is the input ABI used to generate the binding from.
@@ -179,117 +179,44 @@ func (_TopBridge *TopBridgeTransactorRaw) Transact(opts *bind.TransactOpts, meth
 	return _TopBridge.Contract.contract.Transact(opts, method, params...)
 }
 
-// BridgeLight is a free data retrieval call binding the contract method 0x01402e0c.
+// GetHeight is a paid mutator transaction binding the contract method 0xb15ad2e8.
 //
-// Solidity: function bridgeLight() view returns(address)
-func (_TopBridge *TopBridgeCaller) BridgeLight(opts *bind.CallOpts) (common.Address, error) {
-	var out []interface{}
-	err := _TopBridge.contract.Call(opts, &out, "bridgeLight")
-
-	if err != nil {
-		return *new(common.Address), err
-	}
-
-	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
-
-	return out0, err
-
+// Solidity: function get_height() returns(uint64 height)
+func (_TopBridge *TopBridgeTransactor) GetHeight(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _TopBridge.contract.Transact(opts, "get_height")
 }
 
-// BridgeLight is a free data retrieval call binding the contract method 0x01402e0c.
+// GetHeight is a paid mutator transaction binding the contract method 0xb15ad2e8.
 //
-// Solidity: function bridgeLight() view returns(address)
-func (_TopBridge *TopBridgeSession) BridgeLight() (common.Address, error) {
-	return _TopBridge.Contract.BridgeLight(&_TopBridge.CallOpts)
+// Solidity: function get_height() returns(uint64 height)
+func (_TopBridge *TopBridgeSession) GetHeight() (*types.Transaction, error) {
+	return _TopBridge.Contract.GetHeight(&_TopBridge.TransactOpts)
 }
 
-// BridgeLight is a free data retrieval call binding the contract method 0x01402e0c.
+// GetHeight is a paid mutator transaction binding the contract method 0xb15ad2e8.
 //
-// Solidity: function bridgeLight() view returns(address)
-func (_TopBridge *TopBridgeCallerSession) BridgeLight() (common.Address, error) {
-	return _TopBridge.Contract.BridgeLight(&_TopBridge.CallOpts)
+// Solidity: function get_height() returns(uint64 height)
+func (_TopBridge *TopBridgeTransactorSession) GetHeight() (*types.Transaction, error) {
+	return _TopBridge.Contract.GetHeight(&_TopBridge.TransactOpts)
 }
 
-// GetBlockBashByHeight is a paid mutator transaction binding the contract method 0xe9a9c4cd.
+// Sync is a paid mutator transaction binding the contract method 0x7eefcfa2.
 //
-// Solidity: function getBlockBashByHeight(uint64 chainId, uint64 height) returns(bytes hashcode)
-func (_TopBridge *TopBridgeTransactor) GetBlockBashByHeight(opts *bind.TransactOpts, chainId uint64, height uint64) (*types.Transaction, error) {
-	return _TopBridge.contract.Transact(opts, "getBlockBashByHeight", chainId, height)
+// Solidity: function sync(bytes blockHeader) returns(bool success)
+func (_TopBridge *TopBridgeTransactor) Sync(opts *bind.TransactOpts, blockHeader []byte) (*types.Transaction, error) {
+	return _TopBridge.contract.Transact(opts, "sync", blockHeader)
 }
 
-// GetBlockBashByHeight is a paid mutator transaction binding the contract method 0xe9a9c4cd.
+// Sync is a paid mutator transaction binding the contract method 0x7eefcfa2.
 //
-// Solidity: function getBlockBashByHeight(uint64 chainId, uint64 height) returns(bytes hashcode)
-func (_TopBridge *TopBridgeSession) GetBlockBashByHeight(chainId uint64, height uint64) (*types.Transaction, error) {
-	return _TopBridge.Contract.GetBlockBashByHeight(&_TopBridge.TransactOpts, chainId, height)
+// Solidity: function sync(bytes blockHeader) returns(bool success)
+func (_TopBridge *TopBridgeSession) Sync(blockHeader []byte) (*types.Transaction, error) {
+	return _TopBridge.Contract.Sync(&_TopBridge.TransactOpts, blockHeader)
 }
 
-// GetBlockBashByHeight is a paid mutator transaction binding the contract method 0xe9a9c4cd.
+// Sync is a paid mutator transaction binding the contract method 0x7eefcfa2.
 //
-// Solidity: function getBlockBashByHeight(uint64 chainId, uint64 height) returns(bytes hashcode)
-func (_TopBridge *TopBridgeTransactorSession) GetBlockBashByHeight(chainId uint64, height uint64) (*types.Transaction, error) {
-	return _TopBridge.Contract.GetBlockBashByHeight(&_TopBridge.TransactOpts, chainId, height)
-}
-
-// GetCurrentBlockHeight is a paid mutator transaction binding the contract method 0xabd70ea6.
-//
-// Solidity: function getCurrentBlockHeight(uint64 chainId) returns(uint64 height)
-func (_TopBridge *TopBridgeTransactor) GetCurrentBlockHeight(opts *bind.TransactOpts, chainId uint64) (*types.Transaction, error) {
-	return _TopBridge.contract.Transact(opts, "getCurrentBlockHeight", chainId)
-}
-
-// GetCurrentBlockHeight is a paid mutator transaction binding the contract method 0xabd70ea6.
-//
-// Solidity: function getCurrentBlockHeight(uint64 chainId) returns(uint64 height)
-func (_TopBridge *TopBridgeSession) GetCurrentBlockHeight(chainId uint64) (*types.Transaction, error) {
-	return _TopBridge.Contract.GetCurrentBlockHeight(&_TopBridge.TransactOpts, chainId)
-}
-
-// GetCurrentBlockHeight is a paid mutator transaction binding the contract method 0xabd70ea6.
-//
-// Solidity: function getCurrentBlockHeight(uint64 chainId) returns(uint64 height)
-func (_TopBridge *TopBridgeTransactorSession) GetCurrentBlockHeight(chainId uint64) (*types.Transaction, error) {
-	return _TopBridge.Contract.GetCurrentBlockHeight(&_TopBridge.TransactOpts, chainId)
-}
-
-// InitGenesisHeader is a paid mutator transaction binding the contract method 0xccadba86.
-//
-// Solidity: function initGenesisHeader(bytes genesis, string emitter) returns(bool success)
-func (_TopBridge *TopBridgeTransactor) InitGenesisHeader(opts *bind.TransactOpts, genesis []byte, emitter string) (*types.Transaction, error) {
-	return _TopBridge.contract.Transact(opts, "initGenesisHeader", genesis, emitter)
-}
-
-// InitGenesisHeader is a paid mutator transaction binding the contract method 0xccadba86.
-//
-// Solidity: function initGenesisHeader(bytes genesis, string emitter) returns(bool success)
-func (_TopBridge *TopBridgeSession) InitGenesisHeader(genesis []byte, emitter string) (*types.Transaction, error) {
-	return _TopBridge.Contract.InitGenesisHeader(&_TopBridge.TransactOpts, genesis, emitter)
-}
-
-// InitGenesisHeader is a paid mutator transaction binding the contract method 0xccadba86.
-//
-// Solidity: function initGenesisHeader(bytes genesis, string emitter) returns(bool success)
-func (_TopBridge *TopBridgeTransactorSession) InitGenesisHeader(genesis []byte, emitter string) (*types.Transaction, error) {
-	return _TopBridge.Contract.InitGenesisHeader(&_TopBridge.TransactOpts, genesis, emitter)
-}
-
-// SyncBlockHeader is a paid mutator transaction binding the contract method 0x1e090626.
-//
-// Solidity: function syncBlockHeader(bytes blockHeader) returns(bool success)
-func (_TopBridge *TopBridgeTransactor) SyncBlockHeader(opts *bind.TransactOpts, blockHeader []byte) (*types.Transaction, error) {
-	return _TopBridge.contract.Transact(opts, "syncBlockHeader", blockHeader)
-}
-
-// SyncBlockHeader is a paid mutator transaction binding the contract method 0x1e090626.
-//
-// Solidity: function syncBlockHeader(bytes blockHeader) returns(bool success)
-func (_TopBridge *TopBridgeSession) SyncBlockHeader(blockHeader []byte) (*types.Transaction, error) {
-	return _TopBridge.Contract.SyncBlockHeader(&_TopBridge.TransactOpts, blockHeader)
-}
-
-// SyncBlockHeader is a paid mutator transaction binding the contract method 0x1e090626.
-//
-// Solidity: function syncBlockHeader(bytes blockHeader) returns(bool success)
-func (_TopBridge *TopBridgeTransactorSession) SyncBlockHeader(blockHeader []byte) (*types.Transaction, error) {
-	return _TopBridge.Contract.SyncBlockHeader(&_TopBridge.TransactOpts, blockHeader)
+// Solidity: function sync(bytes blockHeader) returns(bool success)
+func (_TopBridge *TopBridgeTransactorSession) Sync(blockHeader []byte) (*types.Transaction, error) {
+	return _TopBridge.Contract.Sync(&_TopBridge.TransactOpts, blockHeader)
 }

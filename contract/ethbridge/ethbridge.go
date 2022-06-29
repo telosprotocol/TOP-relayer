@@ -37,7 +37,7 @@ type TopBridgeBridgeState struct {
 
 // EthBridgeMetaData contains all meta data concerning the EthBridge contract.
 var EthBridgeMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"addLightClientBlock\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"flags\",\"type\":\"uint256\"}],\"name\":\"adminPause\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint64\",\"name\":\"height\",\"type\":\"uint64\"},{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"blockHash\",\"type\":\"bytes32\"}],\"name\":\"BlockHashAdded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint64\",\"name\":\"height\",\"type\":\"uint64\"},{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"blockHash\",\"type\":\"bytes32\"}],\"name\":\"BlockHashReverted\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"deposit\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"grantRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_lockEthAmount\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"_owner\",\"type\":\"address\"}],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"initWithBlock\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"renounceRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"revokeRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"previousAdminRole\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"newAdminRole\",\"type\":\"bytes32\"}],\"name\":\"RoleAdminChanged\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"RoleGranted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"RoleRevoked\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"withdraw\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"_initialized\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"_initializing\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"ADDBLOCK_ROLE\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"balanceOf\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"BLACK_BURN_ROLE\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"BLACK_MINT_ROLE\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint64\",\"name\":\"height\",\"type\":\"uint64\"}],\"name\":\"blockHashes\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"res\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint64\",\"name\":\"height\",\"type\":\"uint64\"}],\"name\":\"blockMerkleRoots\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"res\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"bridgeState\",\"outputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"currentHeight\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"nextTimestamp\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"numBlockProducers\",\"type\":\"uint256\"}],\"internalType\":\"structTopBridge.BridgeState\",\"name\":\"res\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"CONTROLLED_ROLE\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"DEFAULT_ADMIN_ROLE\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"hashCode\",\"type\":\"bytes32\"}],\"name\":\"getHeightByHash\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"height\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getMaxHeight\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"height\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"}],\"name\":\"getRoleAdmin\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"hasRole\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"initialized\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"lockEthAmount\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"OWNER_ROLE\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"paused\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes4\",\"name\":\"interfaceId\",\"type\":\"bytes4\"}],\"name\":\"supportsInterface\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"WITHDRAWAL_ROLE\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
+	ABI: "[{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"addLightClientBlocks\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"flags\",\"type\":\"uint256\"}],\"name\":\"adminPause\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint64\",\"name\":\"height\",\"type\":\"uint64\"},{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"blockHash\",\"type\":\"bytes32\"}],\"name\":\"BlockHashAdded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint64\",\"name\":\"height\",\"type\":\"uint64\"},{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"blockHash\",\"type\":\"bytes32\"}],\"name\":\"BlockHashReverted\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"grantRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_lockEthAmount\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"_owner\",\"type\":\"address\"}],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"initWithBlock\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"renounceRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"revokeRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"previousAdminRole\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"newAdminRole\",\"type\":\"bytes32\"}],\"name\":\"RoleAdminChanged\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"RoleGranted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"RoleRevoked\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"_initializing\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"ADDBLOCK_ROLE\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"balanceOf\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"BLACK_BURN_ROLE\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"BLACK_MINT_ROLE\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"name\":\"blockHashes\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint64\",\"name\":\"\",\"type\":\"uint64\"}],\"name\":\"blockHeights\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint64\",\"name\":\"\",\"type\":\"uint64\"}],\"name\":\"blockMerkleRoots\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"bridgeState\",\"outputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"currentHeight\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"nextTimestamp\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"numBlockProducers\",\"type\":\"uint256\"}],\"internalType\":\"structTopBridge.BridgeState\",\"name\":\"res\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"CONTROLLED_ROLE\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"DEFAULT_ADMIN_ROLE\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"}],\"name\":\"getRoleAdmin\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"hasRole\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"initialized\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"lastSubmitter\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"lockEthAmount\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"maxMainHeight\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"OWNER_ROLE\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"paused\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes4\",\"name\":\"interfaceId\",\"type\":\"bytes4\"}],\"name\":\"supportsInterface\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"WITHDRAWAL_ROLE\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
 }
 
 // EthBridgeABI is the input ABI used to generate the binding from.
@@ -403,37 +403,6 @@ func (_EthBridge *EthBridgeCallerSession) WITHDRAWALROLE() ([32]byte, error) {
 	return _EthBridge.Contract.WITHDRAWALROLE(&_EthBridge.CallOpts)
 }
 
-// Initialized1 is a free data retrieval call binding the contract method 0x3072cf60.
-//
-// Solidity: function _initialized() view returns(bool)
-func (_EthBridge *EthBridgeCaller) Initialized1(opts *bind.CallOpts) (bool, error) {
-	var out []interface{}
-	err := _EthBridge.contract.Call(opts, &out, "_initialized")
-
-	if err != nil {
-		return *new(bool), err
-	}
-
-	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
-
-	return out0, err
-
-}
-
-// Initialized1 is a free data retrieval call binding the contract method 0x3072cf60.
-//
-// Solidity: function _initialized() view returns(bool)
-func (_EthBridge *EthBridgeSession) Initialized1() (bool, error) {
-	return _EthBridge.Contract.Initialized1(&_EthBridge.CallOpts)
-}
-
-// Initialized1 is a free data retrieval call binding the contract method 0x3072cf60.
-//
-// Solidity: function _initialized() view returns(bool)
-func (_EthBridge *EthBridgeCallerSession) Initialized1() (bool, error) {
-	return _EthBridge.Contract.Initialized1(&_EthBridge.CallOpts)
-}
-
 // Initializing is a free data retrieval call binding the contract method 0xf8d27e23.
 //
 // Solidity: function _initializing() view returns(bool)
@@ -496,12 +465,74 @@ func (_EthBridge *EthBridgeCallerSession) BalanceOf(arg0 common.Address) (*big.I
 	return _EthBridge.Contract.BalanceOf(&_EthBridge.CallOpts, arg0)
 }
 
-// BlockHashes is a free data retrieval call binding the contract method 0x37da8ec5.
+// BlockHashes is a free data retrieval call binding the contract method 0x2b8a6d16.
 //
-// Solidity: function blockHashes(uint64 height) view returns(bytes32 res)
-func (_EthBridge *EthBridgeCaller) BlockHashes(opts *bind.CallOpts, height uint64) ([32]byte, error) {
+// Solidity: function blockHashes(bytes32 ) view returns(bool)
+func (_EthBridge *EthBridgeCaller) BlockHashes(opts *bind.CallOpts, arg0 [32]byte) (bool, error) {
 	var out []interface{}
-	err := _EthBridge.contract.Call(opts, &out, "blockHashes", height)
+	err := _EthBridge.contract.Call(opts, &out, "blockHashes", arg0)
+
+	if err != nil {
+		return *new(bool), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
+
+	return out0, err
+
+}
+
+// BlockHashes is a free data retrieval call binding the contract method 0x2b8a6d16.
+//
+// Solidity: function blockHashes(bytes32 ) view returns(bool)
+func (_EthBridge *EthBridgeSession) BlockHashes(arg0 [32]byte) (bool, error) {
+	return _EthBridge.Contract.BlockHashes(&_EthBridge.CallOpts, arg0)
+}
+
+// BlockHashes is a free data retrieval call binding the contract method 0x2b8a6d16.
+//
+// Solidity: function blockHashes(bytes32 ) view returns(bool)
+func (_EthBridge *EthBridgeCallerSession) BlockHashes(arg0 [32]byte) (bool, error) {
+	return _EthBridge.Contract.BlockHashes(&_EthBridge.CallOpts, arg0)
+}
+
+// BlockHeights is a free data retrieval call binding the contract method 0xb995ac08.
+//
+// Solidity: function blockHeights(uint64 ) view returns(bool)
+func (_EthBridge *EthBridgeCaller) BlockHeights(opts *bind.CallOpts, arg0 uint64) (bool, error) {
+	var out []interface{}
+	err := _EthBridge.contract.Call(opts, &out, "blockHeights", arg0)
+
+	if err != nil {
+		return *new(bool), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
+
+	return out0, err
+
+}
+
+// BlockHeights is a free data retrieval call binding the contract method 0xb995ac08.
+//
+// Solidity: function blockHeights(uint64 ) view returns(bool)
+func (_EthBridge *EthBridgeSession) BlockHeights(arg0 uint64) (bool, error) {
+	return _EthBridge.Contract.BlockHeights(&_EthBridge.CallOpts, arg0)
+}
+
+// BlockHeights is a free data retrieval call binding the contract method 0xb995ac08.
+//
+// Solidity: function blockHeights(uint64 ) view returns(bool)
+func (_EthBridge *EthBridgeCallerSession) BlockHeights(arg0 uint64) (bool, error) {
+	return _EthBridge.Contract.BlockHeights(&_EthBridge.CallOpts, arg0)
+}
+
+// BlockMerkleRoots is a free data retrieval call binding the contract method 0x1e703806.
+//
+// Solidity: function blockMerkleRoots(uint64 ) view returns(bytes32)
+func (_EthBridge *EthBridgeCaller) BlockMerkleRoots(opts *bind.CallOpts, arg0 uint64) ([32]byte, error) {
+	var out []interface{}
+	err := _EthBridge.contract.Call(opts, &out, "blockMerkleRoots", arg0)
 
 	if err != nil {
 		return *new([32]byte), err
@@ -513,49 +544,18 @@ func (_EthBridge *EthBridgeCaller) BlockHashes(opts *bind.CallOpts, height uint6
 
 }
 
-// BlockHashes is a free data retrieval call binding the contract method 0x37da8ec5.
+// BlockMerkleRoots is a free data retrieval call binding the contract method 0x1e703806.
 //
-// Solidity: function blockHashes(uint64 height) view returns(bytes32 res)
-func (_EthBridge *EthBridgeSession) BlockHashes(height uint64) ([32]byte, error) {
-	return _EthBridge.Contract.BlockHashes(&_EthBridge.CallOpts, height)
-}
-
-// BlockHashes is a free data retrieval call binding the contract method 0x37da8ec5.
-//
-// Solidity: function blockHashes(uint64 height) view returns(bytes32 res)
-func (_EthBridge *EthBridgeCallerSession) BlockHashes(height uint64) ([32]byte, error) {
-	return _EthBridge.Contract.BlockHashes(&_EthBridge.CallOpts, height)
+// Solidity: function blockMerkleRoots(uint64 ) view returns(bytes32)
+func (_EthBridge *EthBridgeSession) BlockMerkleRoots(arg0 uint64) ([32]byte, error) {
+	return _EthBridge.Contract.BlockMerkleRoots(&_EthBridge.CallOpts, arg0)
 }
 
 // BlockMerkleRoots is a free data retrieval call binding the contract method 0x1e703806.
 //
-// Solidity: function blockMerkleRoots(uint64 height) view returns(bytes32 res)
-func (_EthBridge *EthBridgeCaller) BlockMerkleRoots(opts *bind.CallOpts, height uint64) ([32]byte, error) {
-	var out []interface{}
-	err := _EthBridge.contract.Call(opts, &out, "blockMerkleRoots", height)
-
-	if err != nil {
-		return *new([32]byte), err
-	}
-
-	out0 := *abi.ConvertType(out[0], new([32]byte)).(*[32]byte)
-
-	return out0, err
-
-}
-
-// BlockMerkleRoots is a free data retrieval call binding the contract method 0x1e703806.
-//
-// Solidity: function blockMerkleRoots(uint64 height) view returns(bytes32 res)
-func (_EthBridge *EthBridgeSession) BlockMerkleRoots(height uint64) ([32]byte, error) {
-	return _EthBridge.Contract.BlockMerkleRoots(&_EthBridge.CallOpts, height)
-}
-
-// BlockMerkleRoots is a free data retrieval call binding the contract method 0x1e703806.
-//
-// Solidity: function blockMerkleRoots(uint64 height) view returns(bytes32 res)
-func (_EthBridge *EthBridgeCallerSession) BlockMerkleRoots(height uint64) ([32]byte, error) {
-	return _EthBridge.Contract.BlockMerkleRoots(&_EthBridge.CallOpts, height)
+// Solidity: function blockMerkleRoots(uint64 ) view returns(bytes32)
+func (_EthBridge *EthBridgeCallerSession) BlockMerkleRoots(arg0 uint64) ([32]byte, error) {
+	return _EthBridge.Contract.BlockMerkleRoots(&_EthBridge.CallOpts, arg0)
 }
 
 // BridgeState is a free data retrieval call binding the contract method 0x4466ec2c.
@@ -587,68 +587,6 @@ func (_EthBridge *EthBridgeSession) BridgeState() (TopBridgeBridgeState, error) 
 // Solidity: function bridgeState() view returns((uint256,uint256,uint256) res)
 func (_EthBridge *EthBridgeCallerSession) BridgeState() (TopBridgeBridgeState, error) {
 	return _EthBridge.Contract.BridgeState(&_EthBridge.CallOpts)
-}
-
-// GetHeightByHash is a free data retrieval call binding the contract method 0x83bfc629.
-//
-// Solidity: function getHeightByHash(bytes32 hashCode) view returns(uint64 height)
-func (_EthBridge *EthBridgeCaller) GetHeightByHash(opts *bind.CallOpts, hashCode [32]byte) (uint64, error) {
-	var out []interface{}
-	err := _EthBridge.contract.Call(opts, &out, "getHeightByHash", hashCode)
-
-	if err != nil {
-		return *new(uint64), err
-	}
-
-	out0 := *abi.ConvertType(out[0], new(uint64)).(*uint64)
-
-	return out0, err
-
-}
-
-// GetHeightByHash is a free data retrieval call binding the contract method 0x83bfc629.
-//
-// Solidity: function getHeightByHash(bytes32 hashCode) view returns(uint64 height)
-func (_EthBridge *EthBridgeSession) GetHeightByHash(hashCode [32]byte) (uint64, error) {
-	return _EthBridge.Contract.GetHeightByHash(&_EthBridge.CallOpts, hashCode)
-}
-
-// GetHeightByHash is a free data retrieval call binding the contract method 0x83bfc629.
-//
-// Solidity: function getHeightByHash(bytes32 hashCode) view returns(uint64 height)
-func (_EthBridge *EthBridgeCallerSession) GetHeightByHash(hashCode [32]byte) (uint64, error) {
-	return _EthBridge.Contract.GetHeightByHash(&_EthBridge.CallOpts, hashCode)
-}
-
-// GetMaxHeight is a free data retrieval call binding the contract method 0xcf22b577.
-//
-// Solidity: function getMaxHeight() view returns(uint64 height)
-func (_EthBridge *EthBridgeCaller) GetMaxHeight(opts *bind.CallOpts) (uint64, error) {
-	var out []interface{}
-	err := _EthBridge.contract.Call(opts, &out, "getMaxHeight")
-
-	if err != nil {
-		return *new(uint64), err
-	}
-
-	out0 := *abi.ConvertType(out[0], new(uint64)).(*uint64)
-
-	return out0, err
-
-}
-
-// GetMaxHeight is a free data retrieval call binding the contract method 0xcf22b577.
-//
-// Solidity: function getMaxHeight() view returns(uint64 height)
-func (_EthBridge *EthBridgeSession) GetMaxHeight() (uint64, error) {
-	return _EthBridge.Contract.GetMaxHeight(&_EthBridge.CallOpts)
-}
-
-// GetMaxHeight is a free data retrieval call binding the contract method 0xcf22b577.
-//
-// Solidity: function getMaxHeight() view returns(uint64 height)
-func (_EthBridge *EthBridgeCallerSession) GetMaxHeight() (uint64, error) {
-	return _EthBridge.Contract.GetMaxHeight(&_EthBridge.CallOpts)
 }
 
 // GetRoleAdmin is a free data retrieval call binding the contract method 0x248a9ca3.
@@ -744,6 +682,37 @@ func (_EthBridge *EthBridgeCallerSession) Initialized() (bool, error) {
 	return _EthBridge.Contract.Initialized(&_EthBridge.CallOpts)
 }
 
+// LastSubmitter is a free data retrieval call binding the contract method 0x2d7dd574.
+//
+// Solidity: function lastSubmitter() view returns(address)
+func (_EthBridge *EthBridgeCaller) LastSubmitter(opts *bind.CallOpts) (common.Address, error) {
+	var out []interface{}
+	err := _EthBridge.contract.Call(opts, &out, "lastSubmitter")
+
+	if err != nil {
+		return *new(common.Address), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
+
+	return out0, err
+
+}
+
+// LastSubmitter is a free data retrieval call binding the contract method 0x2d7dd574.
+//
+// Solidity: function lastSubmitter() view returns(address)
+func (_EthBridge *EthBridgeSession) LastSubmitter() (common.Address, error) {
+	return _EthBridge.Contract.LastSubmitter(&_EthBridge.CallOpts)
+}
+
+// LastSubmitter is a free data retrieval call binding the contract method 0x2d7dd574.
+//
+// Solidity: function lastSubmitter() view returns(address)
+func (_EthBridge *EthBridgeCallerSession) LastSubmitter() (common.Address, error) {
+	return _EthBridge.Contract.LastSubmitter(&_EthBridge.CallOpts)
+}
+
 // LockEthAmount is a free data retrieval call binding the contract method 0x7875a55c.
 //
 // Solidity: function lockEthAmount() view returns(uint256)
@@ -773,6 +742,37 @@ func (_EthBridge *EthBridgeSession) LockEthAmount() (*big.Int, error) {
 // Solidity: function lockEthAmount() view returns(uint256)
 func (_EthBridge *EthBridgeCallerSession) LockEthAmount() (*big.Int, error) {
 	return _EthBridge.Contract.LockEthAmount(&_EthBridge.CallOpts)
+}
+
+// MaxMainHeight is a free data retrieval call binding the contract method 0x966a6023.
+//
+// Solidity: function maxMainHeight() view returns(uint64)
+func (_EthBridge *EthBridgeCaller) MaxMainHeight(opts *bind.CallOpts) (uint64, error) {
+	var out []interface{}
+	err := _EthBridge.contract.Call(opts, &out, "maxMainHeight")
+
+	if err != nil {
+		return *new(uint64), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint64)).(*uint64)
+
+	return out0, err
+
+}
+
+// MaxMainHeight is a free data retrieval call binding the contract method 0x966a6023.
+//
+// Solidity: function maxMainHeight() view returns(uint64)
+func (_EthBridge *EthBridgeSession) MaxMainHeight() (uint64, error) {
+	return _EthBridge.Contract.MaxMainHeight(&_EthBridge.CallOpts)
+}
+
+// MaxMainHeight is a free data retrieval call binding the contract method 0x966a6023.
+//
+// Solidity: function maxMainHeight() view returns(uint64)
+func (_EthBridge *EthBridgeCallerSession) MaxMainHeight() (uint64, error) {
+	return _EthBridge.Contract.MaxMainHeight(&_EthBridge.CallOpts)
 }
 
 // Paused is a free data retrieval call binding the contract method 0x5c975abb.
@@ -837,25 +837,25 @@ func (_EthBridge *EthBridgeCallerSession) SupportsInterface(interfaceId [4]byte)
 	return _EthBridge.Contract.SupportsInterface(&_EthBridge.CallOpts, interfaceId)
 }
 
-// AddLightClientBlock is a paid mutator transaction binding the contract method 0x6d2d6ae0.
+// AddLightClientBlocks is a paid mutator transaction binding the contract method 0x7908f846.
 //
-// Solidity: function addLightClientBlock(bytes data) returns()
-func (_EthBridge *EthBridgeTransactor) AddLightClientBlock(opts *bind.TransactOpts, data []byte) (*types.Transaction, error) {
-	return _EthBridge.contract.Transact(opts, "addLightClientBlock", data)
+// Solidity: function addLightClientBlocks(bytes data) returns()
+func (_EthBridge *EthBridgeTransactor) AddLightClientBlocks(opts *bind.TransactOpts, data []byte) (*types.Transaction, error) {
+	return _EthBridge.contract.Transact(opts, "addLightClientBlocks", data)
 }
 
-// AddLightClientBlock is a paid mutator transaction binding the contract method 0x6d2d6ae0.
+// AddLightClientBlocks is a paid mutator transaction binding the contract method 0x7908f846.
 //
-// Solidity: function addLightClientBlock(bytes data) returns()
-func (_EthBridge *EthBridgeSession) AddLightClientBlock(data []byte) (*types.Transaction, error) {
-	return _EthBridge.Contract.AddLightClientBlock(&_EthBridge.TransactOpts, data)
+// Solidity: function addLightClientBlocks(bytes data) returns()
+func (_EthBridge *EthBridgeSession) AddLightClientBlocks(data []byte) (*types.Transaction, error) {
+	return _EthBridge.Contract.AddLightClientBlocks(&_EthBridge.TransactOpts, data)
 }
 
-// AddLightClientBlock is a paid mutator transaction binding the contract method 0x6d2d6ae0.
+// AddLightClientBlocks is a paid mutator transaction binding the contract method 0x7908f846.
 //
-// Solidity: function addLightClientBlock(bytes data) returns()
-func (_EthBridge *EthBridgeTransactorSession) AddLightClientBlock(data []byte) (*types.Transaction, error) {
-	return _EthBridge.Contract.AddLightClientBlock(&_EthBridge.TransactOpts, data)
+// Solidity: function addLightClientBlocks(bytes data) returns()
+func (_EthBridge *EthBridgeTransactorSession) AddLightClientBlocks(data []byte) (*types.Transaction, error) {
+	return _EthBridge.Contract.AddLightClientBlocks(&_EthBridge.TransactOpts, data)
 }
 
 // AdminPause is a paid mutator transaction binding the contract method 0x2692c59f.
@@ -877,27 +877,6 @@ func (_EthBridge *EthBridgeSession) AdminPause(flags *big.Int) (*types.Transacti
 // Solidity: function adminPause(uint256 flags) returns()
 func (_EthBridge *EthBridgeTransactorSession) AdminPause(flags *big.Int) (*types.Transaction, error) {
 	return _EthBridge.Contract.AdminPause(&_EthBridge.TransactOpts, flags)
-}
-
-// Deposit is a paid mutator transaction binding the contract method 0xd0e30db0.
-//
-// Solidity: function deposit() payable returns()
-func (_EthBridge *EthBridgeTransactor) Deposit(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _EthBridge.contract.Transact(opts, "deposit")
-}
-
-// Deposit is a paid mutator transaction binding the contract method 0xd0e30db0.
-//
-// Solidity: function deposit() payable returns()
-func (_EthBridge *EthBridgeSession) Deposit() (*types.Transaction, error) {
-	return _EthBridge.Contract.Deposit(&_EthBridge.TransactOpts)
-}
-
-// Deposit is a paid mutator transaction binding the contract method 0xd0e30db0.
-//
-// Solidity: function deposit() payable returns()
-func (_EthBridge *EthBridgeTransactorSession) Deposit() (*types.Transaction, error) {
-	return _EthBridge.Contract.Deposit(&_EthBridge.TransactOpts)
 }
 
 // GrantRole is a paid mutator transaction binding the contract method 0x2f2ff15d.
@@ -1003,27 +982,6 @@ func (_EthBridge *EthBridgeSession) RevokeRole(role [32]byte, account common.Add
 // Solidity: function revokeRole(bytes32 role, address account) returns()
 func (_EthBridge *EthBridgeTransactorSession) RevokeRole(role [32]byte, account common.Address) (*types.Transaction, error) {
 	return _EthBridge.Contract.RevokeRole(&_EthBridge.TransactOpts, role, account)
-}
-
-// Withdraw is a paid mutator transaction binding the contract method 0x3ccfd60b.
-//
-// Solidity: function withdraw() returns()
-func (_EthBridge *EthBridgeTransactor) Withdraw(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _EthBridge.contract.Transact(opts, "withdraw")
-}
-
-// Withdraw is a paid mutator transaction binding the contract method 0x3ccfd60b.
-//
-// Solidity: function withdraw() returns()
-func (_EthBridge *EthBridgeSession) Withdraw() (*types.Transaction, error) {
-	return _EthBridge.Contract.Withdraw(&_EthBridge.TransactOpts)
-}
-
-// Withdraw is a paid mutator transaction binding the contract method 0x3ccfd60b.
-//
-// Solidity: function withdraw() returns()
-func (_EthBridge *EthBridgeTransactorSession) Withdraw() (*types.Transaction, error) {
-	return _EthBridge.Contract.Withdraw(&_EthBridge.TransactOpts)
 }
 
 // EthBridgeBlockHashAddedIterator is returned from FilterBlockHashAdded and is used to iterate over the raw logs and unpacked data for BlockHashAdded events raised by the EthBridge contract.

@@ -9,7 +9,6 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -27,8 +26,8 @@ const (
 
 const (
 	GETLATESTETTOPELECTBLOCKHEADER = "getLatestTopElectBlockHeader"
-	GETTOPELECTBLOCKHEADBYHEIGHT   = "top_getBlockByNumber"
-	GETLATESTTOPELECTBLOCKHEIGHT   = "top_blockNumber"
+	GETTOPELECTBLOCKHEADBYHEIGHT   = "top_getRelayBlockByNumber"
+	GETLATESTTOPELECTBLOCKHEIGHT   = "top_relayBlockNumber"
 )
 
 func NewTopSdk(url string) (*TopSdk, error) {
@@ -72,18 +71,30 @@ func (t *TopSdk) GetTransactionReceipt(hash common.Hash) (*types.Receipt, error)
 }
 
 func (t *TopSdk) GetTopElectBlockHeadByHeight(height uint64) ([]byte, error) {
-	return t.getTopElectBlockHeadByHeight(height)
+	return t.getTopElectBlockHeadByHeight2(height)
 }
 
-func (t *TopSdk) getTopElectBlockHeadByHeight(height uint64) ([]byte, error) {
-	var result hexutil.Bytes
-	err := t.Rpc.CallContext(context.Background(), &result, GETTOPELECTBLOCKHEADBYHEIGHT, util.Uint64ToHexString(height))
+// func (t *TopSdk) getTopElectBlockHeadByHeight(height uint64) ([]byte, error) {
+// 	var result hexutil.Bytes
+// 	err := t.Rpc.CallContext(context.Background(), &result, GETTOPELECTBLOCKHEADBYHEIGHT, util.Uint64ToHexString(height))
+// 	if err != nil {
+// 		return []byte{}, err
+// 	} else if len(result) == 0 {
+// 		return []byte{}, ethereum.NotFound
+// 	}
+// 	return result[:], nil
+// }
+
+func (t *TopSdk) getTopElectBlockHeadByHeight2(height uint64) ([]byte, error) {
+	var data []string
+	err := t.Rpc.CallContext(context.Background(), &data, GETTOPELECTBLOCKHEADBYHEIGHT, util.Uint64ToHexString(height))
 	if err != nil {
 		return []byte{}, err
-	} else if len(result) == 0 {
+	} else if len(data) == 0 {
 		return []byte{}, ethereum.NotFound
 	}
-	return result[:], nil
+	bytes := common.Hex2Bytes(data[0][2:])
+	return bytes, nil
 }
 
 func (t *TopSdk) GetLatestTopElectBlockHeight() (uint64, error) {

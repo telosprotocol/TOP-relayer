@@ -8,8 +8,8 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"toprelayer/base"
 	"toprelayer/contract/topbridge"
+	"toprelayer/relayer/eth2top/ethashapp"
 	"toprelayer/sdk/ethsdk"
 	"toprelayer/sdk/topsdk"
 	"toprelayer/util"
@@ -19,19 +19,25 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/wonderivan/logger"
 )
 
 const (
-	METHOD_GETBRIDGESTATE = "getCurrentBlockHeight"
-	SYNCHEADERS           = "syncBlockHeader"
+	METHOD_GETHEIGHT = "get_height"
+	METHOD_SYNC      = "sync"
 
-	SUCCESSDELAY int64 = 15 //mainnet 120
+	ABI_PATH = "contract/topbridge/topbridge.abi"
+
 	FATALTIMEOUT int64 = 24 //hours
-	FORKDELAY    int64 = 5  //mainnet 10000 seconds
-	ERRDELAY     int64 = 10
+	SUCCESSDELAY int64 = 5
+	ERRDELAY     int64 = 5
+	WAITDELAY    int64 = 60
+
+	CONFIRM_NUM int = 25
+
+	BLOCKS_PER_EPOCH uint64 = 30000
 )
 
 type Eth2TopRelayer struct {
@@ -43,11 +49,10 @@ type Eth2TopRelayer struct {
 	ethsdk          *ethsdk.EthSdk
 	certaintyBlocks int
 	subBatch        int
-	verifyBlock     bool
 	abi             abi.ABI
 }
 
-func (et *Eth2TopRelayer) Init(topUrl, ethUrl, keypath, pass, abipath string, chainid uint64, contract common.Address, batch, cert int, verify bool) error {
+func (et *Eth2TopRelayer) Init(topUrl, ethUrl, keypath, pass string, chainid uint64, contract common.Address, batch int) error {
 	topsdk, err := topsdk.NewTopSdk(topUrl)
 	if err != nil {
 		return err
@@ -62,15 +67,14 @@ func (et *Eth2TopRelayer) Init(topUrl, ethUrl, keypath, pass, abipath string, ch
 	et.contract = contract
 	et.chainId = chainid
 	et.subBatch = batch
-	et.certaintyBlocks = cert
-	et.verifyBlock = verify
+	et.certaintyBlocks = CONFIRM_NUM
 
 	w, err := wallet.NewWallet(topUrl, keypath, pass, chainid)
 	if err != nil {
 		return err
 	}
 	et.wallet = w
-	a, err := initABI(abipath)
+	a, err := initABI(ABI_PATH)
 	if err != nil {
 		return err
 	}
@@ -90,22 +94,19 @@ func (et *Eth2TopRelayer) ChainId() uint64 {
 	return et.chainId
 }
 
-func (et *Eth2TopRelayer) submitEthHeader(header []byte, nonce uint64) (*types.Transaction, error) {
-	logger.Info("submitEthHeader length:%v,chainid:%v", len(header), et.chainId)
+func (et *Eth2TopRelayer) submitEthHeader(header []byte, nonce uint64) error {
 	gaspric, err := et.wallet.GasPrice(context.Background())
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	/* gaslimit, err := et.estimateGas(gaspric, header)
+	gaslimit, err := et.estimateSyncGas(gaspric, header)
 	if err != nil {
 		logger.Error("estimateGas error:", err)
-		return nil, err
-	} */
+		return err
+	}
 
-	gaslimit := uint64(50000) //test mock
-	capfee := big.NewInt(0).SetUint64(gaspric.Uint64() * gaslimit * 2)
-	logger.Info("account[%v] nonce:%v,gaslimit:%v,capfee:%v", et.wallet.CurrentAccount().Address, nonce, gaslimit, capfee)
+	capfee := big.NewInt(0).SetUint64(gaspric.Uint64())
 
 	//must init ops as bellow
 	ops := &bind.TransactOpts{
@@ -121,38 +122,30 @@ func (et *Eth2TopRelayer) submitEthHeader(header []byte, nonce uint64) (*types.T
 
 	contractcaller, err := topbridge.NewTopBridgeTransactor(et.contract, et.topsdk)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	sigTx, err := contractcaller.SyncBlockHeader(ops, header) //AddLightClientBlock(ops, header)
+	sigTx, err := contractcaller.Sync(ops, header) //AddLightClientBlock(ops, header)
 	if err != nil {
 		logger.Error("Eth2TopRelayer AddLightClientBlock:%v", err)
-		return nil, err
-	}
-	{
-		byt, err := sigTx.MarshalBinary()
-		if err != nil {
-			logger.Error("MarshalBinary error:", err)
-		}
-		logger.Debug("rawtx:", hexutil.Encode(byt))
+		return err
 	}
 
 	if ops.NoSend {
 		err = util.VerifyEthSignature(sigTx)
 		if err != nil {
 			logger.Error("Eth2TopRelayer VerifyEthSignature error:", err)
-			return nil, err
+			return err
 		}
 
 		err := et.topsdk.SendTransaction(ops.Context, sigTx)
 		if err != nil {
 			logger.Error("Eth2TopRelayer SendTransaction error:", err)
-			return nil, err
+			return err
 		}
 	}
-
-	logger.Debug("hash:%v", sigTx.Hash())
-	return sigTx, nil
+	logger.Info("tx info, account[%v] nonce:%v,gaslimit:%v,capfee:%v,hash:%v,size:%v", et.wallet.CurrentAccount().Address, nonce, gaslimit, capfee, sigTx.Hash(), len(header))
+	return nil
 }
 
 //callback function to sign tx before send.
@@ -168,8 +161,142 @@ func (et *Eth2TopRelayer) signTransaction(addr common.Address, tx *types.Transac
 	return nil, fmt.Errorf("address:%v not available", addr)
 }
 
+func (et *Eth2TopRelayer) StartRelayer(wg *sync.WaitGroup) error {
+	logger.Info("Start Eth2TopRelayer relayer... chainid: %v, subBatch: %v certaintyBlocks: %v", et.chainId, et.subBatch, et.certaintyBlocks)
+	defer wg.Done()
+
+	done := make(chan struct{})
+	defer close(done)
+
+	go func(done chan struct{}) {
+		timeoutDuration := time.Duration(FATALTIMEOUT) * time.Hour
+		timeout := time.NewTimer(timeoutDuration)
+		defer timeout.Stop()
+		logger.Info("Eth2TopRelayer set timeout: %v hours", FATALTIMEOUT)
+		var delay time.Duration = time.Duration(1)
+
+		for {
+			time.Sleep(time.Second * delay)
+			select {
+			case <-timeout.C:
+				done <- struct{}{}
+				return
+			default:
+				destHeight, err := et.getTopBridgeCurrentHeight()
+				if err != nil {
+					logger.Error(err)
+					delay = time.Duration(ERRDELAY)
+					break
+				}
+				logger.Info("Eth2TopRelayer check dest top Height: %v", destHeight)
+				if destHeight == 0 {
+					if set := timeout.Reset(timeoutDuration); !set {
+						logger.Error("reset timeout falied!")
+						delay = time.Duration(ERRDELAY)
+						break
+					}
+					logger.Debug("top eth-client not init yet")
+					delay = time.Duration(ERRDELAY)
+					break
+				}
+				srcHeight, err := et.ethsdk.BlockNumber(context.Background())
+				if err != nil {
+					logger.Error(err)
+					delay = time.Duration(ERRDELAY)
+					break
+				}
+				logger.Info("Eth2TopRelayer check src eth Height: %v", srcHeight)
+
+				if destHeight+1+uint64(et.certaintyBlocks) > srcHeight {
+					if set := timeout.Reset(timeoutDuration); !set {
+						logger.Error("reset timeout falied!")
+						delay = time.Duration(ERRDELAY)
+						break
+					}
+					logger.Debug("waiting src eth update, delay")
+					delay = time.Duration(WAITDELAY)
+					break
+				}
+
+				syncStartHeight := destHeight + 1
+				syncNum := srcHeight - uint64(et.certaintyBlocks) - destHeight
+				if syncNum > uint64(et.subBatch) {
+					syncNum = uint64(et.subBatch)
+				}
+				syncEndHeight := syncStartHeight + syncNum - 1
+				logger.Info("Eth2TopRelayer sync from %v to %v", syncStartHeight, syncEndHeight)
+
+				err = et.signAndSendTransactions(syncStartHeight, syncEndHeight)
+				if err != nil {
+					logger.Error("Eth2TopRelayer signAndSendTransactions failed:%v", err)
+					delay = time.Duration(ERRDELAY)
+					break
+				}
+				if set := timeout.Reset(timeoutDuration); !set {
+					logger.Error("reset timeout falied!")
+					delay = time.Duration(ERRDELAY)
+					break
+				}
+				logger.Info("Eth2TopRelayer sync round finish")
+				delay = time.Duration(SUCCESSDELAY)
+				break
+			}
+		}
+	}(done)
+
+	<-done
+	logger.Error("relayer [%v] timeout.", et.chainId)
+	return nil
+}
+
+func (et *Eth2TopRelayer) signAndSendTransactions(lo, hi uint64) error {
+	// var batchHeaders []*types.Header
+	nonce, err := et.wallet.GetNonce(et.wallet.CurrentAccount().Address)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+	// h := lo
+	// for ; h <= hi; h++ {
+	header, err := et.ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(lo))
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+	ethashproof, err := ethashapp.EthashWithProofs(lo, header)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+	// batchHeaders = append(batchHeaders, header)
+	// }
+
+	// maybe verify block
+	// if et.chainId == base.TOP {
+	// 	for _, header := range headers {
+	// 		et.verifyBlocks(header)
+	// 	}
+	// }
+	data, err := rlp.EncodeToBytes(ethashproof)
+	if err != nil {
+		logger.Error("Eth2TopRelayer EncodeHeaders failed:", err)
+		return err
+	}
+	err = et.submitEthHeader(data, nonce)
+	if err != nil {
+		logger.Error("Eth2TopRelayer submitHeaders failed:", err)
+		return err
+	}
+
+	return nil
+}
+
+func (et *Eth2TopRelayer) verifyBlocks(header *types.Header) error {
+	return nil
+}
+
 func (et *Eth2TopRelayer) getTopBridgeCurrentHeight() (uint64, error) {
-	input, err := et.abi.Pack(METHOD_GETBRIDGESTATE, et.chainId)
+	input, err := et.abi.Pack(METHOD_GETHEIGHT)
 	if err != nil {
 		return 0, err
 	}
@@ -187,154 +314,18 @@ func (et *Eth2TopRelayer) getTopBridgeCurrentHeight() (uint64, error) {
 	return big.NewInt(0).SetBytes(ret).Uint64(), nil
 }
 
-func (et *Eth2TopRelayer) StartRelayer(wg *sync.WaitGroup) error {
-	logger.Info("Start Eth2TopRelayer... chainid:%v", et.chainId)
-	defer wg.Done()
-
-	done := make(chan struct{})
-	defer close(done)
-
-	go func(done chan struct{}) {
-		timeoutDur := time.Duration(time.Second * 300) //test mock
-		//timeoutDur := time.Duration(time.Hour * FATALTIMEOUT)
-		timeout := time.NewTimer(timeoutDur)
-		defer timeout.Stop()
-
-		//var syncStartHeight uint64 = 6000
-		var delay time.Duration = time.Duration(1)
-		for {
-			time.Sleep(time.Second * delay)
-			select {
-			case <-timeout.C:
-				done <- struct{}{}
-				return
-			default:
-				bridgeCurrentHeight, err := et.getTopBridgeCurrentHeight()
-				if err != nil {
-					logger.Error(err)
-					delay = time.Duration(ERRDELAY)
-					break
-				}
-				syncStartHeight := bridgeCurrentHeight + 1
-				/* ethCurrentHeight, err := et.ethsdk.BlockNumber(context.Background())
-				if err != nil {
-					logger.Error(err)
-					delay = time.Duration(ERRDELAY)
-					break
-				}
-				ethConfirmedBlockHeight := ethCurrentHeight - uint64(et.certaintyBlocks) */
-				var ethConfirmedBlockHeight uint64 = 1000 //test mock
-				if syncStartHeight <= ethConfirmedBlockHeight {
-					hashes, err := et.signAndSendTransactions(syncStartHeight, ethConfirmedBlockHeight)
-					if len(hashes) > 0 {
-						if set := timeout.Reset(timeoutDur); !set {
-							logger.Error("reset timeout falied!")
-							delay = time.Duration(ERRDELAY)
-							break
-						}
-						//syncStartHeight = ethConfirmedBlockHeight + 1 //test mock
-
-						logger.Debug("timeout.Reset:%v", timeoutDur)
-						logger.Info("Eth2TopRelayer sent block header from %v to :%v", syncStartHeight, ethConfirmedBlockHeight)
-
-						delay = time.Duration(SUCCESSDELAY * int64(len(hashes)))
-						break
-					}
-					if err != nil {
-						logger.Error("Eth2TopRelayer signAndSendTransactions failed:%v", err)
-						delay = time.Duration(ERRDELAY)
-						break
-					}
-				}
-				//eth fork?
-				logger.Warn("eth chain reverted?,syncStartHeight[%v] > ethConfirmedBlockHeight[%v]", syncStartHeight, ethConfirmedBlockHeight)
-				delay = time.Duration(FORKDELAY)
-			}
-		}
-	}(done)
-
-	<-done
-	logger.Error("relayer [%v] timeout.", et.chainId)
-	return nil
-}
-
-func (et *Eth2TopRelayer) batch(headers []*types.Header, nonce uint64) (common.Hash, error) {
-	logger.Info("batch headers number:", len(headers))
-	if et.chainId == base.TOP && et.verifyBlock {
-		for _, header := range headers {
-			et.verifyBlocks(header)
-		}
-	}
-	data, err := base.EncodeHeaders(headers)
-	if err != nil {
-		logger.Error("Eth2TopRelayer EncodeHeaders failed:", err)
-		return common.Hash{}, err
-	}
-	tx, err := et.submitEthHeader(data, nonce)
-	if err != nil {
-		logger.Error("Eth2TopRelayer submitHeaders failed:", err)
-		return common.Hash{}, err
-	}
-	return tx.Hash(), nil
-}
-
-func (et *Eth2TopRelayer) signAndSendTransactions(lo, hi uint64) ([]common.Hash, error) {
-	logger.Info("signAndSendTransactions height from:%v,to:%v", lo, hi)
-	var batchHeaders []*types.Header
-	var hashes []common.Hash
-	nonce, err := et.wallet.GetNonce(et.wallet.CurrentAccount().Address)
-	if err != nil {
-		logger.Error(err)
-		return hashes, err
-	}
-	h := lo
-	for ; h <= hi; h++ {
-		header, err := et.ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(h))
-		if err != nil {
-			logger.Error(err)
-			return hashes, err
-		}
-		batchHeaders = append(batchHeaders, header)
-		if (h-lo+1)%uint64(et.subBatch) == 0 {
-			hash, err := et.batch(batchHeaders, nonce)
-			if err != nil {
-				return hashes, err
-			}
-			batchHeaders = []*types.Header{}
-			hashes = append(hashes, hash)
-			nonce++
-		}
-	}
-	if h > hi {
-		if len(batchHeaders) > 0 {
-			hash, err := et.batch(batchHeaders, nonce)
-			if err != nil {
-				return hashes, err
-			}
-			batchHeaders = []*types.Header{}
-			hashes = append(hashes, hash)
-		}
-	}
-	return hashes, nil
-}
-
-func (et *Eth2TopRelayer) verifyBlocks(header *types.Header) error {
-	return nil
-}
-
-func (et *Eth2TopRelayer) estimateGas(gasprice *big.Int, data []byte) (uint64, error) {
-	input, err := et.abi.Pack(SYNCHEADERS, data)
+func (et *Eth2TopRelayer) estimateSyncGas(gasprice *big.Int, data []byte) (uint64, error) {
+	input, err := et.abi.Pack(METHOD_SYNC, data)
 	if err != nil {
 		return 0, err
 	}
 
-	capfee := big.NewInt(0).SetUint64(base.GetChainGasCapFee(et.chainId))
 	callmsg := ethereum.CallMsg{
 		From:      et.wallet.CurrentAccount().Address,
 		To:        &et.contract,
 		GasPrice:  gasprice,
-		Gas:       500000,
-		GasFeeCap: capfee,
+		Gas:       0,
+		GasFeeCap: nil,
 		GasTipCap: nil,
 		Data:      input,
 	}

@@ -1,66 +1,12 @@
 [
 	{
-		"inputs": [
-			{
-				"internalType": "uint64",
-				"name": "chainId",
-				"type": "uint64"
-			},
-			{
-				"internalType": "uint64",
-				"name": "height",
-				"type": "uint64"
-			}
-		],
-		"name": "getBlockBashByHeight",
-		"outputs": [
-			{
-				"internalType": "bytes",
-				"name": "hashcode",
-				"type": "bytes"
-			}
-		],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint64",
-				"name": "chainId",
-				"type": "uint64"
-			}
-		],
-		"name": "getCurrentBlockHeight",
+		"inputs": [],
+		"name": "get_height",
 		"outputs": [
 			{
 				"internalType": "uint64",
 				"name": "height",
 				"type": "uint64"
-			}
-		],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "bytes",
-				"name": "genesis",
-				"type": "bytes"
-			},
-			{
-				"internalType": "string",
-				"name": "emitter",
-				"type": "string"
-			}
-		],
-		"name": "initGenesisHeader",
-		"outputs": [
-			{
-				"internalType": "bool",
-				"name": "success",
-				"type": "bool"
 			}
 		],
 		"stateMutability": "nonpayable",
@@ -74,7 +20,7 @@
 				"type": "bytes"
 			}
 		],
-		"name": "syncBlockHeader",
+		"name": "sync",
 		"outputs": [
 			{
 				"internalType": "bool",
@@ -83,30 +29,6 @@
 			}
 		],
 		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "_bridgeLight",
-				"type": "address"
-			}
-		],
-		"stateMutability": "nonpayable",
-		"type": "constructor"
-	},
-	{
-		"inputs": [],
-		"name": "bridgeLight",
-		"outputs": [
-			{
-				"internalType": "address",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"stateMutability": "view",
 		"type": "function"
 	}
 ]

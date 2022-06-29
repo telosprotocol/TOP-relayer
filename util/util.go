@@ -2,9 +2,14 @@ package util
 
 import (
 	"fmt"
+	"log"
 	"math/big"
+	"os"
+	"toprelayer/base"
+	"toprelayer/config"
 
 	"github.com/ethereum/go-ethereum/common"
+	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -98,4 +103,38 @@ func VerifyEthSignature(ethtx *types.Transaction) error {
 		return fmt.Errorf("%v", "Verify Eth Signature failed")
 	}
 	return nil
+}
+
+func readPassword(prompt string) (string, error) {
+	fmt.Print(prompt)
+	pass, err := terminal.ReadPassword(int(os.Stdin.Fd()))
+	if err != nil {
+		log.Fatal("terminal read password error: ", err)
+		return string(""), err
+	}
+	fmt.Println()
+	return string(pass), nil
+}
+
+func Getchainpass(handlercfg *config.HeaderSyncConfig) (map[uint64]string, error) {
+	chainpass := make(map[uint64]string)
+	for _, chain := range handlercfg.Config.RelayerConfig {
+		switch chain.SubmitChainId {
+		case base.ETH:
+			pass, err := readPassword("Please Enter ETH pasword:")
+			if err != nil {
+				log.Fatal("get chain password error: ", err)
+				return chainpass, err
+			}
+			chainpass[base.ETH] = pass
+		case base.TOP:
+			pass, err := readPassword("Please Enter TOP pasword:")
+			if err != nil {
+				log.Fatal("get chain password error: ", err)
+				return chainpass, err
+			}
+			chainpass[base.TOP] = pass
+		}
+	}
+	return chainpass, nil
 }
