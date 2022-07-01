@@ -11,6 +11,8 @@ import (
 )
 
 var (
+	TOP_CHAIN  string = "TOP"
+	ETH_CHAIN  string = "ETH"
 	LOG_DIR    string = "log"
 	LOG_CONFIG string = `{
 		"TimeFormat":"2006-01-02 15:04:05",
@@ -65,9 +67,11 @@ func newConfig(path string) (*Config, error) {
 }
 
 type Relayer struct {
+	// chain symbol
+	Chain string `json:"chainName"`
+
 	//listen config
-	ListenChainId uint64 `json:"chainFrom"`
-	ListenUrl     string `json:"listenurl"`
+	ListenUrl string `json:"listenurl"`
 
 	//submit config
 	SubmitChainId uint64 `json:"chainTo"`

@@ -3,7 +3,6 @@ package relayer
 import (
 	"sync"
 
-	"toprelayer/base"
 	"toprelayer/config"
 	"toprelayer/relayer/eth2top"
 	"toprelayer/relayer/top2eth"
@@ -27,14 +26,14 @@ func StartRelayer(wg *sync.WaitGroup, handlercfg *config.HeaderSyncConfig, chain
 	return handler.StartRelayer()
 }
 
-func GetRelayer(chain uint64) (relayer IChainRelayer) {
+func GetRelayer(chain string) (relayer IChainRelayer) {
 	switch chain {
-	case base.ETH:
+	case config.ETH_CHAIN:
 		relayer = new(top2eth.Top2EthRelayer)
-	case base.TOP:
+	case config.TOP_CHAIN:
 		relayer = new(eth2top.Eth2TopRelayer)
 	default:
-		logger.Error("Unsupport chain id:", chain)
+		logger.Error("Unsupport chain:", chain)
 	}
 	return
 }

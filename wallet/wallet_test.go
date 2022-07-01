@@ -4,7 +4,6 @@ import (
 	"context"
 	"math/big"
 	"testing"
-	"toprelayer/base"
 	"toprelayer/util"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -16,7 +15,7 @@ import (
 
 var (
 	DEFAULTPATH = "../.relayer/wallet/top"
-	chainid     = base.TOP
+	chainid     = uint64(1023)
 
 	//URL string = "http://192.168.50.235:8545"
 	URL string = "http://192.168.50.204:19086"

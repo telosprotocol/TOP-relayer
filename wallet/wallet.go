@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"toprelayer/base"
 	"toprelayer/sdk"
 
 	"github.com/wonderivan/logger"
@@ -132,11 +131,5 @@ func (w *Wallet) SendTransaction(ctx context.Context, tx *types.Transaction) err
 
 /*to create chains wallet...*/
 func (w *Wallet) createChainWallet(ID uint64) (IWallet, error) {
-	switch ID {
-	case base.ETH:
-		return w, nil
-	case base.TOP:
-		return w, nil
-	}
-	return nil, fmt.Errorf("unsupport chain:%v", ID)
+	return w, nil
 }

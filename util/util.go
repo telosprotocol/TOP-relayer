@@ -5,7 +5,6 @@ import (
 	"log"
 	"math/big"
 	"os"
-	"toprelayer/base"
 	"toprelayer/config"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -119,21 +118,21 @@ func readPassword(prompt string) (string, error) {
 func Getchainpass(handlercfg *config.HeaderSyncConfig) (map[uint64]string, error) {
 	chainpass := make(map[uint64]string)
 	for _, chain := range handlercfg.Config.RelayerConfig {
-		switch chain.SubmitChainId {
-		case base.ETH:
+		switch chain.Chain {
+		case config.ETH_CHAIN:
 			pass, err := readPassword("Please Enter ETH pasword:")
 			if err != nil {
 				log.Fatal("get chain password error: ", err)
 				return chainpass, err
 			}
-			chainpass[base.ETH] = pass
-		case base.TOP:
+			chainpass[chain.SubmitChainId] = pass
+		case config.TOP_CHAIN:
 			pass, err := readPassword("Please Enter TOP pasword:")
 			if err != nil {
 				log.Fatal("get chain password error: ", err)
 				return chainpass, err
 			}
-			chainpass[base.TOP] = pass
+			chainpass[chain.SubmitChainId] = pass
 		}
 	}
 	return chainpass, nil

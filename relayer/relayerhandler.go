@@ -20,7 +20,7 @@ func NewHeaderSyncHandler(config *config.HeaderSyncConfig) *HeaderSyncHandler {
 	relayers := make(map[uint64]IChainRelayer)
 
 	for _, chain := range config.Config.RelayerConfig {
-		relayers[chain.SubmitChainId] = GetRelayer(chain.SubmitChainId)
+		relayers[chain.SubmitChainId] = GetRelayer(chain.Chain)
 	}
 	handler.relayers = relayers
 	handler.conf = config
