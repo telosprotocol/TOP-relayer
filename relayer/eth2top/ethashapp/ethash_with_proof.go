@@ -3,6 +3,7 @@ package ethashapp
 import (
 	"math/big"
 	"os"
+	"time"
 
 	"toprelayer/relayer/eth2top/ethash"
 	"toprelayer/relayer/eth2top/ethashproof"
@@ -16,6 +17,9 @@ import (
 const (
 	BLOCKS_PER_EPOCH uint64 = 30000
 )
+
+var futureEpoch uint64 = 0
+var futureEpochProcessing bool = false
 
 type Output struct {
 	HeaderRLP    string   `json:"header_rlp"`
@@ -37,24 +41,50 @@ func zeroPad(bytes []byte, num int) []byte {
 }
 
 func EthashWithProofs(h uint64, header *types.Header) (Output, error) {
-	// var header *types.Header
-	// if err := rlp.DecodeBytes(rlpheader, &header); err != nil {
-	// 	logger.Error("RLP decoding of header failed: ", err)
-	// 	return Output{}, err
-	// }
 	epoch := h / BLOCKS_PER_EPOCH
 	cache, err := ethashproof.LoadCache(int(epoch))
 	if err != nil {
-		logger.Info("Cache is missing, calculate dataset merkle tree to create the cache first...")
-		_, err = ethashproof.CalculateDatasetMerkleRoot(epoch, true)
-		if err != nil {
-			logger.Error("Creating cache failed: ", err)
-			return Output{}, err
+		if futureEpochProcessing {
+			logger.Debug("waiting for futureEpochProcessing...")
+			totalTime := 0
+			for {
+				time.Sleep(time.Duration(5) * time.Second)
+				totalTime += 5
+				if !futureEpochProcessing || totalTime > 3600 {
+					break
+				}
+			}
+			cache, err = ethashproof.LoadCache(int(epoch))
 		}
-		cache, err = ethashproof.LoadCache(int(epoch))
+
 		if err != nil {
-			logger.Error("Getting cache failed after trying to create it, abort: ", err)
-			return Output{}, err
+			logger.Info("epoch %v cache is missing, calculate dataset merkle tree to create the cache first...", epoch)
+			_, err = ethashproof.CalculateDatasetMerkleRoot(epoch, true)
+			if err != nil {
+				logger.Error("Creating cache failed: ", err)
+				return Output{}, err
+			}
+			cache, err = ethashproof.LoadCache(int(epoch))
+			if err != nil {
+				logger.Error("Getting cache failed after trying to create it, abort: ", err)
+				return Output{}, err
+			}
+		}
+	}
+
+	if futureEpoch != epoch+1 {
+		if !futureEpochProcessing && !ethashproof.ExistCache(int(epoch+1)) {
+			futureEpochProcessing = true
+			logger.Info("future epoch %v cache is missing, calculate dataset merkle tree to create the cache first...", epoch+1)
+			go func() {
+				_, e := ethashproof.CalculateDatasetMerkleRoot(epoch+1, true)
+				if e != nil || !ethashproof.ExistCache(int(epoch+1)) {
+					logger.Error("Creating cache failed: ", err)
+				} else {
+					futureEpoch = epoch + 1
+				}
+				futureEpochProcessing = false
+			}()
 		}
 	}
 

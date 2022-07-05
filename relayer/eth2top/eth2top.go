@@ -31,11 +31,12 @@ const (
 	ABI_PATH = "contract/topbridge/topbridge.abi"
 
 	FATALTIMEOUT int64 = 24 //hours
-	SUCCESSDELAY int64 = 5
-	ERRDELAY     int64 = 5
+	SUCCESSDELAY int64 = 10
+	ERRDELAY     int64 = 10
 	WAITDELAY    int64 = 60
 
 	CONFIRM_NUM int = 25
+	BATCH_NUM   int = 5
 
 	BLOCKS_PER_EPOCH uint64 = 30000
 )
@@ -52,7 +53,7 @@ type Eth2TopRelayer struct {
 	abi             abi.ABI
 }
 
-func (et *Eth2TopRelayer) Init(topUrl, ethUrl, keypath, pass string, chainid uint64, contract common.Address, batch int) error {
+func (et *Eth2TopRelayer) Init(topUrl, ethUrl, keypath, pass string, chainid uint64, contract common.Address) error {
 	topsdk, err := topsdk.NewTopSdk(topUrl)
 	if err != nil {
 		return err
@@ -66,7 +67,7 @@ func (et *Eth2TopRelayer) Init(topUrl, ethUrl, keypath, pass string, chainid uin
 	et.ethsdk = ethsdk
 	et.contract = contract
 	et.chainId = chainid
-	et.subBatch = batch
+	et.subBatch = BATCH_NUM
 	et.certaintyBlocks = CONFIRM_NUM
 
 	w, err := wallet.NewWallet(topUrl, keypath, pass, chainid)

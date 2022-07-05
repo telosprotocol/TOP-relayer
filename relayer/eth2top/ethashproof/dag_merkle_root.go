@@ -50,10 +50,8 @@ func CalculateDatasetMerkleRoot(epoch uint64, saveCache bool) (mtree.Hash, error
 	blockno := epoch * 30000
 	path := ethash.PathToDAG(epoch, ethash.DefaultDir)
 	os.Remove(path)
-	fmt.Printf("Make the dag\n")
 	ethash.MakeDAG(blockno, ethash.DefaultDir)
 
-	fmt.Printf("Init the tree\n")
 	dt := mtree.NewSHA256DagTree()
 
 	fullSize := ethash.DAGSize(blockno)

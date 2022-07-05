@@ -2,23 +2,21 @@
     "relayerconfig":[
         {
             "chainName": "TOP",
+            "chainId": 1023,
             "listenurl": "https://eth-mainnet.token.im",
-            "chainTo": 1023,
-            "submiturl": "http://192.168.30.200:8080",
+            "submiturl": "http://192.168.50.204:8080",
             "contract": "0x6f710f7Cbb65cd5e89a043C0D93eDc53f4e3a4ca",
             "keypath": ".relayer/wallet/top",
-            "subBatch": 5,
             "start": true
         },
         {
             "chainName": "ETH",
+            "chainId": 3,
             "listenurl": "http://192.168.50.204:8080",
-            "chainTo": 3,
             "submiturl": "https://ropsten.infura.io/v3/fb2a09e82a234971ad84203e6f75990e",
             "contract": "0x8448B5fd11a8EF2Ca72dEdF53D83140E42167f50",
             "keypath": ".relayer/wallet/eth",
-            "subBatch": 20,
-            "start": false
+            "start": true
         }
     ]
 }

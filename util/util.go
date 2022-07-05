@@ -115,9 +115,9 @@ func readPassword(prompt string) (string, error) {
 	return string(pass), nil
 }
 
-func Getchainpass(handlercfg *config.HeaderSyncConfig) (map[uint64]string, error) {
+func Getchainpass(cfg *config.Config) (map[uint64]string, error) {
 	chainpass := make(map[uint64]string)
-	for _, chain := range handlercfg.Config.RelayerConfig {
+	for _, chain := range cfg.RelayerConfig {
 		switch chain.Chain {
 		case config.ETH_CHAIN:
 			pass, err := readPassword("Please Enter ETH pasword:")
@@ -125,14 +125,14 @@ func Getchainpass(handlercfg *config.HeaderSyncConfig) (map[uint64]string, error
 				log.Fatal("get chain password error: ", err)
 				return chainpass, err
 			}
-			chainpass[chain.SubmitChainId] = pass
+			chainpass[chain.ChainId] = pass
 		case config.TOP_CHAIN:
 			pass, err := readPassword("Please Enter TOP pasword:")
 			if err != nil {
 				log.Fatal("get chain password error: ", err)
 				return chainpass, err
 			}
-			chainpass[chain.SubmitChainId] = pass
+			chainpass[chain.ChainId] = pass
 		}
 	}
 	return chainpass, nil

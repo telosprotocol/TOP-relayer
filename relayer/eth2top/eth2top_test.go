@@ -22,7 +22,7 @@ const ethUrl string = "https://eth-mainnet.token.im"
 const topChainId uint64 = 1023
 
 func TestGetHeaderRlp(t *testing.T) {
-	var height uint64 = 12969999
+	var height uint64 = 12989998
 
 	ethsdk, err := ethsdk.NewEthSdk(ethUrl)
 	if err != nil {
@@ -169,7 +169,7 @@ func TestSync(t *testing.T) {
 	// fix
 
 	sub := &Eth2TopRelayer{}
-	err := sub.Init(submitUrl, ethUrl, accountPath, "", topChainId, contract, 5)
+	err := sub.Init(submitUrl, ethUrl, accountPath, "", topChainId, contract)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -207,7 +207,7 @@ func TestSyncHeaderWithProofsRlpGas(t *testing.T) {
 	// fix
 
 	sub := &Eth2TopRelayer{}
-	err := sub.Init(submitUrl, ethUrl, accountPath, "", topChainId, contract, 5)
+	err := sub.Init(submitUrl, ethUrl, accountPath, "", topChainId, contract)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -247,7 +247,7 @@ func TestGetTopBridgeHeight(t *testing.T) {
 	var accountPath = "../../.relayer/wallet/top"
 
 	sub := &Eth2TopRelayer{}
-	err := sub.Init(submitUrl, ethUrl, accountPath, "", topChainId, contract, 5)
+	err := sub.Init(submitUrl, ethUrl, accountPath, "", topChainId, contract)
 	if err != nil {
 		t.Fatal(err)
 	}

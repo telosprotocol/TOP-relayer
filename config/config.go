@@ -11,8 +11,9 @@ import (
 )
 
 var (
-	TOP_CHAIN  string = "TOP"
-	ETH_CHAIN  string = "ETH"
+	TOP_CHAIN string = "TOP"
+	ETH_CHAIN string = "ETH"
+
 	LOG_DIR    string = "log"
 	LOG_CONFIG string = `{
 		"TimeFormat":"2006-01-02 15:04:05",
@@ -33,11 +34,26 @@ var (
 	}`
 )
 
-type Config struct {
-	RelayerConfig []*Relayer `josn:"relayerconfig"`
+type Relayer struct {
+	// chain symbol
+	Chain   string `json:"chainName"`
+	ChainId uint64 `json:"chainId"`
+
+	//listen config
+	ListenUrl string `json:"listenurl"`
+
+	//submit config
+	SubmitUrl string `json:"submiturl"`
+	Contract  string `json:"contract"`
+	KeyPath   string `json:"keypath"`
+	Start     bool   `json:"start"`
 }
 
-func newConfig(path string) (*Config, error) {
+type Config struct {
+	RelayerConfig []*Relayer `json:"relayerconfig"`
+}
+
+func NewConfig(path string) (*Config, error) {
 	stat, err := os.Stat(path)
 	if err != nil {
 		return nil, err
@@ -66,36 +82,8 @@ func newConfig(path string) (*Config, error) {
 	return config, nil
 }
 
-type Relayer struct {
-	// chain symbol
-	Chain string `json:"chainName"`
-
-	//listen config
-	ListenUrl string `json:"listenurl"`
-
-	//submit config
-	SubmitChainId uint64 `json:"chainTo"`
-	SubmitUrl     string `json:"submiturl"`
-	Contract      string `json:"contract"`
-	KeyPath       string `json:"keypath"`
-	SubBatch      int    `json:"subBatch"`
-	Start         bool   `json:"start"`
-}
-
-type HeaderSyncConfig struct {
-	Config *Config
-}
-
-func InitHeaderSyncConfig(path string) (*HeaderSyncConfig, error) {
-	cfg, err := newConfig(path)
-	if err != nil {
-		return nil, err
-	}
-	return &HeaderSyncConfig{Config: cfg}, nil
-}
-
 func InitLogConfig() error {
-	os.Mkdir("log", os.ModePerm)
+	os.Mkdir(LOG_DIR, os.ModePerm)
 	logger.SetLogger(LOG_CONFIG)
 	return nil
 }
