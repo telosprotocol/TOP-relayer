@@ -13,6 +13,10 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
+const (
+	defaultPass = "asd123"
+)
+
 var (
 	DEFAULTPATH = "../.relayer/wallet/top"
 	chainid     = uint64(1023)
