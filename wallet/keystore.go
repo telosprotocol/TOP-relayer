@@ -17,10 +17,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 )
 
-const (
-	defaultPass = "asd123"
-)
-
 type KeyStoreProvider struct {
 	*keystore.KeyStore
 }
@@ -42,16 +38,10 @@ func newKeyStoreProvider(store *keystore.KeyStore, pass string) *KeyStoreProvide
 }
 
 func (p *KeyStoreProvider) UnlockAccount(account accounts.Account, pass string) error {
-	if pass == "" {
-		pass = defaultPass
-	}
 	return p.Unlock(account, pass)
 }
 
 func createAccount(store *keystore.KeyStore, pass string) (accounts.Account, error) {
-	if pass == "" {
-		pass = defaultPass
-	}
 	acc, err := store.NewAccount(pass)
 	if err != nil {
 		return accounts.Account{}, err
@@ -69,9 +59,6 @@ func loadAccount(store *keystore.KeyStore, path, pass string) (accounts.Account,
 	}
 	keyfiles = kfs
 	if len(keyfiles) == 0 {
-		if pass == "" {
-			pass = defaultPass
-		}
 		acc, err := createAccount(store, pass)
 		if err != nil {
 			return accounts.Account{}, err

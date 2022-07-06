@@ -71,6 +71,19 @@ func LoadCache(epoch int) (*DatasetMerkleTreeCache, error) {
 	return result, nil
 }
 
+func ExistCache(epoch int) bool {
+	path := filepath.Join(getHomeDir(), ".ethashproof", fmt.Sprintf("%d.json", epoch))
+	_, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false
+		} else {
+			return true
+		}
+	}
+	return true
+}
+
 func PathToCache(epoch uint64) string {
 	return filepath.Join(getHomeDir(), ".ethashproof", fmt.Sprintf("%d.json", epoch))
 }

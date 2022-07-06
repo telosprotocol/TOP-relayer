@@ -31,11 +31,12 @@ const (
 	ABI_PATH = "contract/topbridge/topbridge.abi"
 
 	FATALTIMEOUT int64 = 24 //hours
-	SUCCESSDELAY int64 = 5
-	ERRDELAY     int64 = 5
+	SUCCESSDELAY int64 = 10
+	ERRDELAY     int64 = 10
 	WAITDELAY    int64 = 60
 
 	CONFIRM_NUM int = 25
+	BATCH_NUM   int = 5
 
 	BLOCKS_PER_EPOCH uint64 = 30000
 )
@@ -52,7 +53,7 @@ type Eth2TopRelayer struct {
 	abi             abi.ABI
 }
 
-func (et *Eth2TopRelayer) Init(topUrl, ethUrl, keypath, pass string, chainid uint64, contract common.Address, batch int) error {
+func (et *Eth2TopRelayer) Init(topUrl, ethUrl, keypath, pass string, chainid uint64, contract common.Address) error {
 	topsdk, err := topsdk.NewTopSdk(topUrl)
 	if err != nil {
 		return err
@@ -66,7 +67,7 @@ func (et *Eth2TopRelayer) Init(topUrl, ethUrl, keypath, pass string, chainid uin
 	et.ethsdk = ethsdk
 	et.contract = contract
 	et.chainId = chainid
-	et.subBatch = batch
+	et.subBatch = BATCH_NUM
 	et.certaintyBlocks = CONFIRM_NUM
 
 	w, err := wallet.NewWallet(topUrl, keypath, pass, chainid)
@@ -250,39 +251,38 @@ func (et *Eth2TopRelayer) StartRelayer(wg *sync.WaitGroup) error {
 }
 
 func (et *Eth2TopRelayer) signAndSendTransactions(lo, hi uint64) error {
-	// var batchHeaders []*types.Header
+	var batch []byte
 	nonce, err := et.wallet.GetNonce(et.wallet.CurrentAccount().Address)
 	if err != nil {
 		logger.Error(err)
 		return err
 	}
-	// h := lo
-	// for ; h <= hi; h++ {
-	header, err := et.ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(lo))
-	if err != nil {
-		logger.Error(err)
-		return err
+
+	for h := lo; h <= hi; h++ {
+		header, err := et.ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(h))
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
+		ethashproof, err := ethashapp.EthashWithProofs(h, header)
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
+		rlp_bytes, err := rlp.EncodeToBytes(ethashproof)
+		if err != nil {
+			logger.Fatal("rlp encode error: ", err)
+		}
+		batch = append(batch, rlp_bytes...)
 	}
-	ethashproof, err := ethashapp.EthashWithProofs(lo, header)
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-	// batchHeaders = append(batchHeaders, header)
-	// }
 
 	// maybe verify block
-	// if et.chainId == base.TOP {
+	// if et.chainId == topChainId {
 	// 	for _, header := range headers {
 	// 		et.verifyBlocks(header)
 	// 	}
 	// }
-	data, err := rlp.EncodeToBytes(ethashproof)
-	if err != nil {
-		logger.Error("Eth2TopRelayer EncodeHeaders failed:", err)
-		return err
-	}
-	err = et.submitEthHeader(data, nonce)
+	err = et.submitEthHeader(batch, nonce)
 	if err != nil {
 		logger.Error("Eth2TopRelayer submitHeaders failed:", err)
 		return err

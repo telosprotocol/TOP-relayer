@@ -35,6 +35,7 @@ const (
 	WAITDELAY    int64 = 1000
 
 	CONFIRM_NUM int = 2
+	BATCH_NUM   int = 20
 )
 
 type Top2EthRelayer struct {
@@ -49,7 +50,7 @@ type Top2EthRelayer struct {
 	abi             abi.ABI
 }
 
-func (te *Top2EthRelayer) Init(ethUrl, topUrl, keypath, pass string, chainid uint64, contract common.Address, batch int) error {
+func (te *Top2EthRelayer) Init(ethUrl, topUrl, keypath, pass string, chainid uint64, contract common.Address) error {
 	ethsdk, err := ethsdk.NewEthSdk(ethUrl)
 	if err != nil {
 		return err
@@ -62,7 +63,7 @@ func (te *Top2EthRelayer) Init(ethUrl, topUrl, keypath, pass string, chainid uin
 	te.ethsdk = ethsdk
 	te.contract = contract
 	te.chainId = chainid
-	te.subBatch = batch
+	te.subBatch = BATCH_NUM
 	te.certaintyBlocks = CONFIRM_NUM
 
 	w, err := wallet.NewWallet(ethUrl, keypath, pass, chainid)

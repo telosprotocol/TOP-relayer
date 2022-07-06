@@ -24,11 +24,6 @@ func main() {
 				Value: "./config/relayerconfig.json",
 				Usage: "configuration file",
 			},
-			&cli.StringFlag{
-				Name:  "logconfig",
-				Value: "./config/logconfig.json",
-				Usage: "log config path",
-			},
 		},
 	}
 
@@ -41,11 +36,13 @@ func main() {
 
 func start(c *cli.Context) error {
 	wg := new(sync.WaitGroup)
-	handlercfg, err := config.InitHeaderSyncConfig(c.String("config"))
+
+	cfg, err := config.NewConfig(c.String("config"))
 	if err != nil {
 		return err
 	}
-	passes, err := util.Getchainpass(handlercfg)
+
+	passes, err := util.Getchainpass(cfg)
 	if err != nil {
 		return err
 	}
@@ -57,10 +54,12 @@ func start(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	err = relayer.StartRelayer(wg, handlercfg, passes)
+
+	err = relayer.StartRelayer(cfg, passes, wg)
 	if err != nil {
 		return err
 	}
+
 	wg.Wait()
 	return nil
 }

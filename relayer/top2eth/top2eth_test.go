@@ -4,12 +4,13 @@ import (
 	"context"
 	"math/big"
 	"testing"
-	"toprelayer/base"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 )
+
+const ethChainId uint64 = 3
 
 func TestSubmitHeader(t *testing.T) {
 	// const SUBMITTERURL string = "http://192.168.50.235:8545"
@@ -18,7 +19,7 @@ func TestSubmitHeader(t *testing.T) {
 	// var CONTRACT common.Address = common.HexToAddress("0xd287F92c8cB8Cd54DC4C93a1619b04481E4a62F9")
 	// var abipath string = "../../contract/ethbridge/ethbridge.abi"
 	// sub := new(Top2EthRelayer)
-	// err := sub.Init(SUBMITTERURL, LISTENURL, DEFAULTPATH, "", abipath, base.ETH, CONTRACT, 100, 0, false)
+	// err := sub.Init(SUBMITTERURL, LISTENURL, DEFAULTPATH, "", abipath, ethChainId, CONTRACT, 100, 0, false)
 	// if err != nil {
 	// 	t.Fatal(err)
 	// }
@@ -69,7 +70,7 @@ func TestEstimateGas(t *testing.T) {
 	var DEFAULTPATH = "../../.relayer/wallet/eth"
 	var CONTRACT common.Address = common.HexToAddress("0xd287F92c8cB8Cd54DC4C93a1619b04481E4a62F9")
 	sub := &Top2EthRelayer{}
-	err := sub.Init(SUBMITTERURL, LISTENURL, DEFAULTPATH, "", base.ETH, CONTRACT, 5)
+	err := sub.Init(SUBMITTERURL, LISTENURL, DEFAULTPATH, "", ethChainId, CONTRACT)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +104,7 @@ func TestGetETHBridgeState(t *testing.T) {
 	var DEFAULTPATH = "../../.relayer/wallet/eth"
 	var CONTRACT common.Address = common.HexToAddress("0xd287F92c8cB8Cd54DC4C93a1619b04481E4a62F9")
 	sub := &Top2EthRelayer{}
-	err := sub.Init(SUBMITTERURL, LISTENURL, DEFAULTPATH, "", base.ETH, CONTRACT, 5)
+	err := sub.Init(SUBMITTERURL, LISTENURL, DEFAULTPATH, "", ethChainId, CONTRACT)
 	if err != nil {
 		t.Fatal(err)
 	}
