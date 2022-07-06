@@ -17,8 +17,8 @@ type TopSdk struct {
 }
 
 const (
-	GETTOPELECTBLOCKHEADBYHEIGHT = "top_getRelayBlockByNumber"
-	GETLATESTTOPELECTBLOCKHEIGHT = "top_relayBlockNumber"
+	GETTOPELECTBLOCKHEADBYHEIGHT = "topRelay_getBlockByNumber"
+	GETLATESTTOPELECTBLOCKHEIGHT = "topRelay_blockNumber"
 )
 
 func NewTopSdk(url string) (*TopSdk, error) {
