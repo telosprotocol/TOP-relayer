@@ -9,6 +9,7 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/wonderivan/logger"
 )
 
 type TopSdk struct {
@@ -16,9 +17,19 @@ type TopSdk struct {
 	url string
 }
 
+type TopBlock struct {
+	BlockType string `json:"block_type"`
+	Number    string `json:"number"`
+	Header    string `json:"header"`
+}
+
 const (
 	GETTOPELECTBLOCKHEADBYHEIGHT = "topRelay_getBlockByNumber"
 	GETLATESTTOPELECTBLOCKHEIGHT = "topRelay_blockNumber"
+
+	ELECTION_BLOCK    = "elections"
+	AGGREGATE_BLOCK   = "aggregate"
+	TRANSACTION_BLOCK = "transactions"
 )
 
 func NewTopSdk(url string) (*TopSdk, error) {
@@ -29,16 +40,30 @@ func NewTopSdk(url string) (*TopSdk, error) {
 	return &TopSdk{SDK: sdk, url: url}, nil
 }
 
-func (t *TopSdk) GetTopElectBlockHeadByHeight(height uint64) ([]byte, error) {
-	var data []string
-	err := t.Rpc.CallContext(context.Background(), &data, GETTOPELECTBLOCKHEADBYHEIGHT, util.Uint64ToHexString(height))
+func (t *TopSdk) GetTopElectBlockHeadByHeight(height uint64) (bytes []byte, flag bool, err error) {
+	var data json.RawMessage
+	err = t.Rpc.CallContext(context.Background(), &data, GETTOPELECTBLOCKHEADBYHEIGHT, util.Uint64ToHexString(height))
 	if err != nil {
-		return []byte{}, err
+		return []byte{}, false, err
 	} else if len(data) == 0 {
-		return []byte{}, ethereum.NotFound
+		return []byte{}, false, ethereum.NotFound
 	}
-	bytes := common.Hex2Bytes(data[0][2:])
-	return bytes, nil
+
+	var block TopBlock
+	if err := json.Unmarshal(data, &block); err != nil {
+		log.Printf("Unmarshal GetTopElectBlockHeadByHeight data: %v,error:%v", data, err)
+		return []byte{}, false, err
+	}
+	logger.Debug("Top block: %v, type: %v", block.Number, block.BlockType)
+
+	bytes = common.Hex2Bytes(block.Header[2:])
+	if block.BlockType == ELECTION_BLOCK || block.BlockType == AGGREGATE_BLOCK {
+		flag = true
+	} else {
+		flag = false
+	}
+
+	return bytes, flag, nil
 }
 
 func (t *TopSdk) GetLatestTopElectBlockHeight() (uint64, error) {
@@ -53,7 +78,7 @@ func (t *TopSdk) GetLatestTopElectBlockHeight() (uint64, error) {
 	//var res string
 	var res string
 	if err := json.Unmarshal(data, &res); err != nil {
-		log.Printf("sdk getLatestTopElectBlockHeight data: %v,error:%v", string(data), err)
+		logger.Error("sdk getLatestTopElectBlockHeight data: %v,error:%v", string(data), err)
 		return 0, err
 	}
 	return util.HexToUint64(res)
