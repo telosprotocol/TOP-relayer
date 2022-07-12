@@ -35,7 +35,7 @@ const (
 	WAITDELAY    int64 = 1000
 
 	CONFIRM_NUM int = 2
-	BATCH_NUM   int = 20
+	BATCH_NUM   int = 10
 )
 
 type Top2EthRelayer struct {

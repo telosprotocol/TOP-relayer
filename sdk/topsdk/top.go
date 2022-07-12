@@ -18,7 +18,7 @@ type TopSdk struct {
 }
 
 type TopBlock struct {
-	BlockType string `json:"block_type"`
+	BlockType string `json:"blockType"`
 	Number    string `json:"number"`
 	Header    string `json:"header"`
 }
@@ -27,7 +27,7 @@ const (
 	GETTOPELECTBLOCKHEADBYHEIGHT = "topRelay_getBlockByNumber"
 	GETLATESTTOPELECTBLOCKHEIGHT = "topRelay_blockNumber"
 
-	ELECTION_BLOCK    = "elections"
+	ELECTION_BLOCK    = "election"
 	AGGREGATE_BLOCK   = "aggregate"
 	TRANSACTION_BLOCK = "transactions"
 )

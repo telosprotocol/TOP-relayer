@@ -18,7 +18,12 @@ import (
 // https://web3.1inch.exchange/
 // https://eth-mainnet.gateway.pokt.network/v1/5f3453978e354ab992c4da79
 // https://eth-mainnet.token.im
-const ethUrl string = "https://eth-mainnet.token.im"
+
+// testnet
+// https://ropsten.infura.io/v3/fb2a09e82a234971ad84203e6f75990e
+
+// const ethUrl string = "https://eth-mainnet.token.im"
+const ethUrl string = "https://ropsten.infura.io/v3/fb2a09e82a234971ad84203e6f75990e"
 const topChainId uint64 = 1023
 
 func TestGetHeaderRlp(t *testing.T) {
