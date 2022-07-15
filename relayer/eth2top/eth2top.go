@@ -27,6 +27,7 @@ import (
 const (
 	METHOD_GETHEIGHT = "get_height"
 	METHOD_SYNC      = "sync"
+	METHOD_ISKNOWN   = "is_known"
 
 	ABI_PATH = "contract/topbridge/topbridge.abi"
 
@@ -52,6 +53,8 @@ type Eth2TopRelayer struct {
 	subBatch        int
 	abi             abi.ABI
 }
+
+type void struct{}
 
 func (et *Eth2TopRelayer) Init(topUrl, ethUrl, keypath, pass string, chainid uint64, contract common.Address) error {
 	topsdk, err := topsdk.NewTopSdk(topUrl)
@@ -218,6 +221,34 @@ func (et *Eth2TopRelayer) StartRelayer(wg *sync.WaitGroup) error {
 					delay = time.Duration(WAITDELAY)
 					break
 				}
+				// check fork
+				var checkError bool = false
+				for {
+					header, err := et.ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(destHeight))
+					if err != nil {
+						logger.Error("HeaderByNumber ", err)
+						checkError = true
+						break
+					}
+					// get known hashes with destHeight, mock now
+					isKnown, err := et.hashIsKnown(header.Number, header.Hash())
+					if err != nil {
+						logger.Error("hashIsKnown ", err)
+						checkError = true
+						break
+					}
+					if isKnown {
+						logger.Debug("%v hash is known", header.Number)
+						break
+					} else {
+						logger.Debug("%v hash is not known", header.Number)
+						destHeight -= 1
+					}
+				}
+				if checkError {
+					delay = time.Duration(ERRDELAY)
+					break
+				}
 
 				syncStartHeight := destHeight + 1
 				syncNum := srcHeight - uint64(et.certaintyBlocks) - destHeight
@@ -312,6 +343,25 @@ func (et *Eth2TopRelayer) getTopBridgeCurrentHeight() (uint64, error) {
 	}
 
 	return big.NewInt(0).SetBytes(ret).Uint64(), nil
+}
+
+func (et *Eth2TopRelayer) hashIsKnown(number *big.Int, hash common.Hash) (bool, error) {
+	input, err := et.abi.Pack(METHOD_ISKNOWN, number, hash)
+	if err != nil {
+		return false, err
+	}
+
+	msg := ethereum.CallMsg{
+		From: et.wallet.CurrentAccount().Address,
+		To:   &et.contract,
+		Data: input,
+	}
+	ret, err := et.topsdk.CallContract(context.Background(), msg, nil)
+	if err != nil {
+		return false, err
+	}
+	v := big.NewInt(0).SetBytes(ret).Uint64()
+	return v != 0, nil
 }
 
 func (et *Eth2TopRelayer) estimateSyncGas(gasprice *big.Int, data []byte) (uint64, error) {

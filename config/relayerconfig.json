@@ -3,9 +3,9 @@
         {
             "chainName": "TOP",
             "chainId": 1023,
-            "listenurl": "https://eth-mainnet.token.im",
+            "listenurl": "https://ropsten.infura.io/v3/fb2a09e82a234971ad84203e6f75990e",
             "submiturl": "http://192.168.50.204:8080",
-            "contract": "0x6f710f7Cbb65cd5e89a043C0D93eDc53f4e3a4ca",
+            "contract": "0xff00000000000000000000000000000000000002",
             "keypath": ".relayer/wallet/top",
             "start": true
         },

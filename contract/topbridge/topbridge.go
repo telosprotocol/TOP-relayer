@@ -30,7 +30,7 @@ var (
 
 // TopBridgeMetaData contains all meta data concerning the TopBridge contract.
 var TopBridgeMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[],\"name\":\"get_height\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"height\",\"type\":\"uint64\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"blockHeader\",\"type\":\"bytes\"}],\"name\":\"sync\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
+	ABI: "[{\"inputs\":[],\"name\":\"get_height\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"height\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"height\",\"type\":\"uint256\"},{\"internalType\":\"bytes32\",\"name\":\"data\",\"type\":\"bytes32\"}],\"name\":\"is_known\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"ret\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"blockHeader\",\"type\":\"bytes\"}],\"name\":\"sync\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
 }
 
 // TopBridgeABI is the input ABI used to generate the binding from.
@@ -179,25 +179,66 @@ func (_TopBridge *TopBridgeTransactorRaw) Transact(opts *bind.TransactOpts, meth
 	return _TopBridge.Contract.contract.Transact(opts, method, params...)
 }
 
-// GetHeight is a paid mutator transaction binding the contract method 0xb15ad2e8.
+// GetHeight is a free data retrieval call binding the contract method 0xb15ad2e8.
 //
-// Solidity: function get_height() returns(uint64 height)
-func (_TopBridge *TopBridgeTransactor) GetHeight(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _TopBridge.contract.Transact(opts, "get_height")
+// Solidity: function get_height() view returns(uint64 height)
+func (_TopBridge *TopBridgeCaller) GetHeight(opts *bind.CallOpts) (uint64, error) {
+	var out []interface{}
+	err := _TopBridge.contract.Call(opts, &out, "get_height")
+
+	if err != nil {
+		return *new(uint64), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint64)).(*uint64)
+
+	return out0, err
+
 }
 
-// GetHeight is a paid mutator transaction binding the contract method 0xb15ad2e8.
+// GetHeight is a free data retrieval call binding the contract method 0xb15ad2e8.
 //
-// Solidity: function get_height() returns(uint64 height)
-func (_TopBridge *TopBridgeSession) GetHeight() (*types.Transaction, error) {
-	return _TopBridge.Contract.GetHeight(&_TopBridge.TransactOpts)
+// Solidity: function get_height() view returns(uint64 height)
+func (_TopBridge *TopBridgeSession) GetHeight() (uint64, error) {
+	return _TopBridge.Contract.GetHeight(&_TopBridge.CallOpts)
 }
 
-// GetHeight is a paid mutator transaction binding the contract method 0xb15ad2e8.
+// GetHeight is a free data retrieval call binding the contract method 0xb15ad2e8.
 //
-// Solidity: function get_height() returns(uint64 height)
-func (_TopBridge *TopBridgeTransactorSession) GetHeight() (*types.Transaction, error) {
-	return _TopBridge.Contract.GetHeight(&_TopBridge.TransactOpts)
+// Solidity: function get_height() view returns(uint64 height)
+func (_TopBridge *TopBridgeCallerSession) GetHeight() (uint64, error) {
+	return _TopBridge.Contract.GetHeight(&_TopBridge.CallOpts)
+}
+
+// IsKnown is a free data retrieval call binding the contract method 0x6d571daf.
+//
+// Solidity: function is_known(uint256 height, bytes32 data) view returns(bool ret)
+func (_TopBridge *TopBridgeCaller) IsKnown(opts *bind.CallOpts, height *big.Int, data [32]byte) (bool, error) {
+	var out []interface{}
+	err := _TopBridge.contract.Call(opts, &out, "is_known", height, data)
+
+	if err != nil {
+		return *new(bool), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
+
+	return out0, err
+
+}
+
+// IsKnown is a free data retrieval call binding the contract method 0x6d571daf.
+//
+// Solidity: function is_known(uint256 height, bytes32 data) view returns(bool ret)
+func (_TopBridge *TopBridgeSession) IsKnown(height *big.Int, data [32]byte) (bool, error) {
+	return _TopBridge.Contract.IsKnown(&_TopBridge.CallOpts, height, data)
+}
+
+// IsKnown is a free data retrieval call binding the contract method 0x6d571daf.
+//
+// Solidity: function is_known(uint256 height, bytes32 data) view returns(bool ret)
+func (_TopBridge *TopBridgeCallerSession) IsKnown(height *big.Int, data [32]byte) (bool, error) {
+	return _TopBridge.Contract.IsKnown(&_TopBridge.CallOpts, height, data)
 }
 
 // Sync is a paid mutator transaction binding the contract method 0x7eefcfa2.

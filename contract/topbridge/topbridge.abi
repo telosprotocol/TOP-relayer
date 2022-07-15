@@ -9,7 +9,31 @@
 				"type": "uint64"
 			}
 		],
-		"stateMutability": "nonpayable",
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "height",
+				"type": "uint256"
+			},
+			{
+				"internalType": "bytes32",
+				"name": "data",
+				"type": "bytes32"
+			}
+		],
+		"name": "is_known",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "ret",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
 		"type": "function"
 	},
 	{
