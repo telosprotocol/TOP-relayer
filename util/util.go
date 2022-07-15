@@ -108,32 +108,24 @@ func readPassword(prompt string) (string, error) {
 	fmt.Print(prompt)
 	pass, err := terminal.ReadPassword(int(os.Stdin.Fd()))
 	if err != nil {
-		log.Fatal("terminal read password error: ", err)
-		return string(""), err
+		return string(pass), err
 	}
 	fmt.Println()
 	return string(pass), nil
 }
 
-func Getchainpass(cfg *config.Config) (map[uint64]string, error) {
-	chainpass := make(map[uint64]string)
+func GetPasses(cfg *config.Config) (map[string]string, error) {
+	chainpass := make(map[string]string)
 	for _, chain := range cfg.RelayerConfig {
-		switch chain.Chain {
-		case config.ETH_CHAIN:
-			pass, err := readPassword("Please Enter ETH pasword:")
-			if err != nil {
-				log.Fatal("get chain password error: ", err)
-				return chainpass, err
-			}
-			chainpass[chain.ChainId] = pass
-		case config.TOP_CHAIN:
-			pass, err := readPassword("Please Enter TOP pasword:")
-			if err != nil {
-				log.Fatal("get chain password error: ", err)
-				return chainpass, err
-			}
-			chainpass[chain.ChainId] = pass
+		if !chain.Start {
+			continue
 		}
+		pass, err := readPassword(">>> Please Enter " + chain.Chain + " pasword:\n>>> ")
+		if err != nil {
+			log.Fatal("Read password file failed:", err)
+			return nil, err
+		}
+		chainpass[chain.Chain] = pass
 	}
 	return chainpass, nil
 }

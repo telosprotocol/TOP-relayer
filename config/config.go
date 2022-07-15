@@ -2,8 +2,6 @@ package config
 
 import (
 	"encoding/json"
-	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 
@@ -54,30 +52,16 @@ type Config struct {
 }
 
 func NewConfig(path string) (*Config, error) {
-	stat, err := os.Stat(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
+		log.Fatal("Read config password file failed:", err)
 		return nil, err
 	}
-
-	if stat.IsDir() {
-		return nil, fmt.Errorf("[%v] not a json file,want a json config file.", path)
-	}
-
-	jsonFile, err := os.Open(path)
-	if err != nil {
-		log.Println(err)
-	}
-	defer jsonFile.Close()
-
-	data, err := ioutil.ReadAll(jsonFile)
-	if err != nil {
-		return nil, fmt.Errorf("Read config file error %v", err)
-	}
-
 	config := &Config{}
 	err = json.Unmarshal(data, config)
 	if err != nil {
-		return nil, fmt.Errorf("Parse config file error %v", err)
+		log.Fatal("Unmarshal config file failed:", err)
+		return nil, err
 	}
 	return config, nil
 }

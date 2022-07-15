@@ -20,7 +20,7 @@ type IChainRelayer interface {
 	ChainId() uint64
 }
 
-func StartRelayer(cfg *config.Config, chainpass map[uint64]string, wg *sync.WaitGroup) (err error) {
+func StartRelayer(cfg *config.Config, chainpass map[string]string, wg *sync.WaitGroup) (err error) {
 	for _, chain := range cfg.RelayerConfig {
 		chainName := chain.Chain
 		_, exist := relayerMap[chainName]
@@ -33,7 +33,7 @@ func StartRelayer(cfg *config.Config, chainpass map[uint64]string, wg *sync.Wait
 				chain.SubmitUrl,
 				chain.ListenUrl,
 				chain.KeyPath,
-				chainpass[chain.ChainId],
+				chainpass[chain.Chain],
 				chain.ChainId,
 				common.HexToAddress(chain.Contract),
 			)

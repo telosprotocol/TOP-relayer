@@ -10,6 +10,7 @@ require (
 	github.com/urfave/cli/v2 v2.6.0
 	github.com/wonderivan/logger v1.0.0
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
+	gopkg.in/urfave/cli.v1 v1.20.0
 )
 
 require (

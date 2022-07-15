@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"toprelayer/config"
@@ -13,20 +14,24 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func main() {
-	app := &cli.App{
-		Name:   "xrelayer",
-		Usage:  "block chain relayer",
-		Action: start,
-		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:  "config",
-				Value: "./config/relayerconfig.json",
-				Usage: "configuration file",
-			},
-		},
-	}
+var (
+	app = cli.NewApp()
 
+	nodeFlags = []cli.Flag{
+		&util.PasswordFileFlag,
+		&util.ConfigFileFlag,
+	}
+)
+
+func init() {
+	app.Name = filepath.Base(os.Args[0])
+	app.Usage = "the TOP-relayer command line interface"
+	app.Copyright = "2017-present Telos Foundation & contributors"
+	app.Action = start
+	app.Flags = nodeFlags
+}
+
+func main() {
 	err := app.Run(os.Args)
 	if err != nil {
 		log.Fatal("Run relayer error:", err)
@@ -34,15 +39,13 @@ func main() {
 	}
 }
 
-func start(c *cli.Context) error {
-	wg := new(sync.WaitGroup)
-
-	cfg, err := config.NewConfig(c.String("config"))
+func start(ctx *cli.Context) error {
+	cfg, err := config.NewConfig(ctx.String("config"))
 	if err != nil {
 		return err
 	}
 
-	passes, err := util.Getchainpass(cfg)
+	passes, err := util.MakePasswordList(ctx, cfg)
 	if err != nil {
 		return err
 	}
@@ -55,6 +58,7 @@ func start(c *cli.Context) error {
 		return err
 	}
 
+	wg := new(sync.WaitGroup)
 	err = relayer.StartRelayer(cfg, passes, wg)
 	if err != nil {
 		return err
