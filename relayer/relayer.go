@@ -1,54 +1,77 @@
 package relayer
 
 import (
+	"errors"
 	"sync"
-	"time"
 
 	"toprelayer/config"
 	"toprelayer/relayer/eth2top"
 	"toprelayer/relayer/top2eth"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/wonderivan/logger"
 )
 
-var relayerMap = map[string]IChainRelayer{config.TOP_CHAIN: new(eth2top.Eth2TopRelayer), config.ETH_CHAIN: new(top2eth.Top2EthRelayer)}
+var (
+	topRelayer         = new(eth2top.Eth2TopRelayer)
+	crossChainRelayers = map[string]IChainRelayer{
+		config.ETH_CHAIN:  new(top2eth.Top2EthRelayer),
+		config.BSC_CHAIN:  new(top2eth.Top2EthRelayer),
+		config.HECO_CHAIN: new(top2eth.Top2EthRelayer)}
+)
 
 type IChainRelayer interface {
-	Init(fromUrl, toUrl, keypath, pass string, chainid uint64, contract common.Address) error
+	Init(cfg *config.Relayer, toUrl map[string]string, pass string) error
 	StartRelayer(*sync.WaitGroup) error
 	ChainId() uint64
 }
 
+func startOneRelayer(relayer IChainRelayer, cfg *config.Relayer, listenUrls map[string]string, pass string, wg *sync.WaitGroup) error {
+	err := relayer.Init(cfg, listenUrls, pass)
+	if err != nil {
+		logger.Error("startOneRelayer error:", err)
+		return err
+	}
+
+	wg.Add(1)
+	go func() {
+		err = relayer.StartRelayer(wg)
+	}()
+	if err != nil {
+		logger.Error("relayer.StartRelayer error:", err)
+		return err
+	}
+	return nil
+}
+
 func StartRelayer(cfg *config.Config, chainpass map[string]string, wg *sync.WaitGroup) (err error) {
-	for _, chain := range cfg.RelayerConfig {
-		chainName := chain.Chain
-		_, exist := relayerMap[chainName]
-		if !exist {
-			logger.Warn("unknown chain config: %v", chainName)
+	topConfig, exist := cfg.RelayerConfig[config.TOP_CHAIN]
+	if !exist {
+		return errors.New("not found TOP chain config")
+	}
+	topListenUrls := make(map[string]string)
+	for name, cfg := range cfg.RelayerConfig {
+		if name == config.TOP_CHAIN {
 			continue
 		}
-		if chain.Start {
-			err := relayerMap[chainName].Init(
-				chain.SubmitUrl,
-				chain.ListenUrl,
-				chain.KeyPath,
-				chainpass[chain.Chain],
-				chain.ChainId,
-				common.HexToAddress(chain.Contract),
-			)
+		crossChainRelayer, exist := crossChainRelayers[name]
+		if !exist {
+			logger.Warn("unknown chain config:", name)
+			continue
+		}
+		if cfg.Start {
+			err := startOneRelayer(crossChainRelayer, cfg, topListenUrls, chainpass[cfg.Chain], wg)
 			if err != nil {
+				logger.Error("StartRelayer error:", err)
 				return err
 			}
-
-			wg.Add(1)
-			go func() {
-				err = relayerMap[chainName].StartRelayer(wg)
-			}()
-			if err != nil {
-				return err
-			}
-			time.Sleep(time.Second * 1)
+		}
+		topListenUrls[name] = cfg.SubmitUrl
+	}
+	if topConfig.Start {
+		err := startOneRelayer(topRelayer, topConfig, topListenUrls, chainpass[topConfig.Chain], wg)
+		if err != nil {
+			logger.Error("StartRelayer error:", err)
+			return err
 		}
 	}
 

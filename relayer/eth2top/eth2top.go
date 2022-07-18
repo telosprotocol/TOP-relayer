@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"toprelayer/config"
 	"toprelayer/contract/top/ethclient"
 	"toprelayer/relayer/eth2top/ethashapp"
 	"toprelayer/sdk/ethsdk"
@@ -30,47 +31,67 @@ const (
 	BATCH_NUM   uint64 = 5
 )
 
+var (
+	systemSyncContracts = map[string]common.Address{
+		config.ETH_CHAIN:  common.HexToAddress("0xff00000000000000000000000000000000000002"),
+		config.BSC_CHAIN:  common.HexToAddress("0xff00000000000000000000000000000000000003"),
+		config.HECO_CHAIN: common.HexToAddress("0xff00000000000000000000000000000000000004")}
+)
+
 type Eth2TopRelayer struct {
 	context.Context
-	contract   common.Address
 	chainId    uint64
 	wallet     wallet.IWallet
 	topsdk     *topsdk.TopSdk
-	ethsdk     *ethsdk.EthSdk
+	connectors map[string]*SyncConnector
+}
+
+type SyncConnector struct {
+	contract   common.Address
+	ethsdks    *ethsdk.EthSdk
 	transactor *ethclient.EthClientTransactor
 	caller     *ethclient.EthClientCaller
 }
 
 type void struct{}
 
-func (et *Eth2TopRelayer) Init(topUrl, ethUrl, keypath, pass string, chainid uint64, contract common.Address) error {
-	topsdk, err := topsdk.NewTopSdk(topUrl)
+func (et *Eth2TopRelayer) Init(cfg *config.Relayer, listenUrls map[string]string, pass string) error {
+	topsdk, err := topsdk.NewTopSdk(cfg.SubmitUrl)
 	if err != nil {
+		logger.Error("Eth2TopRelayer NewTopSdk error:", err)
 		return err
 	}
-	ethsdk, err := ethsdk.NewEthSdk(ethUrl)
-	if err != nil {
-		return err
-	}
-
 	et.topsdk = topsdk
-	et.ethsdk = ethsdk
-	et.contract = contract
-	et.chainId = chainid
+	et.chainId = cfg.ChainId
 
-	w, err := wallet.NewWallet(topUrl, keypath, pass, chainid)
+	w, err := wallet.NewWallet(cfg.SubmitUrl, cfg.KeyPath, pass, cfg.ChainId)
 	if err != nil {
+		logger.Error("Eth2TopRelayer NewWallet error:", err)
 		return err
 	}
 	et.wallet = w
 
-	et.transactor, err = ethclient.NewEthClientTransactor(contract, topsdk)
-	if err != nil {
-		return err
-	}
-	et.caller, err = ethclient.NewEthClientCaller(contract, topsdk)
-	if err != nil {
-		return err
+	et.connectors = make(map[string]*SyncConnector)
+	for name, listenUrl := range listenUrls {
+		connector := new(SyncConnector)
+		ethsdk, err := ethsdk.NewEthSdk(listenUrl)
+		if err != nil {
+			logger.Error("Eth2TopRelayer NewEthSdk error:", name, listenUrl)
+			return err
+		}
+		connector.ethsdks = ethsdk
+		connector.contract = systemSyncContracts[name]
+		connector.transactor, err = ethclient.NewEthClientTransactor(connector.contract, topsdk)
+		if err != nil {
+			logger.Error("Eth2TopRelayer NewEthClientTransactor error:", connector.contract)
+			return err
+		}
+		connector.caller, err = ethclient.NewEthClientCaller(connector.contract, topsdk)
+		if err != nil {
+			logger.Error("Eth2TopRelayer NewEthClientCaller error:", connector.contract)
+			return err
+		}
+		et.connectors[name] = connector
 	}
 
 	return nil
@@ -91,7 +112,7 @@ func (et *Eth2TopRelayer) submitEthHeader(header []byte, nonce uint64) error {
 		logger.Error("Eth2TopRelayer PackSyncParam:%v", err)
 		return err
 	}
-	gaslimit, err := et.wallet.EstimateGas(context.Background(), &et.contract, gaspric, packHeader)
+	gaslimit, err := et.wallet.EstimateGas(context.Background(), &et.connectors[config.ETH_CHAIN].contract, gaspric, packHeader)
 	if err != nil {
 		logger.Error("EstimateGas error:", err)
 		return err
@@ -107,7 +128,7 @@ func (et *Eth2TopRelayer) submitEthHeader(header []byte, nonce uint64) error {
 		Context:   context.Background(),
 		NoSend:    false,
 	}
-	sigTx, err := et.transactor.Sync(ops, header)
+	sigTx, err := et.connectors[config.ETH_CHAIN].transactor.Sync(ops, header)
 	if err != nil {
 		logger.Error("Eth2TopRelayer sync:%v", err)
 		return err
@@ -157,7 +178,7 @@ func (et *Eth2TopRelayer) StartRelayer(wg *sync.WaitGroup) error {
 					BlockNumber: nil,
 					Context:     context.Background(),
 				}
-				destHeight, err := et.caller.GetHeight(opts)
+				destHeight, err := et.connectors[config.ETH_CHAIN].caller.GetHeight(opts)
 				if err != nil {
 					logger.Error(err)
 					delay = time.Duration(ERRDELAY)
@@ -174,7 +195,7 @@ func (et *Eth2TopRelayer) StartRelayer(wg *sync.WaitGroup) error {
 					delay = time.Duration(ERRDELAY)
 					break
 				}
-				srcHeight, err := et.ethsdk.BlockNumber(context.Background())
+				srcHeight, err := et.connectors[config.ETH_CHAIN].ethsdks.BlockNumber(context.Background())
 				if err != nil {
 					logger.Error(err)
 					delay = time.Duration(ERRDELAY)
@@ -195,14 +216,14 @@ func (et *Eth2TopRelayer) StartRelayer(wg *sync.WaitGroup) error {
 				// check fork
 				var checkError bool = false
 				for {
-					header, err := et.ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(destHeight))
+					header, err := et.connectors[config.ETH_CHAIN].ethsdks.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(destHeight))
 					if err != nil {
 						logger.Error("HeaderByNumber ", err)
 						checkError = true
 						break
 					}
 					// get known hashes with destHeight, mock now
-					isKnown, err := et.caller.IsKnown(opts, header.Number, header.Hash())
+					isKnown, err := et.connectors[config.ETH_CHAIN].caller.IsKnown(opts, header.Number, header.Hash())
 					if err != nil {
 						logger.Error("IsKnown ", err)
 						checkError = true
@@ -261,7 +282,7 @@ func (et *Eth2TopRelayer) signAndSendTransactions(lo, hi uint64) error {
 	}
 
 	for h := lo; h <= hi; h++ {
-		header, err := et.ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(h))
+		header, err := et.connectors[config.ETH_CHAIN].ethsdks.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(h))
 		if err != nil {
 			logger.Error(err)
 			return err

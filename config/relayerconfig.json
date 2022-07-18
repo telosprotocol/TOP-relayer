@@ -1,22 +1,31 @@
 {
-    "relayerconfig":[
-        {
-            "chainName": "TOP",
+    "relayerconfig":{
+        "TOP": {
             "chainId": 1023,
-            "listenurl": "https://ropsten.infura.io/v3/fb2a09e82a234971ad84203e6f75990e",
-            "submiturl": "http://192.168.50.204:8080",
-            "contract": "0xff00000000000000000000000000000000000002",
+            "submiturl": "http://192.168.30.200:8080",
             "keypath": ".relayer/wallet/top",
             "start": true
         },
-        {
-            "chainName": "ETH",
+        "ETH": {
             "chainId": 3,
-            "listenurl": "http://192.168.50.204:8080",
             "submiturl": "https://ropsten.infura.io/v3/fb2a09e82a234971ad84203e6f75990e",
-            "contract": "0x8448B5fd11a8EF2Ca72dEdF53D83140E42167f50",
+            "contract": "",
             "keypath": ".relayer/wallet/eth",
-            "start": true
+            "start": false
+        },
+        "BSC": {
+            "chainId": 56,
+            "submiturl": "https://bsc-dataseed1.binance.org",
+            "contract": "",
+            "keypath": ".relayer/wallet/bsc",
+            "start": false
+        },
+        "HECO": {
+            "chainId": 128,
+            "submiturl": "https://http-mainnet.hecochain.com",
+            "contract": "",
+            "keypath": ".relayer/wallet/bsc",
+            "start": false
         }
-    ]
+    }
 }

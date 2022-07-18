@@ -9,8 +9,10 @@ import (
 )
 
 var (
-	TOP_CHAIN string = "TOP"
-	ETH_CHAIN string = "ETH"
+	TOP_CHAIN  string = "TOP"
+	ETH_CHAIN  string = "ETH"
+	BSC_CHAIN  string = "BSC"
+	HECO_CHAIN string = "HECO"
 
 	LOG_DIR    string = "log"
 	LOG_CONFIG string = `{
@@ -37,9 +39,6 @@ type Relayer struct {
 	Chain   string `json:"chainName"`
 	ChainId uint64 `json:"chainId"`
 
-	//listen config
-	ListenUrl string `json:"listenurl"`
-
 	//submit config
 	SubmitUrl string `json:"submiturl"`
 	Contract  string `json:"contract"`
@@ -48,10 +47,10 @@ type Relayer struct {
 }
 
 type Config struct {
-	RelayerConfig []*Relayer `json:"relayerconfig"`
+	RelayerConfig map[string]*Relayer `json:"relayerconfig"`
 }
 
-func NewConfig(path string) (*Config, error) {
+func LoadRelayerConfig(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		log.Fatal("Read config password file failed:", err)

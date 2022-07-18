@@ -2,11 +2,13 @@ package top2eth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"strings"
 	"sync"
 	"time"
+	"toprelayer/config"
 	"toprelayer/contract/eth/topclient"
 	"toprelayer/sdk/ethsdk"
 	"toprelayer/sdk/topsdk"
@@ -45,32 +47,45 @@ type Top2EthRelayer struct {
 	caller     *topclient.TopClientCaller
 }
 
-func (te *Top2EthRelayer) Init(ethUrl, topUrl, keypath, pass string, chainid uint64, contract common.Address) error {
-	ethsdk, err := ethsdk.NewEthSdk(ethUrl)
+func (te *Top2EthRelayer) Init(cfg *config.Relayer, topUrl map[string]string, pass string) error {
+	ethsdk, err := ethsdk.NewEthSdk(cfg.SubmitUrl)
 	if err != nil {
 		return err
 	}
-	topsdk, err := topsdk.NewTopSdk(topUrl)
+	if len(topUrl) != 1 {
+		logger.Error("Top2EthRelayer topUrl not one")
+		return errors.New("Top2EthRelayer topUrl not one")
+	}
+	url, exist := topUrl[config.TOP_CHAIN]
+	if !exist {
+		logger.Error("Top2EthRelayer topUrl not exist")
+		return errors.New("Top2EthRelayer topUrl not exist")
+	}
+	topsdk, err := topsdk.NewTopSdk(url)
 	if err != nil {
+		logger.Error("Top2EthRelayer NewTopSdk error:", err)
 		return err
 	}
 	te.topsdk = topsdk
 	te.ethsdk = ethsdk
-	te.contract = contract
-	te.chainId = chainid
+	te.contract = common.HexToAddress(cfg.Contract)
+	te.chainId = cfg.ChainId
 
-	w, err := wallet.NewWallet(ethUrl, keypath, pass, chainid)
+	w, err := wallet.NewWallet(cfg.SubmitUrl, cfg.KeyPath, pass, cfg.ChainId)
 	if err != nil {
+		logger.Error("Top2EthRelayer NewWallet error:", err)
 		return err
 	}
 	te.wallet = w
 
-	te.transactor, err = topclient.NewTopClientTransactor(contract, topsdk)
+	te.transactor, err = topclient.NewTopClientTransactor(te.contract, topsdk)
 	if err != nil {
+		logger.Error("Top2EthRelayer NewTopClientTransactor error:", err)
 		return err
 	}
-	te.caller, err = topclient.NewTopClientCaller(contract, topsdk)
+	te.caller, err = topclient.NewTopClientCaller(te.contract, topsdk)
 	if err != nil {
+		logger.Error("Top2EthRelayer NewTopClientCaller error:", err)
 		return err
 	}
 	return nil

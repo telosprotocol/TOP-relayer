@@ -40,7 +40,7 @@ func main() {
 }
 
 func start(ctx *cli.Context) error {
-	cfg, err := config.NewConfig(ctx.String("config"))
+	cfg, err := config.LoadRelayerConfig(ctx.String("config"))
 	if err != nil {
 		return err
 	}
