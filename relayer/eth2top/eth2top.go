@@ -3,20 +3,16 @@ package eth2top
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"math/big"
 	"strings"
 	"sync"
 	"time"
-	"toprelayer/contract/topbridge"
+	"toprelayer/contract/top/ethclient"
 	"toprelayer/relayer/eth2top/ethashapp"
 	"toprelayer/sdk/ethsdk"
 	"toprelayer/sdk/topsdk"
-	"toprelayer/util"
 	"toprelayer/wallet"
 
-	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -25,33 +21,24 @@ import (
 )
 
 const (
-	METHOD_GETHEIGHT = "get_height"
-	METHOD_SYNC      = "sync"
-	METHOD_ISKNOWN   = "is_known"
-
-	ABI_PATH = "contract/topbridge/topbridge.abi"
-
 	FATALTIMEOUT int64 = 24 //hours
 	SUCCESSDELAY int64 = 10
 	ERRDELAY     int64 = 10
 	WAITDELAY    int64 = 60
 
-	CONFIRM_NUM int = 25
-	BATCH_NUM   int = 5
-
-	BLOCKS_PER_EPOCH uint64 = 30000
+	CONFIRM_NUM uint64 = 25
+	BATCH_NUM   uint64 = 5
 )
 
 type Eth2TopRelayer struct {
 	context.Context
-	contract        common.Address
-	chainId         uint64
-	wallet          wallet.IWallet
-	topsdk          *topsdk.TopSdk
-	ethsdk          *ethsdk.EthSdk
-	certaintyBlocks int
-	subBatch        int
-	abi             abi.ABI
+	contract   common.Address
+	chainId    uint64
+	wallet     wallet.IWallet
+	topsdk     *topsdk.TopSdk
+	ethsdk     *ethsdk.EthSdk
+	transactor *ethclient.EthClientTransactor
+	caller     *ethclient.EthClientCaller
 }
 
 type void struct{}
@@ -70,28 +57,23 @@ func (et *Eth2TopRelayer) Init(topUrl, ethUrl, keypath, pass string, chainid uin
 	et.ethsdk = ethsdk
 	et.contract = contract
 	et.chainId = chainid
-	et.subBatch = BATCH_NUM
-	et.certaintyBlocks = CONFIRM_NUM
 
 	w, err := wallet.NewWallet(topUrl, keypath, pass, chainid)
 	if err != nil {
 		return err
 	}
 	et.wallet = w
-	a, err := initABI(ABI_PATH)
+
+	et.transactor, err = ethclient.NewEthClientTransactor(contract, topsdk)
 	if err != nil {
 		return err
 	}
-	et.abi = a
-	return nil
-}
-
-func initABI(abifile string) (abi.ABI, error) {
-	abidata, err := ioutil.ReadFile(abifile)
+	et.caller, err = ethclient.NewEthClientCaller(contract, topsdk)
 	if err != nil {
-		return abi.ABI{}, err
+		return err
 	}
-	return abi.JSON(strings.NewReader(string(abidata)))
+
+	return nil
 }
 
 func (et *Eth2TopRelayer) ChainId() uint64 {
@@ -101,54 +83,37 @@ func (et *Eth2TopRelayer) ChainId() uint64 {
 func (et *Eth2TopRelayer) submitEthHeader(header []byte, nonce uint64) error {
 	gaspric, err := et.wallet.GasPrice(context.Background())
 	if err != nil {
+		logger.Error("Eth2TopRelayer GasPrice:%v", err)
 		return err
 	}
-
-	gaslimit, err := et.estimateSyncGas(gaspric, header)
+	packHeader, err := ethclient.PackSyncParam(header)
 	if err != nil {
-		logger.Error("estimateGas error:", err)
+		logger.Error("Eth2TopRelayer PackSyncParam:%v", err)
 		return err
 	}
-
-	capfee := big.NewInt(0).SetUint64(gaspric.Uint64())
-
+	gaslimit, err := et.wallet.EstimateGas(context.Background(), &et.contract, gaspric, packHeader)
+	if err != nil {
+		logger.Error("EstimateGas error:", err)
+		return err
+	}
 	//must init ops as bellow
 	ops := &bind.TransactOpts{
 		From:      et.wallet.CurrentAccount().Address,
 		Nonce:     big.NewInt(0).SetUint64(nonce),
 		GasLimit:  gaslimit,
-		GasFeeCap: capfee,
+		GasFeeCap: gaspric,
 		GasTipCap: big.NewInt(0),
 		Signer:    et.signTransaction,
 		Context:   context.Background(),
-		NoSend:    true, //false: Send the transaction to the target chain by default; true: don't send
+		NoSend:    false,
 	}
-
-	contractcaller, err := topbridge.NewTopBridgeTransactor(et.contract, et.topsdk)
+	sigTx, err := et.transactor.Sync(ops, header)
 	if err != nil {
+		logger.Error("Eth2TopRelayer sync:%v", err)
 		return err
 	}
 
-	sigTx, err := contractcaller.Sync(ops, header) //AddLightClientBlock(ops, header)
-	if err != nil {
-		logger.Error("Eth2TopRelayer AddLightClientBlock:%v", err)
-		return err
-	}
-
-	if ops.NoSend {
-		err = util.VerifyEthSignature(sigTx)
-		if err != nil {
-			logger.Error("Eth2TopRelayer VerifyEthSignature error:", err)
-			return err
-		}
-
-		err := et.topsdk.SendTransaction(ops.Context, sigTx)
-		if err != nil {
-			logger.Error("Eth2TopRelayer SendTransaction error:", err)
-			return err
-		}
-	}
-	logger.Info("tx info, account[%v] nonce:%v,gaslimit:%v,capfee:%v,hash:%v,size:%v", et.wallet.CurrentAccount().Address, nonce, gaslimit, capfee, sigTx.Hash(), len(header))
+	logger.Info("tx info, account[%v] nonce:%v,capfee:%v,hash:%v,size:%v", et.wallet.CurrentAccount().Address, nonce, gaspric, sigTx.Hash(), len(header))
 	return nil
 }
 
@@ -166,7 +131,7 @@ func (et *Eth2TopRelayer) signTransaction(addr common.Address, tx *types.Transac
 }
 
 func (et *Eth2TopRelayer) StartRelayer(wg *sync.WaitGroup) error {
-	logger.Info("Start Eth2TopRelayer relayer... chainid: %v, subBatch: %v certaintyBlocks: %v", et.chainId, et.subBatch, et.certaintyBlocks)
+	logger.Info("Start Eth2TopRelayer relayer... chainid: %v, subBatch: %v certaintyBlocks: %v", et.chainId, BATCH_NUM, CONFIRM_NUM)
 	defer wg.Done()
 
 	done := make(chan struct{})
@@ -186,7 +151,13 @@ func (et *Eth2TopRelayer) StartRelayer(wg *sync.WaitGroup) error {
 				done <- struct{}{}
 				return
 			default:
-				destHeight, err := et.getTopBridgeCurrentHeight()
+				opts := &bind.CallOpts{
+					Pending:     false,
+					From:        et.wallet.CurrentAccount().Address,
+					BlockNumber: nil,
+					Context:     context.Background(),
+				}
+				destHeight, err := et.caller.GetHeight(opts)
 				if err != nil {
 					logger.Error(err)
 					delay = time.Duration(ERRDELAY)
@@ -211,7 +182,7 @@ func (et *Eth2TopRelayer) StartRelayer(wg *sync.WaitGroup) error {
 				}
 				logger.Info("Eth2TopRelayer check src eth Height: %v", srcHeight)
 
-				if destHeight+1+uint64(et.certaintyBlocks) > srcHeight {
+				if destHeight+1+CONFIRM_NUM > srcHeight {
 					if set := timeout.Reset(timeoutDuration); !set {
 						logger.Error("reset timeout falied!")
 						delay = time.Duration(ERRDELAY)
@@ -231,9 +202,9 @@ func (et *Eth2TopRelayer) StartRelayer(wg *sync.WaitGroup) error {
 						break
 					}
 					// get known hashes with destHeight, mock now
-					isKnown, err := et.hashIsKnown(header.Number, header.Hash())
+					isKnown, err := et.caller.IsKnown(opts, header.Number, header.Hash())
 					if err != nil {
-						logger.Error("hashIsKnown ", err)
+						logger.Error("IsKnown ", err)
 						checkError = true
 						break
 					}
@@ -251,9 +222,9 @@ func (et *Eth2TopRelayer) StartRelayer(wg *sync.WaitGroup) error {
 				}
 
 				syncStartHeight := destHeight + 1
-				syncNum := srcHeight - uint64(et.certaintyBlocks) - destHeight
-				if syncNum > uint64(et.subBatch) {
-					syncNum = uint64(et.subBatch)
+				syncNum := srcHeight - CONFIRM_NUM - destHeight
+				if syncNum > BATCH_NUM {
+					syncNum = BATCH_NUM
 				}
 				syncEndHeight := syncStartHeight + syncNum - 1
 				logger.Info("Eth2TopRelayer sync from %v to %v", syncStartHeight, syncEndHeight)
@@ -271,7 +242,7 @@ func (et *Eth2TopRelayer) StartRelayer(wg *sync.WaitGroup) error {
 				}
 				logger.Info("Eth2TopRelayer sync round finish")
 				delay = time.Duration(SUCCESSDELAY)
-				break
+				// break
 			}
 		}
 	}(done)
@@ -320,65 +291,4 @@ func (et *Eth2TopRelayer) signAndSendTransactions(lo, hi uint64) error {
 	}
 
 	return nil
-}
-
-func (et *Eth2TopRelayer) verifyBlocks(header *types.Header) error {
-	return nil
-}
-
-func (et *Eth2TopRelayer) getTopBridgeCurrentHeight() (uint64, error) {
-	input, err := et.abi.Pack(METHOD_GETHEIGHT)
-	if err != nil {
-		return 0, err
-	}
-
-	msg := ethereum.CallMsg{
-		From: et.wallet.CurrentAccount().Address,
-		To:   &et.contract,
-		Data: input,
-	}
-	ret, err := et.topsdk.CallContract(context.Background(), msg, nil)
-	if err != nil {
-		return 0, err
-	}
-
-	return big.NewInt(0).SetBytes(ret).Uint64(), nil
-}
-
-func (et *Eth2TopRelayer) hashIsKnown(number *big.Int, hash common.Hash) (bool, error) {
-	input, err := et.abi.Pack(METHOD_ISKNOWN, number, hash)
-	if err != nil {
-		return false, err
-	}
-
-	msg := ethereum.CallMsg{
-		From: et.wallet.CurrentAccount().Address,
-		To:   &et.contract,
-		Data: input,
-	}
-	ret, err := et.topsdk.CallContract(context.Background(), msg, nil)
-	if err != nil {
-		return false, err
-	}
-	v := big.NewInt(0).SetBytes(ret).Uint64()
-	return v != 0, nil
-}
-
-func (et *Eth2TopRelayer) estimateSyncGas(gasprice *big.Int, data []byte) (uint64, error) {
-	input, err := et.abi.Pack(METHOD_SYNC, data)
-	if err != nil {
-		return 0, err
-	}
-
-	callmsg := ethereum.CallMsg{
-		From:      et.wallet.CurrentAccount().Address,
-		To:        &et.contract,
-		GasPrice:  gasprice,
-		Gas:       0,
-		GasFeeCap: nil,
-		GasTipCap: nil,
-		Data:      input,
-	}
-
-	return et.topsdk.EstimateGas(context.Background(), callmsg)
 }
