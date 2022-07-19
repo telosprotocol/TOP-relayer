@@ -4,11 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"log"
-	"math/big"
 	"toprelayer/sdk"
-	"toprelayer/util"
 
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/wonderivan/logger"
 )
 
@@ -18,10 +17,10 @@ type TopSdk struct {
 }
 
 type TopBlock struct {
-	Number    string  `json:"number"`
-	Header    string  `json:"header"`
-	BlockType string  `json:"blockType"`
-	ChainBits big.Int `json:"chainBits"`
+	Number    string `json:"number"`
+	Header    string `json:"header"`
+	BlockType string `json:"blockType"`
+	ChainBits string `json:"chainBits"`
 }
 
 const (
@@ -39,7 +38,7 @@ func NewTopSdk(url string) (*TopSdk, error) {
 
 func (t *TopSdk) GetTopElectBlockHeadByHeight(height uint64) (*TopBlock, error) {
 	var data json.RawMessage
-	err := t.Rpc.CallContext(context.Background(), &data, GETTOPELECTBLOCKHEADBYHEIGHT, util.Uint64ToHexString(height))
+	err := t.Rpc.CallContext(context.Background(), &data, GETTOPELECTBLOCKHEADBYHEIGHT, hexutil.EncodeUint64(height))
 	if err != nil {
 		return &TopBlock{}, err
 	} else if len(data) == 0 {
@@ -70,5 +69,5 @@ func (t *TopSdk) GetLatestTopElectBlockHeight() (uint64, error) {
 		logger.Error("sdk getLatestTopElectBlockHeight data: %v,error:%v", string(data), err)
 		return 0, err
 	}
-	return util.HexToUint64(res)
+	return hexutil.DecodeUint64(res)
 }

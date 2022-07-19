@@ -2,9 +2,9 @@ package top2eth
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/big"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -26,7 +26,7 @@ const (
 	FATALTIMEOUT int64 = 24 //hours
 	SUCCESSDELAY int64 = 60
 	ERRDELAY     int64 = 10
-	WAITDELAY    int64 = 1000
+	WAITDELAY    int64 = 60
 
 	CONFIRM_NUM int = 2
 	BATCH_NUM   int = 10
@@ -36,10 +36,18 @@ const (
 	TRANSACTION_BLOCK = "transactions"
 )
 
+var (
+	sendFlag = map[string]uint64{
+		config.ETH_CHAIN:  0x1,
+		config.BSC_CHAIN:  0x2,
+		config.HECO_CHAIN: 0x3}
+)
+
 type Top2EthRelayer struct {
 	context.Context
-	contract   common.Address
+	name       string
 	chainId    uint64
+	contract   common.Address
 	wallet     wallet.IWallet
 	ethsdk     *ethsdk.EthSdk
 	topsdk     *topsdk.TopSdk
@@ -47,21 +55,14 @@ type Top2EthRelayer struct {
 	caller     *topclient.TopClientCaller
 }
 
-func (te *Top2EthRelayer) Init(cfg *config.Relayer, topUrl map[string]string, pass string) error {
-	ethsdk, err := ethsdk.NewEthSdk(cfg.SubmitUrl)
+func (te *Top2EthRelayer) Init(chainName string, cfg *config.Relayer, listenUrl string, pass string) error {
+	te.name = chainName
+	te.chainId = cfg.ChainId
+	ethsdk, err := ethsdk.NewEthSdk(cfg.Url)
 	if err != nil {
 		return err
 	}
-	if len(topUrl) != 1 {
-		logger.Error("Top2EthRelayer topUrl not one")
-		return errors.New("Top2EthRelayer topUrl not one")
-	}
-	url, exist := topUrl[config.TOP_CHAIN]
-	if !exist {
-		logger.Error("Top2EthRelayer topUrl not exist")
-		return errors.New("Top2EthRelayer topUrl not exist")
-	}
-	topsdk, err := topsdk.NewTopSdk(url)
+	topsdk, err := topsdk.NewTopSdk(listenUrl)
 	if err != nil {
 		logger.Error("Top2EthRelayer NewTopSdk error:", err)
 		return err
@@ -69,21 +70,20 @@ func (te *Top2EthRelayer) Init(cfg *config.Relayer, topUrl map[string]string, pa
 	te.topsdk = topsdk
 	te.ethsdk = ethsdk
 	te.contract = common.HexToAddress(cfg.Contract)
-	te.chainId = cfg.ChainId
 
-	w, err := wallet.NewWallet(cfg.SubmitUrl, cfg.KeyPath, pass, cfg.ChainId)
+	w, err := wallet.NewWallet(cfg.Url, cfg.KeyPath, pass, cfg.ChainId)
 	if err != nil {
 		logger.Error("Top2EthRelayer NewWallet error:", err)
 		return err
 	}
 	te.wallet = w
 
-	te.transactor, err = topclient.NewTopClientTransactor(te.contract, topsdk)
+	te.transactor, err = topclient.NewTopClientTransactor(te.contract, ethsdk)
 	if err != nil {
 		logger.Error("Top2EthRelayer NewTopClientTransactor error:", err)
 		return err
 	}
-	te.caller, err = topclient.NewTopClientCaller(te.contract, topsdk)
+	te.caller, err = topclient.NewTopClientCaller(te.contract, ethsdk)
 	if err != nil {
 		logger.Error("Top2EthRelayer NewTopClientCaller error:", err)
 		return err
@@ -282,22 +282,35 @@ func (te *Top2EthRelayer) signAndSendTransactions(lo, hi, batchNum uint64) (uint
 		return 0, 0, err
 	}
 
-	var batch uint64 = 0
-	h := lo
-	for ; h <= hi; h++ {
+	num := uint64(0)
+	flag := sendFlag[te.name]
+	for h := lo; h <= hi; h++ {
 		block, err := te.topsdk.GetTopElectBlockHeadByHeight(h)
 		if err != nil {
-			logger.Error(err)
-			return 0, 0, err
+			logger.Error("GetTopElectBlockHeadByHeight error:", err)
+			break
 		}
-
-		if block.BlockType == ELECTION_BLOCK || block.BlockType == AGGREGATE_BLOCK {
-			// 发送给所有合约
+		logger.Debug("Top block, height: %v, type: %v, chainbits: %v", block.Number, block.BlockType, block.ChainBits)
+		batch := false
+		if block.BlockType == ELECTION_BLOCK {
+			batch = true
+		} else if block.BlockType == AGGREGATE_BLOCK {
+			blockFlag, err := strconv.ParseInt(block.ChainBits, 0, 64)
+			if err != nil {
+				logger.Error("ParseInt error:", err)
+				break
+			}
+			if int64(flag)&blockFlag > 0 {
+				batch = true
+			}
+		}
+		if batch {
+			logger.Debug("batch header")
 			bytes := common.Hex2Bytes(block.Header[2:])
 			batchHeaders = append(batchHeaders, bytes)
 			lastSubHeight = h
-			batch += 1
-			if batch >= batchNum {
+			num += 1
+			if num >= batchNum {
 				break
 			}
 		} else {

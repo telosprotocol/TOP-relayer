@@ -36,18 +36,17 @@ var (
 
 type Relayer struct {
 	// chain symbol
-	Chain   string `json:"chainName"`
 	ChainId uint64 `json:"chainId"`
 
 	//submit config
-	SubmitUrl string `json:"submiturl"`
-	Contract  string `json:"contract"`
-	KeyPath   string `json:"keypath"`
-	Start     bool   `json:"start"`
+	Url      string `json:"url"`
+	Contract string `json:"contract"`
+	KeyPath  string `json:"keypath"`
 }
 
 type Config struct {
-	RelayerConfig map[string]*Relayer `json:"relayerconfig"`
+	RelayerConfig map[string]*Relayer `json:"relayer_config"`
+	RelayerToRun  string              `json:"relayer_to_run"`
 }
 
 func LoadRelayerConfig(path string) (*Config, error) {

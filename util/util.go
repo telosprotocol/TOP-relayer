@@ -2,7 +2,6 @@ package util
 
 import (
 	"fmt"
-	"log"
 	"math/big"
 	"os"
 	"toprelayer/config"
@@ -10,34 +9,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"golang.org/x/crypto/ssh/terminal"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/rlp"
 )
-
-//Decode eth Transaction Data
-func DecodeRawTx(rawTx string) (*types.Transaction, error) {
-	body, err := hexutil.Decode(rawTx)
-	if err != nil {
-		return nil, err
-	}
-	var etx types.Transaction
-	err = rlp.DecodeBytes(body, &etx)
-	if err != nil {
-		return nil, err
-	}
-
-	return &etx, nil
-}
-
-func Uint64ToHexString(val uint64) string {
-	return hexutil.EncodeUint64(val)
-}
-
-func HexToUint64(hxs string) (uint64, error) {
-	return hexutil.DecodeUint64(hxs)
-}
 
 func zeroBytes() []byte {
 	return []byte{
@@ -104,28 +78,12 @@ func VerifyEthSignature(ethtx *types.Transaction) error {
 	return nil
 }
 
-func readPassword(prompt string) (string, error) {
-	fmt.Print(prompt)
+func ReadPassword(cfg *config.Config) (string, error) {
+	fmt.Print(">>> Please Enter " + cfg.RelayerToRun + " pasword:\n>>> ")
 	pass, err := terminal.ReadPassword(int(os.Stdin.Fd()))
 	if err != nil {
 		return string(pass), err
 	}
 	fmt.Println()
 	return string(pass), nil
-}
-
-func GetPasses(cfg *config.Config) (map[string]string, error) {
-	chainpass := make(map[string]string)
-	for _, chain := range cfg.RelayerConfig {
-		if !chain.Start {
-			continue
-		}
-		pass, err := readPassword(">>> Please Enter " + chain.Chain + " pasword:\n>>> ")
-		if err != nil {
-			log.Fatal("Read password file failed:", err)
-			return nil, err
-		}
-		chainpass[chain.Chain] = pass
-	}
-	return chainpass, nil
 }

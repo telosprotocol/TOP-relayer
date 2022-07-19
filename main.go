@@ -45,7 +45,7 @@ func start(ctx *cli.Context) error {
 		return err
 	}
 
-	passes, err := util.MakePasswordList(ctx, cfg)
+	pass, err := util.MakePassword(ctx, cfg)
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ func start(ctx *cli.Context) error {
 	}
 
 	wg := new(sync.WaitGroup)
-	err = relayer.StartRelayer(cfg, passes, wg)
+	err = relayer.StartRelayer(cfg, pass, wg)
 	if err != nil {
 		return err
 	}

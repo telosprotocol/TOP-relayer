@@ -1,9 +1,9 @@
 package util
 
 import (
-	"encoding/json"
 	"log"
 	"os"
+	"strings"
 	"toprelayer/config"
 
 	"github.com/urfave/cli/v2"
@@ -23,26 +23,26 @@ var ( // relayer config
 	}
 )
 
-func MakePasswordList(ctx *cli.Context, cfg *config.Config) (map[string]string, error) {
+func MakePassword(ctx *cli.Context, cfg *config.Config) (string, error) {
 	path := ctx.String(PasswordFileFlag.Name)
 	if path == "" {
-		return GetPasses(cfg)
+		return ReadPassword(cfg)
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		log.Fatal("Failed to read password file:", err)
-		return nil, err
+		return string(""), err
 	}
-	passes := make(map[string]string)
-	err = json.Unmarshal(data, &passes)
-	if err != nil {
-		log.Fatal("Umarshal password file failed:", err)
-		return nil, err
-	}
-	// lines := strings.Split(string(text), "\n")
-	// // Sanitise DOS line endings.
-	// for i := range lines {
-	// 	lines[i] = strings.TrimRight(lines[i], "\r")
+	// passes := make(map[string]string)
+	// err = json.Unmarshal(data, &passes)
+	// if err != nil {
+	// 	log.Fatal("Umarshal password file failed:", err)
+	// 	return nil, err
 	// }
-	return passes, err
+	lines := strings.Split(string(data), "\n")
+	// Sanitise DOS line endings.
+	for i := range lines {
+		lines[i] = strings.TrimRight(lines[i], "\r")
+	}
+	return lines[0], err
 }

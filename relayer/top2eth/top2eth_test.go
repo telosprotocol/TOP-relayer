@@ -1,13 +1,9 @@
 package top2eth
 
 import (
-	"context"
-	"math/big"
+	"fmt"
+	"strconv"
 	"testing"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rlp"
 )
 
 const ethChainId uint64 = 3
@@ -64,53 +60,82 @@ func TestSubmitHeader(t *testing.T) {
 	} */
 }
 
-func TestEstimateGas(t *testing.T) {
-	const SUBMITTERURL string = "http://192.168.50.235:8545"
-	const LISTENURL string = "http://192.168.50.204:19086"
-	var DEFAULTPATH = "../../.relayer/wallet/eth"
-	var CONTRACT common.Address = common.HexToAddress("0xd287F92c8cB8Cd54DC4C93a1619b04481E4a62F9")
-	sub := &Top2EthRelayer{}
-	err := sub.Init(SUBMITTERURL, LISTENURL, DEFAULTPATH, "", ethChainId, CONTRACT)
-	if err != nil {
-		t.Fatal(err)
-	}
+// func TestEstimateGas(t *testing.T) {
+// 	const SUBMITTERURL string = "http://192.168.50.235:8545"
+// 	const LISTENURL string = "http://192.168.50.204:19086"
+// 	var DEFAULTPATH = "../../.relayer/wallet/eth"
+// 	var CONTRACT common.Address = common.HexToAddress("0xd287F92c8cB8Cd54DC4C93a1619b04481E4a62F9")
+// 	sub := &Top2EthRelayer{}
+// 	err := sub.Init(SUBMITTERURL, LISTENURL, DEFAULTPATH, "", ethChainId, CONTRACT)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
 
-	header := &types.Header{Number: big.NewInt(int64(1))}
-	data, err := rlp.EncodeToBytes(header)
-	if err != nil {
-		t.Fatal("EncodeToBytes:", err)
-	}
+// 	header := &types.Header{Number: big.NewInt(int64(1))}
+// 	data, err := rlp.EncodeToBytes(header)
+// 	if err != nil {
+// 		t.Fatal("EncodeToBytes:", err)
+// 	}
 
-	pric, err := sub.wallet.GasPrice(context.Background())
-	if err != nil {
-		t.Fatal("GasPrice:", err)
-	}
+// 	pric, err := sub.wallet.GasPrice(context.Background())
+// 	if err != nil {
+// 		t.Fatal("GasPrice:", err)
+// 	}
 
-	gaslimit, err := sub.estimateSyncGas(pric, data)
-	if err != nil {
-		t.Fatal("estimateGas:", err)
-	}
-	t.Log("gaslimit:", gaslimit)
+// 	gaslimit, err := sub.estimateSyncGas(pric, data)
+// 	if err != nil {
+// 		t.Fatal("estimateGas:", err)
+// 	}
+// 	t.Log("gaslimit:", gaslimit)
 
-	_, err = sub.getEthBridgeCurrentHeight()
-	if err != nil {
-		t.Fatal("getEthBridgeCurrentHeight:", err)
-	}
-}
+// 	_, err = sub.getEthBridgeCurrentHeight()
+// 	if err != nil {
+// 		t.Fatal("getEthBridgeCurrentHeight:", err)
+// 	}
+// }
 
-func TestGetETHBridgeState(t *testing.T) {
-	const SUBMITTERURL string = "http://192.168.50.235:8545"
-	const LISTENURL string = "http://192.168.50.204:19086"
-	var DEFAULTPATH = "../../.relayer/wallet/eth"
-	var CONTRACT common.Address = common.HexToAddress("0xd287F92c8cB8Cd54DC4C93a1619b04481E4a62F9")
-	sub := &Top2EthRelayer{}
-	err := sub.Init(SUBMITTERURL, LISTENURL, DEFAULTPATH, "", ethChainId, CONTRACT)
-	if err != nil {
-		t.Fatal(err)
+// func TestGetETHBridgeState(t *testing.T) {
+// 	const SUBMITTERURL string = "http://192.168.50.235:8545"
+// 	const LISTENURL string = "http://192.168.50.204:19086"
+// 	var DEFAULTPATH = "../../.relayer/wallet/eth"
+// 	var CONTRACT common.Address = common.HexToAddress("0xd287F92c8cB8Cd54DC4C93a1619b04481E4a62F9")
+// 	sub := &Top2EthRelayer{}
+// 	err := sub.Init(SUBMITTERURL, LISTENURL, DEFAULTPATH, "", ethChainId, CONTRACT)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	curr, err := sub.getEthBridgeCurrentHeight()
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	t.Log("current height:", curr)
+// }
+
+func TestConvert(t *testing.T) {
+	flag := 0x1
+	// blockFlagStr := "0x3"
+	// blockFlagStr = blockFlagStr[2:]
+	// for {
+	// 	if len(blockFlagStr) < num {
+	// 		bytes = append([]byte{uint8(0)}, bytes...)
+	// 	} else {
+	// 		break
+	// 	}
+	// }
+	// blockFlagBytes, err := hex.DecodeString(blockFlagStr[2:])
+	// if err != nil {
+	// 	t.Fatal(err)
+	// }
+	// blockFlag := binary.BigEndian.Uint64(blockFlagBytes)
+	// fmt.Println(uint64(flag) & blockFlag)
+
+	blockFlagStr := "0x3"                         // 这里前两个字符要确定多少进制的
+	i, _ := strconv.ParseInt(blockFlagStr, 0, 64) // 第二个参数为0时会自动判断字符类型
+	fmt.Println(i)
+
+	if int64(flag)&i > 0 {
+		fmt.Println("batch")
+	} else {
+		fmt.Println("not batch")
 	}
-	curr, err := sub.getEthBridgeCurrentHeight()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log("current height:", curr)
 }
