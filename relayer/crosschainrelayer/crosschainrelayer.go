@@ -1,4 +1,4 @@
-package top2eth
+package crosschainrelayer
 
 import (
 	"context"
@@ -12,7 +12,6 @@ import (
 	"toprelayer/contract/eth/topclient"
 	"toprelayer/sdk/ethsdk"
 	"toprelayer/sdk/topsdk"
-	"toprelayer/util"
 	"toprelayer/wallet"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -28,8 +27,8 @@ const (
 	ERRDELAY     int64 = 10
 	WAITDELAY    int64 = 60
 
-	CONFIRM_NUM int = 2
-	BATCH_NUM   int = 10
+	CONFIRM_NUM uint64 = 2
+	BATCH_NUM   uint64 = 10
 
 	ELECTION_BLOCK    = "election"
 	AGGREGATE_BLOCK   = "aggregate"
@@ -43,7 +42,7 @@ var (
 		config.HECO_CHAIN: 0x3}
 )
 
-type Top2EthRelayer struct {
+type CrossChainRelayer struct {
 	context.Context
 	name       string
 	chainId    uint64
@@ -55,16 +54,17 @@ type Top2EthRelayer struct {
 	caller     *topclient.TopClientCaller
 }
 
-func (te *Top2EthRelayer) Init(chainName string, cfg *config.Relayer, listenUrl string, pass string) error {
+func (te *CrossChainRelayer) Init(chainName string, cfg *config.Relayer, listenUrl string, pass string) error {
 	te.name = chainName
 	te.chainId = cfg.ChainId
 	ethsdk, err := ethsdk.NewEthSdk(cfg.Url)
 	if err != nil {
+		logger.Error("CrossChainRelayer", te.name, "NewEthSdk error:", err)
 		return err
 	}
 	topsdk, err := topsdk.NewTopSdk(listenUrl)
 	if err != nil {
-		logger.Error("Top2EthRelayer NewTopSdk error:", err)
+		logger.Error("CrossChainRelayer", te.name, "NewTopSdk error:", err)
 		return err
 	}
 	te.topsdk = topsdk
@@ -73,43 +73,43 @@ func (te *Top2EthRelayer) Init(chainName string, cfg *config.Relayer, listenUrl 
 
 	w, err := wallet.NewWallet(cfg.Url, cfg.KeyPath, pass, cfg.ChainId)
 	if err != nil {
-		logger.Error("Top2EthRelayer NewWallet error:", err)
+		logger.Error("CrossChainRelayer", te.name, "NewWallet error:", err)
 		return err
 	}
 	te.wallet = w
 
 	te.transactor, err = topclient.NewTopClientTransactor(te.contract, ethsdk)
 	if err != nil {
-		logger.Error("Top2EthRelayer NewTopClientTransactor error:", err)
+		logger.Error("CrossChainRelayer", te.name, "NewTopClientTransactor error:", err)
 		return err
 	}
 	te.caller, err = topclient.NewTopClientCaller(te.contract, ethsdk)
 	if err != nil {
-		logger.Error("Top2EthRelayer NewTopClientCaller error:", err)
+		logger.Error("CrossChainRelayer", te.name, "NewTopClientCaller error:", err)
 		return err
 	}
 	return nil
 }
 
-func (te *Top2EthRelayer) ChainId() uint64 {
+func (te *CrossChainRelayer) ChainId() uint64 {
 	return te.chainId
 }
 
-func (te *Top2EthRelayer) submitTopHeader(headers []byte, nonce uint64) error {
-	logger.Info("Top2EthRelayer submitTopHeader length: %v,chainid: %v", len(headers), te.chainId)
-	logger.Info("Top2EthRelayer raw data: %v", common.Bytes2Hex(headers))
+func (te *CrossChainRelayer) submitTopHeader(headers []byte, nonce uint64) error {
+	logger.Info("CrossChainRelayer", te.name, "raw data:", common.Bytes2Hex(headers))
 	gaspric, err := te.wallet.GasPrice(context.Background())
 	if err != nil {
-		logger.Error("Top2EthRelayer GasPrice:", err)
+		logger.Error("CrossChainRelayer", te.name, "GasPrice error:", err)
 		return err
 	}
 	packHeaders, err := topclient.PackSyncParam(headers)
 	if err != nil {
-		logger.Error("Eth2TopRelayer PackSyncParam:%v", err)
+		logger.Error("CrossChainRelayer", te.name, "PackSyncParam error:", err)
 		return err
 	}
 	gaslimit, err := te.wallet.EstimateGas(context.Background(), &te.contract, gaspric, packHeaders)
 	if err != nil {
+		logger.Error("CrossChainRelayer", te.name, "EstimateGas error:", err)
 		return err
 	}
 	//test mock
@@ -119,9 +119,8 @@ func (te *Top2EthRelayer) submitTopHeader(headers []byte, nonce uint64) error {
 	if err != nil {
 		return err
 	}
-	logger.Info("account[%v] balance:%v,nonce:%v,gasprice:%v,gaslimit:%v", te.wallet.CurrentAccount().Address, balance.Uint64(), nonce, gaspric.Uint64(), gaslimit)
 	if balance.Uint64() <= gaspric.Uint64()*gaslimit {
-		return fmt.Errorf("account[%v] not sufficient funds,balance:%v", te.wallet.CurrentAccount().Address, balance.Uint64())
+		return fmt.Errorf("CrossChainRelayer %v account[%v] balance not enough:%v", te.name, te.wallet.CurrentAccount().Address, balance.Uint64())
 	}
 
 	//must init ops as bellow
@@ -132,40 +131,20 @@ func (te *Top2EthRelayer) submitTopHeader(headers []byte, nonce uint64) error {
 		GasLimit: gaslimit,
 		Signer:   te.signTransaction,
 		Context:  context.Background(),
-		NoSend:   true,
+		NoSend:   false,
 	}
 
-	contractcaller, err := topclient.NewTopClientTransactor(te.contract, te.ethsdk)
+	sigTx, err := te.transactor.AddLightClientBlocks(ops, headers)
 	if err != nil {
-		logger.Error("Top2EthRelayer NewBridgeTransactor:", err)
+		logger.Error("CrossChainRelayer", te.name, "AddLightClientBlocks error:", err)
 		return err
 	}
-
-	sigTx, err := contractcaller.AddLightClientBlocks(ops, headers)
-	if err != nil {
-		logger.Error("Top2EthRelayer AddLightClientBlocks error:", err)
-		return err
-	}
-
-	if ops.NoSend {
-		err = util.VerifyEthSignature(sigTx)
-		if err != nil {
-			logger.Error("Top2EthRelayer VerifyEthSignature error:", err)
-			return err
-		}
-
-		err := te.ethsdk.SendTransaction(ops.Context, sigTx)
-		if err != nil {
-			logger.Error("Top2EthRelayer SendTransaction error:", err)
-			return err
-		}
-	}
-	logger.Info("hash:%v", sigTx.Hash())
+	logger.Info("CrossChainRelayer", te.name, "tx info, account[%v] balance:%v,nonce:%v,gasprice:%v,gaslimit:%v,length:%v,chainid:%v,hash:%v", te.wallet.CurrentAccount().Address, balance.Uint64(), nonce, gaspric.Uint64(), gaslimit, len(headers), te.chainId, sigTx.Hash())
 	return nil
 }
 
 //callback function to sign tx before send.
-func (te *Top2EthRelayer) signTransaction(addr common.Address, tx *types.Transaction) (*types.Transaction, error) {
+func (te *CrossChainRelayer) signTransaction(addr common.Address, tx *types.Transaction) (*types.Transaction, error) {
 	acc := te.wallet.CurrentAccount()
 	if strings.EqualFold(acc.Address.Hex(), addr.Hex()) {
 		stx, err := te.wallet.SignTx(tx)
@@ -177,8 +156,8 @@ func (te *Top2EthRelayer) signTransaction(addr common.Address, tx *types.Transac
 	return nil, fmt.Errorf("address:%v not available", addr)
 }
 
-func (te *Top2EthRelayer) StartRelayer(wg *sync.WaitGroup) error {
-	logger.Info("Start Top2EthRelayer relayer... chainid: %v, subBatch: %v certaintyBlocks: %v", te.chainId, BATCH_NUM, CONFIRM_NUM)
+func (te *CrossChainRelayer) StartRelayer(wg *sync.WaitGroup) error {
+	logger.Info("Start CrossChainRelayer %v... chainid: %v, subBatch: %v certaintyBlocks: %v", te.name, te.chainId, BATCH_NUM, CONFIRM_NUM)
 	defer wg.Done()
 
 	done := make(chan struct{})
@@ -188,7 +167,7 @@ func (te *Top2EthRelayer) StartRelayer(wg *sync.WaitGroup) error {
 		timeoutDuration := time.Duration(FATALTIMEOUT) * time.Hour
 		timeout := time.NewTimer(timeoutDuration)
 		defer timeout.Stop()
-		logger.Info("Top2EthRelayer set timeout: %v hours", FATALTIMEOUT)
+		logger.Info("CrossChainRelayer %v set timeout: %v hours", te.name, FATALTIMEOUT)
 		var delay time.Duration = time.Duration(1)
 
 		var lastSubHeight uint64 = 0
@@ -213,25 +192,25 @@ func (te *Top2EthRelayer) StartRelayer(wg *sync.WaitGroup) error {
 					delay = time.Duration(ERRDELAY)
 					break
 				}
-				logger.Info("Top2EthRelayer dest eth Height: %v", toHeight)
+				logger.Info("CrossChainRelayer", te.name, "dest eth Height:", toHeight)
 				fromHeight, err := te.topsdk.GetLatestTopElectBlockHeight()
 				if err != nil {
 					logger.Error(err)
 					delay = time.Duration(ERRDELAY)
 					break
 				}
-				logger.Info("Top2EthRelayer src top Height: %v", fromHeight)
+				logger.Info("CrossChainRelayer", te.name, "src top Height:", fromHeight)
 
 				if lastSubHeight <= toHeight && toHeight < lastUnsubHeight {
 					toHeight = lastUnsubHeight
 				}
-				if toHeight+1+uint64(CONFIRM_NUM) > fromHeight {
+				if toHeight+1+CONFIRM_NUM > fromHeight {
 					if set := timeout.Reset(timeoutDuration); !set {
-						logger.Error("reset timeout falied!")
+						logger.Error("CrossChainRelayer", te.name, "reset timeout falied!")
 						delay = time.Duration(ERRDELAY)
 						break
 					}
-					logger.Debug("wait src top update, delay")
+					logger.Debug("CrossChainRelayer", te.name, "wait src top update, delay")
 					delay = time.Duration(WAITDELAY)
 					break
 				}
@@ -240,28 +219,28 @@ func (te *Top2EthRelayer) StartRelayer(wg *sync.WaitGroup) error {
 				// if syncNum > uint64(te.subBatch) {
 				// 	syncNum = uint64(te.subBatch)
 				// }
-				limitEndHeight := fromHeight - uint64(CONFIRM_NUM)
+				limitEndHeight := fromHeight - CONFIRM_NUM
 
-				subHeight, unsubHeight, err := te.signAndSendTransactions(syncStartHeight, limitEndHeight, uint64(BATCH_NUM))
+				subHeight, unsubHeight, err := te.signAndSendTransactions(syncStartHeight, limitEndHeight, BATCH_NUM)
 				if err != nil {
-					logger.Error("Top2EthRelayer signAndSendTransactions failed: %v", err)
+					logger.Error("CrossChainRelayer", te.name, "signAndSendTransactions failed:", err)
 					delay = time.Duration(ERRDELAY)
 					break
 				}
 				if subHeight > lastSubHeight {
-					logger.Info("Top2EthRelayer lastSubHeight: %v=>%v", lastSubHeight, subHeight)
+					logger.Info("CrossChainRelayer %v lastSubHeight: %v=>%v", te.name, lastSubHeight, subHeight)
 					lastSubHeight = subHeight
 				}
 				if unsubHeight > lastUnsubHeight {
-					logger.Info("Top2EthRelayer lastUnsubHeight: %v=>%v", lastUnsubHeight, unsubHeight)
+					logger.Info("CrossChainRelayer %v lastUnsubHeight: %v=>%v", te.name, lastUnsubHeight, unsubHeight)
 					lastUnsubHeight = unsubHeight
 				}
 				if set := timeout.Reset(timeoutDuration); !set {
-					logger.Error("reset timeout falied!")
+					logger.Error("CrossChainRelayer", te.name, "reset timeout falied!")
 					delay = time.Duration(ERRDELAY)
 					break
 				}
-				logger.Info("Top2EthRelayer sync round finish")
+				logger.Info("CrossChainRelayer", te.name, "sync round finish")
 				delay = time.Duration(SUCCESSDELAY)
 				break
 			}
@@ -273,7 +252,7 @@ func (te *Top2EthRelayer) StartRelayer(wg *sync.WaitGroup) error {
 	return nil
 }
 
-func (te *Top2EthRelayer) signAndSendTransactions(lo, hi, batchNum uint64) (uint64, uint64, error) {
+func (te *CrossChainRelayer) signAndSendTransactions(lo, hi, batchNum uint64) (uint64, uint64, error) {
 	var lastSubHeight uint64 = 0
 	var lastUnsubHeight uint64 = 0
 	var batchHeaders [][]byte
@@ -287,7 +266,7 @@ func (te *Top2EthRelayer) signAndSendTransactions(lo, hi, batchNum uint64) (uint
 	for h := lo; h <= hi; h++ {
 		block, err := te.topsdk.GetTopElectBlockHeadByHeight(h)
 		if err != nil {
-			logger.Error("GetTopElectBlockHeadByHeight error:", err)
+			logger.Error("CrossChainRelayer", te.name, "GetTopElectBlockHeadByHeight error:", err)
 			break
 		}
 		logger.Debug("Top block, height: %v, type: %v, chainbits: %v", block.Number, block.BlockType, block.ChainBits)
@@ -305,7 +284,7 @@ func (te *Top2EthRelayer) signAndSendTransactions(lo, hi, batchNum uint64) (uint
 			}
 		}
 		if batch {
-			logger.Debug("batch header")
+			logger.Debug(">>>>> batch header")
 			bytes := common.Hex2Bytes(block.Header[2:])
 			batchHeaders = append(batchHeaders, bytes)
 			lastSubHeight = h
@@ -320,13 +299,13 @@ func (te *Top2EthRelayer) signAndSendTransactions(lo, hi, batchNum uint64) (uint
 	if len(batchHeaders) > 0 {
 		data, err := rlp.EncodeToBytes(batchHeaders)
 		if err != nil {
-			logger.Error("Eth2TopRelayer EncodeHeaders failed:", err)
+			logger.Error("CrossChainRelayer", te.name, "EncodeHeaders failed:", err)
 			return 0, 0, err
 		}
 
 		err = te.submitTopHeader(data, nonce)
 		if err != nil {
-			logger.Error("Top2EthRelayer submitHeaders failed:", err)
+			logger.Error("CrossChainRelayer", te.name, "submitHeaders failed:", err)
 			return 0, 0, err
 		}
 	}

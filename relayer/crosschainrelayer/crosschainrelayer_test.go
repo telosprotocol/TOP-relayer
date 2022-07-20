@@ -1,4 +1,4 @@
-package top2eth
+package crosschainrelayer
 
 import (
 	"fmt"

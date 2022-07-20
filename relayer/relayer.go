@@ -5,19 +5,19 @@ import (
 	"sync"
 
 	"toprelayer/config"
-	"toprelayer/relayer/eth2top"
-	"toprelayer/relayer/top2eth"
+	"toprelayer/relayer/crosschainrelayer"
+	"toprelayer/relayer/toprelayer"
 
 	"github.com/wonderivan/logger"
 )
 
 var (
 	topRelayers = map[string]IChainRelayer{
-		config.ETH_CHAIN:  new(eth2top.Eth2TopRelayer),
-		config.BSC_CHAIN:  new(eth2top.Eth2TopRelayer),
-		config.HECO_CHAIN: new(eth2top.Eth2TopRelayer)}
+		config.ETH_CHAIN:  new(toprelayer.TopRelayer),
+		config.BSC_CHAIN:  new(toprelayer.TopRelayer),
+		config.HECO_CHAIN: new(toprelayer.TopRelayer)}
 
-	crossChainRelayer = new(top2eth.Top2EthRelayer)
+	crossChainRelayer = new(crosschainrelayer.CrossChainRelayer)
 )
 
 type IChainRelayer interface {

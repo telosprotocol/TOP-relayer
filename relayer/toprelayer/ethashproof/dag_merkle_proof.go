@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"toprelayer/relayer/eth2top/ethash"
-	"toprelayer/relayer/eth2top/mtree"
+	"toprelayer/relayer/toprelayer/ethash"
+	"toprelayer/relayer/toprelayer/mtree"
 )
 
 func pathExists(path string) (bool, error) {
