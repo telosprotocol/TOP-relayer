@@ -6,8 +6,8 @@ import (
 	"io"
 	"os"
 
-	"toprelayer/relayer/eth2top/ethash"
-	"toprelayer/relayer/eth2top/mtree"
+	"toprelayer/relayer/toprelayer/ethash"
+	"toprelayer/relayer/toprelayer/mtree"
 )
 
 func processDuringRead(f *os.File, startIn128Res int, fullSizeIn128Res uint32, mt *mtree.DagTree) error {

@@ -1,54 +1,83 @@
 package relayer
 
 import (
+	"errors"
 	"sync"
-	"time"
 
 	"toprelayer/config"
-	"toprelayer/relayer/eth2top"
-	"toprelayer/relayer/top2eth"
+	"toprelayer/relayer/crosschainrelayer"
+	"toprelayer/relayer/toprelayer"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/wonderivan/logger"
 )
 
-var relayerMap = map[string]IChainRelayer{config.TOP_CHAIN: new(eth2top.Eth2TopRelayer), config.ETH_CHAIN: new(top2eth.Top2EthRelayer)}
+var (
+	topRelayers = map[string]IChainRelayer{
+		config.ETH_CHAIN:  new(toprelayer.TopRelayer),
+		config.BSC_CHAIN:  new(toprelayer.TopRelayer),
+		config.HECO_CHAIN: new(toprelayer.TopRelayer)}
+
+	crossChainRelayer = new(crosschainrelayer.CrossChainRelayer)
+)
 
 type IChainRelayer interface {
-	Init(fromUrl, toUrl, keypath, pass string, chainid uint64, contract common.Address) error
+	Init(chainName string, cfg *config.Relayer, listenUrl string, pass string) error
 	StartRelayer(*sync.WaitGroup) error
 	ChainId() uint64
 }
 
-func StartRelayer(cfg *config.Config, chainpass map[uint64]string, wg *sync.WaitGroup) (err error) {
-	for _, chain := range cfg.RelayerConfig {
-		chainName := chain.Chain
-		_, exist := relayerMap[chainName]
-		if !exist {
-			logger.Warn("unknown chain config: %v", chainName)
-			continue
-		}
-		if chain.Start {
-			err := relayerMap[chainName].Init(
-				chain.SubmitUrl,
-				chain.ListenUrl,
-				chain.KeyPath,
-				chainpass[chain.ChainId],
-				chain.ChainId,
-				common.HexToAddress(chain.Contract),
-			)
-			if err != nil {
-				return err
-			}
+func startOneRelayer(chainName string, relayer IChainRelayer, cfg *config.Relayer, listenUrl string, pass string, wg *sync.WaitGroup) error {
+	err := relayer.Init(chainName, cfg, listenUrl, pass)
+	if err != nil {
+		logger.Error("startOneRelayer error:", err)
+		return err
+	}
 
-			wg.Add(1)
-			go func() {
-				err = relayerMap[chainName].StartRelayer(wg)
-			}()
+	wg.Add(1)
+	go func() {
+		err = relayer.StartRelayer(wg)
+	}()
+	if err != nil {
+		logger.Error("relayer.StartRelayer error:", err)
+		return err
+	}
+	return nil
+}
+
+func StartRelayer(cfg *config.Config, pass string, wg *sync.WaitGroup) (err error) {
+	topConfig, exist := cfg.RelayerConfig[config.TOP_CHAIN]
+	if !exist {
+		return errors.New("not found TOP chain config")
+	}
+	RelayerConfig, exist := cfg.RelayerConfig[cfg.RelayerToRun]
+	if !exist {
+		return errors.New("not found config of RelayerToRun")
+	}
+	if cfg.RelayerToRun == config.TOP_CHAIN {
+		for name, c := range cfg.RelayerConfig {
+			if name == config.TOP_CHAIN {
+				continue
+			}
+			if name != config.ETH_CHAIN {
+				logger.Warn("TopRelayer not support:", name)
+				continue
+			}
+			topRelayer, exist := topRelayers[name]
+			if !exist {
+				logger.Warn("unknown chain config:", name)
+				continue
+			}
+			err := startOneRelayer(name, topRelayer, topConfig, c.Url, pass, wg)
 			if err != nil {
+				logger.Error("StartRelayer error:", err)
 				return err
 			}
-			time.Sleep(time.Second * 1)
+		}
+	} else {
+		err := startOneRelayer(cfg.RelayerToRun, crossChainRelayer, RelayerConfig, topConfig.Url, pass, wg)
+		if err != nil {
+			logger.Error("StartRelayer error:", err)
+			return err
 		}
 	}
 

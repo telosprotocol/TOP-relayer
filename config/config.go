@@ -2,8 +2,6 @@ package config
 
 import (
 	"encoding/json"
-	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 
@@ -11,8 +9,10 @@ import (
 )
 
 var (
-	TOP_CHAIN string = "TOP"
-	ETH_CHAIN string = "ETH"
+	TOP_CHAIN  string = "TOP"
+	ETH_CHAIN  string = "ETH"
+	BSC_CHAIN  string = "BSC"
+	HECO_CHAIN string = "HECO"
 
 	LOG_DIR    string = "log"
 	LOG_CONFIG string = `{
@@ -36,48 +36,30 @@ var (
 
 type Relayer struct {
 	// chain symbol
-	Chain   string `json:"chainName"`
 	ChainId uint64 `json:"chainId"`
 
-	//listen config
-	ListenUrl string `json:"listenurl"`
-
 	//submit config
-	SubmitUrl string `json:"submiturl"`
-	Contract  string `json:"contract"`
-	KeyPath   string `json:"keypath"`
-	Start     bool   `json:"start"`
+	Url      string `json:"url"`
+	Contract string `json:"contract"`
+	KeyPath  string `json:"keypath"`
 }
 
 type Config struct {
-	RelayerConfig []*Relayer `json:"relayerconfig"`
+	RelayerConfig map[string]*Relayer `json:"relayer_config"`
+	RelayerToRun  string              `json:"relayer_to_run"`
 }
 
-func NewConfig(path string) (*Config, error) {
-	stat, err := os.Stat(path)
+func LoadRelayerConfig(path string) (*Config, error) {
+	data, err := os.ReadFile(path)
 	if err != nil {
+		log.Fatal("Read config password file failed:", err)
 		return nil, err
 	}
-
-	if stat.IsDir() {
-		return nil, fmt.Errorf("[%v] not a json file,want a json config file.", path)
-	}
-
-	jsonFile, err := os.Open(path)
-	if err != nil {
-		log.Println(err)
-	}
-	defer jsonFile.Close()
-
-	data, err := ioutil.ReadAll(jsonFile)
-	if err != nil {
-		return nil, fmt.Errorf("Read config file error %v", err)
-	}
-
 	config := &Config{}
 	err = json.Unmarshal(data, config)
 	if err != nil {
-		return nil, fmt.Errorf("Parse config file error %v", err)
+		log.Fatal("Unmarshal config file failed:", err)
+		return nil, err
 	}
 	return config, nil
 }
