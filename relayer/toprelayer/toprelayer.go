@@ -261,7 +261,11 @@ func (et *TopRelayer) StartRelayer(wg *sync.WaitGroup) error {
 					break
 				}
 				logger.Info("TopRelayer from", et.crossChainName, "sync round finish")
-				delay = time.Duration(SUCCESSDELAY)
+				if syncNum == BATCH_NUM {
+					delay = time.Duration(SUCCESSDELAY)
+				} else {
+					delay = time.Duration(WAITDELAY)
+				}
 				// break
 			}
 		}
