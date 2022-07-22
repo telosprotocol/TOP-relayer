@@ -5,9 +5,9 @@ import (
 	"os"
 	"time"
 
-	"toprelayer/relayer/eth2top/ethash"
-	"toprelayer/relayer/eth2top/ethashproof"
-	"toprelayer/relayer/eth2top/mtree"
+	"toprelayer/relayer/toprelayer/ethash"
+	"toprelayer/relayer/toprelayer/ethashproof"
+	"toprelayer/relayer/toprelayer/mtree"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"

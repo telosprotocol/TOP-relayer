@@ -1,11 +1,13 @@
-package eth2top
+package toprelayer
 
 import (
 	"context"
 	"fmt"
 	"math/big"
 	"testing"
-	"toprelayer/relayer/eth2top/ethashapp"
+	"toprelayer/config"
+	"toprelayer/contract/top/ethclient"
+	"toprelayer/relayer/toprelayer/ethashapp"
 	"toprelayer/sdk/ethsdk"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -18,8 +20,14 @@ import (
 // https://web3.1inch.exchange/
 // https://eth-mainnet.gateway.pokt.network/v1/5f3453978e354ab992c4da79
 // https://eth-mainnet.token.im
-const ethUrl string = "https://eth-mainnet.token.im"
+
+// testnet
+// https://ropsten.infura.io/v3/fb2a09e82a234971ad84203e6f75990e
+
+// const ethUrl string = "https://eth-mainnet.token.im"
+const ethUrl = "https://ropsten.infura.io/v3/fb2a09e82a234971ad84203e6f75990e"
 const topChainId uint64 = 1023
+const defaultPass = "asd123"
 
 func TestGetHeaderRlp(t *testing.T) {
 	var height uint64 = 12989998
@@ -68,8 +76,7 @@ func TestGetHeadersWithProofsRlp(t *testing.T) {
 }
 
 func TestGetInitTxData(t *testing.T) {
-	var height uint64 = 12969999
-	var abiPath string = "../../contract/topbridge/topbridge.abi"
+	var height uint64 = 12622433
 
 	ethsdk, err := ethsdk.NewEthSdk(ethUrl)
 	if err != nil {
@@ -83,11 +90,7 @@ func TestGetInitTxData(t *testing.T) {
 	if err != nil {
 		t.Fatal("EncodeToBytes: ", err)
 	}
-	abi, err := initABI(abiPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	input, err := abi.Pack("sync", rlp_bytes)
+	input, err := ethclient.PackSyncParam(rlp_bytes)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +101,6 @@ func TestGetSyncTxData(t *testing.T) {
 	// changable
 	var start_height uint64 = 12970000
 	var sync_num uint64 = 1
-	var abiPath string = "../../contract/topbridge/topbridge.abi"
 
 	ethsdk, err := ethsdk.NewEthSdk(ethUrl)
 	if err != nil {
@@ -120,11 +122,7 @@ func TestGetSyncTxData(t *testing.T) {
 		}
 		batch = append(batch, rlp_bytes...)
 	}
-	abi, err := initABI(abiPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	input, err := abi.Pack("sync", batch)
+	input, err := ethclient.PackSyncParam(batch)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,13 +130,7 @@ func TestGetSyncTxData(t *testing.T) {
 }
 
 func TestGetHeightTxData(t *testing.T) {
-	var abiPath string = "../../contract/topbridge/topbridge.abi"
-
-	abi, err := initABI(abiPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	input, err := abi.Pack(METHOD_GETHEIGHT)
+	input, err := ethclient.PackGetHeightParam()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,14 +138,9 @@ func TestGetHeightTxData(t *testing.T) {
 }
 
 func TestGetIsConfirmedTxData(t *testing.T) {
-	hash := common.Hex2Bytes("13049bb8cfd97fe2333829f06df37c569db68d42c23097fbac64f2c61471f281")
-	var abiPath string = "../../contract/topbridge/topbridge.abi"
-
-	abi, err := initABI(abiPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	input, err := abi.Pack("is_confirmed", hash)
+	height := big.NewInt(12970000)
+	hash := common.HexToHash("13049bb8cfd97fe2333829f06df37c569db68d42c23097fbac64f2c61471f281")
+	input, err := ethclient.PackIsKnownParam(height, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,21 +150,42 @@ func TestGetIsConfirmedTxData(t *testing.T) {
 func TestSync(t *testing.T) {
 	// changable
 	var height uint64 = 12970000
-	var contract common.Address = common.HexToAddress("0x0eD0BA13032aDD72398042B931aecCEFCc66A826")
-	var submitUrl string = "http://192.168.50.204:8080"
-	var accountPath = "../../.relayer/wallet/top"
-	// fix
+	var topUrl string = "http://192.168.30.200:8080"
+	var keyPath = "../../.relayer/wallet/top"
 
-	sub := &Eth2TopRelayer{}
-	err := sub.Init(submitUrl, ethUrl, accountPath, "", topChainId, contract)
+	cfg := &config.Relayer{
+		Url:     topUrl,
+		ChainId: topChainId,
+		KeyPath: keyPath,
+	}
+	topRelayer := &TopRelayer{}
+	err := topRelayer.Init(config.ETH_CHAIN, cfg, ethUrl, defaultPass)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ethsdk, err := ethsdk.NewEthSdk(ethUrl)
+	err = topRelayer.signAndSendTransactions(height, height+1)
 	if err != nil {
-		t.Fatal("NewEthSdk: ", err)
+		t.Fatal("submitEthHeader:", err)
 	}
-	header, err := ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(height))
+}
+
+func TestSyncHeaderWithProofsRlpGas(t *testing.T) {
+	// changable
+	var height uint64 = 12970000
+	var topUrl string = "http://192.168.30.200:8080"
+	var keyPath = "../../.relayer/wallet/top"
+
+	cfg := &config.Relayer{
+		Url:     topUrl,
+		ChainId: topChainId,
+		KeyPath: keyPath,
+	}
+	topRelayer := &TopRelayer{}
+	err := topRelayer.Init(config.ETH_CHAIN, cfg, ethUrl, defaultPass)
+	if err != nil {
+		t.Fatal(err)
+	}
+	header, err := topRelayer.ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(height))
 	if err != nil {
 		t.Fatal("HeaderByNumber: ", err)
 	}
@@ -189,72 +197,39 @@ func TestSync(t *testing.T) {
 	if err != nil {
 		t.Fatal("rlp encode error: ", err)
 	}
-	nonce, err := sub.wallet.GetNonce(sub.wallet.CurrentAccount().Address)
+	gaspric, err := topRelayer.wallet.GasPrice(context.Background())
 	if err != nil {
-		t.Fatal("GasPrice:", err)
+		logger.Fatal(err)
 	}
-	err = sub.submitEthHeader(rlp_bytes, nonce)
+	packHeader, err := ethclient.PackSyncParam(rlp_bytes)
 	if err != nil {
-		t.Fatal("submitEthHeader:", err)
+		logger.Fatal(err)
 	}
+	gaslimit, err := topRelayer.wallet.EstimateGas(context.Background(), &topRelayer.contract, gaspric, packHeader)
+	if err != nil {
+		logger.Fatal(err)
+	}
+	fmt.Println("gaslimit: ", gaslimit)
 }
 
-func TestSyncHeaderWithProofsRlpGas(t *testing.T) {
+func TestGetEthClientHeight(t *testing.T) {
 	// changable
-	var contract common.Address = common.HexToAddress("0x0eD0BA13032aDD72398042B931aecCEFCc66A826")
-	var submitUrl string = "http://192.168.30.200:8080"
-	var accountPath = "../../.relayer/wallet/top"
-	// fix
+	var topUrl string = "http://192.168.30.200:8080"
+	var keyPath = "../../.relayer/wallet/top"
 
-	sub := &Eth2TopRelayer{}
-	err := sub.Init(submitUrl, ethUrl, accountPath, "", topChainId, contract)
+	cfg := &config.Relayer{
+		Url:     topUrl,
+		ChainId: topChainId,
+		KeyPath: keyPath,
+	}
+	topRelayer := &TopRelayer{}
+	err := topRelayer.Init(config.ETH_CHAIN, cfg, ethUrl, defaultPass)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ethsdk, err := ethsdk.NewEthSdk(ethUrl)
-	if err != nil {
-		t.Fatal("NewEthSdk: ", err)
-	}
-	header, err := ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(12970000))
-	if err != nil {
-		t.Fatal("HeaderByNumber: ", err)
-	}
-	out, err := ethashapp.EthashWithProofs(12970000, header)
-	if err != nil {
-		t.Fatal("HeaderByNumber: ", err)
-	}
-	rlp_bytes, err := rlp.EncodeToBytes(out)
-	if err != nil {
-		t.Fatal("rlp encode error: ", err)
-	}
-	gaspric, err := sub.wallet.GasPrice(context.Background())
-	if err != nil {
-		t.Fatal("GasPrice error: ", err)
-	}
-	fmt.Println("data_len: ", len(rlp_bytes))
-	fmt.Println("price: ", gaspric)
-	gaslimit, err := sub.estimateSyncGas(gaspric, rlp_bytes)
-	if err != nil {
-		t.Fatal("GasPrice error: ", err)
-	}
-	fmt.Println("limit: ", gaslimit)
-}
-
-func TestGetTopBridgeHeight(t *testing.T) {
-	// changable
-	var contract common.Address = common.HexToAddress("0x0eD0BA13032aDD72398042B931aecCEFCc66A826")
-	var submitUrl string = "http://192.168.30.200:8080"
-	var accountPath = "../../.relayer/wallet/top"
-
-	sub := &Eth2TopRelayer{}
-	err := sub.Init(submitUrl, ethUrl, accountPath, "", topChainId, contract)
+	destHeight, err := topRelayer.callerSession.GetHeight()
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	height, err := sub.getTopBridgeCurrentHeight()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log("current height:", height)
+	t.Log("current height:", destHeight)
 }

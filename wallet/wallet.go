@@ -111,7 +111,17 @@ func (w *Wallet) ChainID() *big.Int {
 func (w *Wallet) GasPrice(ctx context.Context) (*big.Int, error) {
 	return w.sdk.SuggestGasPrice(ctx)
 }
-func (w *Wallet) EstimateGas(ctx context.Context, msg ethereum.CallMsg) (uint64, error) {
+
+func (w *Wallet) EstimateGas(ctx context.Context, target *common.Address, gasPrice *big.Int, data []byte) (uint64, error) {
+	msg := ethereum.CallMsg{
+		From:      w.CurrentAccount().Address,
+		To:        target,
+		GasPrice:  gasPrice,
+		Gas:       0,
+		GasFeeCap: nil,
+		GasTipCap: nil,
+		Data:      data,
+	}
 	return w.sdk.EstimateGas(ctx, msg)
 }
 

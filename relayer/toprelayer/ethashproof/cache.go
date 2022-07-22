@@ -9,7 +9,7 @@ import (
 	"os/user"
 	"path/filepath"
 
-	"toprelayer/relayer/eth2top/mtree"
+	"toprelayer/relayer/toprelayer/mtree"
 )
 
 const CACHE_LEVEL uint64 = 15

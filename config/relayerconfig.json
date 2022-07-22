@@ -1,22 +1,28 @@
 {
-    "relayerconfig":[
-        {
-            "chainName": "TOP",
+    "relayer_config": {
+        "TOP": {
             "chainId": 1023,
-            "listenurl": "https://eth-mainnet.token.im",
-            "submiturl": "http://192.168.50.204:8080",
-            "contract": "0x6f710f7Cbb65cd5e89a043C0D93eDc53f4e3a4ca",
-            "keypath": ".relayer/wallet/top",
-            "start": true
+            "url": "http://192.168.50.167:8080",
+            "keypath": ".relayer/wallet/top"
         },
-        {
-            "chainName": "ETH",
+        "ETH": {
             "chainId": 3,
-            "listenurl": "http://192.168.50.204:8080",
-            "submiturl": "https://ropsten.infura.io/v3/fb2a09e82a234971ad84203e6f75990e",
-            "contract": "0x8448B5fd11a8EF2Ca72dEdF53D83140E42167f50",
-            "keypath": ".relayer/wallet/eth",
-            "start": true
+            "url": "https://ropsten.infura.io/v3/fb2a09e82a234971ad84203e6f75990e",
+            "contract": "0x0E62B4A03D615ae0B088345FD26eB8782F2a861F",
+            "keypath": ".relayer/wallet/eth"
+        },
+        "BSC": {
+            "chainId": 56,
+            "url": "https://bsc-dataseed1.binance.org",
+            "contract": "",
+            "keypath": ".relayer/wallet/bsc"
+        },
+        "HECO": {
+            "chainId": 128,
+            "url": "https://http-mainnet.hecochain.com",
+            "contract": "",
+            "keypath": ".relayer/wallet/heco"
         }
-    ]
+    },
+    "relayer_to_run": "TOP"
 }
