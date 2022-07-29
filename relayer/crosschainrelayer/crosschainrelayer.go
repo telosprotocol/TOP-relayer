@@ -27,7 +27,7 @@ const (
 	ERRDELAY     int64 = 10
 	WAITDELAY    int64 = 60
 
-	CONFIRM_NUM uint64 = 2
+	CONFIRM_NUM uint64 = 0
 	BATCH_NUM   uint64 = 10
 
 	ELECTION_BLOCK    = "election"
@@ -139,7 +139,7 @@ func (te *CrossChainRelayer) submitTopHeader(headers []byte, nonce uint64) error
 		logger.Error("CrossChainRelayer", te.name, "AddLightClientBlocks error:", err)
 		return err
 	}
-	logger.Info("CrossChainRelayer", te.name, "tx info, account[%v] balance:%v,nonce:%v,gasprice:%v,gaslimit:%v,length:%v,chainid:%v,hash:%v", te.wallet.CurrentAccount().Address, balance.Uint64(), nonce, gaspric.Uint64(), gaslimit, len(headers), te.chainId, sigTx.Hash())
+	logger.Info("CrossChainRelayer %v tx info, account[%v] balance:%v,nonce:%v,gasprice:%v,gaslimit:%v,length:%v,chainid:%v,hash:%v", te.name, te.wallet.CurrentAccount().Address, balance.Uint64(), nonce, gaspric.Uint64(), gaslimit, len(headers), te.chainId, sigTx.Hash())
 	return nil
 }
 
