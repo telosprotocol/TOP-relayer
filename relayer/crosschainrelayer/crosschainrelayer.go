@@ -10,6 +10,7 @@ import (
 	"time"
 	"toprelayer/config"
 	"toprelayer/contract/eth/topclient"
+	"toprelayer/relayer/monitor"
 	"toprelayer/sdk/ethsdk"
 	"toprelayer/sdk/topsdk"
 	"toprelayer/wallet"
@@ -52,6 +53,7 @@ type CrossChainRelayer struct {
 	topsdk     *topsdk.TopSdk
 	transactor *topclient.TopClientTransactor
 	caller     *topclient.TopClientCaller
+	monitor    *monitor.Monitor
 }
 
 func (te *CrossChainRelayer) Init(chainName string, cfg *config.Relayer, listenUrl string, pass string) error {
@@ -88,6 +90,11 @@ func (te *CrossChainRelayer) Init(chainName string, cfg *config.Relayer, listenU
 		logger.Error("CrossChainRelayer", te.name, "NewTopClientCaller error:", err)
 		return err
 	}
+	te.monitor, err = monitor.New(te.wallet.CurrentAccount().Address, topsdk.SDK)
+	if err != nil {
+		logger.Error("TopRelayer from", te.name, "New monitor error:", te.contract)
+		return err
+	}
 	return nil
 }
 
@@ -95,8 +102,12 @@ func (te *CrossChainRelayer) ChainId() uint64 {
 	return te.chainId
 }
 
-func (te *CrossChainRelayer) submitTopHeader(headers []byte, nonce uint64) error {
+func (te *CrossChainRelayer) submitTopHeader(headers []byte) error {
 	logger.Info("CrossChainRelayer", te.name, "raw data:", common.Bytes2Hex(headers))
+	nonce, err := te.wallet.GetNonce(te.wallet.CurrentAccount().Address)
+	if err != nil {
+		return err
+	}
 	gaspric, err := te.wallet.GasPrice(context.Background())
 	if err != nil {
 		logger.Error("CrossChainRelayer", te.name, "GasPrice error:", err)
@@ -107,7 +118,7 @@ func (te *CrossChainRelayer) submitTopHeader(headers []byte, nonce uint64) error
 		logger.Error("CrossChainRelayer", te.name, "PackSyncParam error:", err)
 		return err
 	}
-	gaslimit, err := te.wallet.EstimateGas(context.Background(), &te.contract, gaspric, packHeaders)
+	gaslimit, err := te.wallet.EstimateGas(context.Background(), &te.contract, packHeaders)
 	if err != nil {
 		logger.Error("CrossChainRelayer", te.name, "EstimateGas error:", err)
 		return err
@@ -139,6 +150,7 @@ func (te *CrossChainRelayer) submitTopHeader(headers []byte, nonce uint64) error
 		logger.Error("CrossChainRelayer", te.name, "AddLightClientBlocks error:", err)
 		return err
 	}
+	te.monitor.AddTx(sigTx.Hash())
 	logger.Info("CrossChainRelayer %v tx info, account[%v] balance:%v,nonce:%v,gasprice:%v,gaslimit:%v,length:%v,chainid:%v,hash:%v", te.name, te.wallet.CurrentAccount().Address, balance.Uint64(), nonce, gaspric.Uint64(), gaslimit, len(headers), te.chainId, sigTx.Hash())
 	return nil
 }
@@ -256,10 +268,6 @@ func (te *CrossChainRelayer) signAndSendTransactions(lo, hi, batchNum uint64) (u
 	var lastSubHeight uint64 = 0
 	var lastUnsubHeight uint64 = 0
 	var batchHeaders [][]byte
-	nonce, err := te.wallet.GetNonce(te.wallet.CurrentAccount().Address)
-	if err != nil {
-		return 0, 0, err
-	}
 
 	num := uint64(0)
 	flag := sendFlag[te.name]
@@ -303,7 +311,7 @@ func (te *CrossChainRelayer) signAndSendTransactions(lo, hi, batchNum uint64) (u
 			return 0, 0, err
 		}
 
-		err = te.submitTopHeader(data, nonce)
+		err = te.submitTopHeader(data)
 		if err != nil {
 			logger.Error("CrossChainRelayer", te.name, "submitHeaders failed:", err)
 			return 0, 0, err

@@ -9,6 +9,7 @@ import (
 	"time"
 	"toprelayer/config"
 	"toprelayer/contract/top/ethclient"
+	"toprelayer/relayer/monitor"
 	"toprelayer/relayer/toprelayer/ethashapp"
 	"toprelayer/sdk/ethsdk"
 	"toprelayer/sdk/topsdk"
@@ -48,52 +49,57 @@ type TopRelayer struct {
 	ethsdk         *ethsdk.EthSdk
 	transactor     *ethclient.EthClientTransactor
 	callerSession  *ethclient.EthClientCallerSession
+	monitor        *monitor.Monitor
 }
 
 type void struct{}
 
-func (et *TopRelayer) Init(crossChainName string, cfg *config.Relayer, listenUrl string, pass string) error {
-	et.crossChainName = crossChainName
-	et.chainId = cfg.ChainId
+func (relayer *TopRelayer) Init(crossChainName string, cfg *config.Relayer, listenUrl string, pass string) error {
+	relayer.crossChainName = crossChainName
+	relayer.chainId = cfg.ChainId
 	topsdk, err := topsdk.NewTopSdk(cfg.Url)
 	if err != nil {
-		logger.Error("TopRelayer from", et.crossChainName, "NewTopSdk error:", err)
+		logger.Error("TopRelayer from", relayer.crossChainName, "NewTopSdk error:", err)
 		return err
 	}
-	et.topsdk = topsdk
+	relayer.topsdk = topsdk
 
 	w, err := wallet.NewWallet(cfg.Url, cfg.KeyPath, pass, cfg.ChainId)
 	if err != nil {
-		logger.Error("TopRelayer from", et.crossChainName, "NewWallet error:", err)
+		logger.Error("TopRelayer from", relayer.crossChainName, "NewWallet error:", err)
 		return err
 	}
-	et.wallet = w
+	relayer.wallet = w
 
-	et.ethsdk, err = ethsdk.NewEthSdk(listenUrl)
+	relayer.ethsdk, err = ethsdk.NewEthSdk(listenUrl)
 	if err != nil {
-		logger.Error("TopRelayer from", et.crossChainName, "NewEthSdk error:", crossChainName, listenUrl)
+		logger.Error("TopRelayer from", relayer.crossChainName, "NewEthSdk error:", crossChainName, listenUrl)
 		return err
 	}
-	et.contract = systemSyncContracts[crossChainName]
-	et.transactor, err = ethclient.NewEthClientTransactor(et.contract, topsdk)
+	relayer.contract = systemSyncContracts[crossChainName]
+	relayer.transactor, err = ethclient.NewEthClientTransactor(relayer.contract, topsdk)
 	if err != nil {
-		logger.Error("TopRelayer from", et.crossChainName, "NewEthClientTransactor error:", et.contract)
+		logger.Error("TopRelayer from", relayer.crossChainName, "NewEthClientTransactor error:", relayer.contract)
 		return err
 	}
 
-	et.callerSession = new(ethclient.EthClientCallerSession)
-	et.callerSession.Contract, err = ethclient.NewEthClientCaller(et.contract, topsdk)
+	relayer.callerSession = new(ethclient.EthClientCallerSession)
+	relayer.callerSession.Contract, err = ethclient.NewEthClientCaller(relayer.contract, topsdk)
 	if err != nil {
-		logger.Error("TopRelayer from", et.crossChainName, "NewEthClientCaller error:", et.contract)
+		logger.Error("TopRelayer from", relayer.crossChainName, "NewEthClientCaller error:", relayer.contract)
 		return err
 	}
-	et.callerSession.CallOpts = bind.CallOpts{
+	relayer.callerSession.CallOpts = bind.CallOpts{
 		Pending:     false,
-		From:        et.wallet.CurrentAccount().Address,
+		From:        relayer.wallet.CurrentAccount().Address,
 		BlockNumber: nil,
 		Context:     context.Background(),
 	}
-
+	relayer.monitor, err = monitor.New(relayer.wallet.CurrentAccount().Address, topsdk.SDK)
+	if err != nil {
+		logger.Error("TopRelayer from", relayer.crossChainName, "New monitor error:", relayer.contract)
+		return err
+	}
 	return nil
 }
 
@@ -117,11 +123,12 @@ func (et *TopRelayer) submitEthHeader(header []byte) error {
 		logger.Error("TopRelayer from", et.crossChainName, "PackSyncParam error:", err)
 		return err
 	}
-	gaslimit, err := et.wallet.EstimateGas(context.Background(), &et.contract, gaspric, packHeader)
+	gaslimit, err := et.wallet.EstimateGas(context.Background(), &et.contract, packHeader)
 	if err != nil {
 		logger.Error("TopRelayer from", et.crossChainName, "EstimateGas error:", err)
 		return err
 	}
+
 	//must init ops as bellow
 	ops := &bind.TransactOpts{
 		From:      et.wallet.CurrentAccount().Address,
@@ -138,7 +145,7 @@ func (et *TopRelayer) submitEthHeader(header []byte) error {
 		logger.Error("TopRelayer from", et.crossChainName, " sync error:", err)
 		return err
 	}
-
+	et.monitor.AddTx(sigTx.Hash())
 	logger.Info("TopRelayer from %v tx info, account[%v] nonce:%v,capfee:%v,hash:%v,size:%v", et.crossChainName, et.wallet.CurrentAccount().Address, nonce, gaspric, sigTx.Hash(), len(header))
 	return nil
 }
@@ -224,7 +231,7 @@ func (et *TopRelayer) StartRelayer(wg *sync.WaitGroup) error {
 					// get known hashes with destHeight, mock now
 					isKnown, err := et.callerSession.IsKnown(header.Number, header.Hash())
 					if err != nil {
-						logger.Debug("TopRelayer from", et.crossChainName, "IsKnown error:", err)
+						logger.Error("TopRelayer from", et.crossChainName, "IsKnown error:", err)
 						checkError = true
 						break
 					}

@@ -112,11 +112,11 @@ func (w *Wallet) GasPrice(ctx context.Context) (*big.Int, error) {
 	return w.sdk.SuggestGasPrice(ctx)
 }
 
-func (w *Wallet) EstimateGas(ctx context.Context, target *common.Address, gasPrice *big.Int, data []byte) (uint64, error) {
+func (w *Wallet) EstimateGas(ctx context.Context, target *common.Address, data []byte) (uint64, error) {
 	msg := ethereum.CallMsg{
 		From:      w.CurrentAccount().Address,
 		To:        target,
-		GasPrice:  gasPrice,
+		GasPrice:  nil,
 		Gas:       0,
 		GasFeeCap: nil,
 		GasTipCap: nil,
@@ -142,4 +142,8 @@ func (w *Wallet) SendTransaction(ctx context.Context, tx *types.Transaction) err
 /*to create chains wallet...*/
 func (w *Wallet) createChainWallet(ID uint64) (IWallet, error) {
 	return w, nil
+}
+
+func (w *Wallet) GetReceipt(ctx context.Context, hash common.Hash) (*types.Receipt, error) {
+	return w.sdk.TransactionReceipt(ctx, hash)
 }

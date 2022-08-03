@@ -10,6 +10,7 @@ import (
 	"toprelayer/relayer/toprelayer/ethashapp"
 	"toprelayer/sdk/ethsdk"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/wonderivan/logger"
@@ -147,6 +148,51 @@ func TestGetIsConfirmedTxData(t *testing.T) {
 	logger.Debug("data:", common.Bytes2Hex(input))
 }
 
+func TestInit(t *testing.T) {
+	// changable
+	var height uint64 = 12622433
+	var topUrl string = "http://192.168.30.200:8080"
+	var keyPath = "../../.relayer/wallet/top"
+
+	cfg := &config.Relayer{
+		Url:     topUrl,
+		ChainId: topChainId,
+		KeyPath: keyPath,
+	}
+	topRelayer := &TopRelayer{}
+	err := topRelayer.Init(config.ETH_CHAIN, cfg, ethUrl, defaultPass)
+	if err != nil {
+		t.Fatal(err)
+	}
+	header, err := topRelayer.ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(height))
+	if err != nil {
+		t.Fatal("HeaderByNumber: ", err)
+	}
+	rlp_bytes, err := rlp.EncodeToBytes(header)
+	if err != nil {
+		t.Fatal("EncodeToBytes: ", err)
+	}
+	nonce, err := topRelayer.wallet.GetNonce(topRelayer.wallet.CurrentAccount().Address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gaspric, err := topRelayer.wallet.GasPrice(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ops := &bind.TransactOpts{
+		From:      topRelayer.wallet.CurrentAccount().Address,
+		Nonce:     big.NewInt(0).SetUint64(nonce),
+		GasLimit:  500000,
+		GasFeeCap: gaspric,
+		GasTipCap: big.NewInt(0),
+		Signer:    topRelayer.signTransaction,
+		Context:   context.Background(),
+		NoSend:    false,
+	}
+	topRelayer.transactor.Init(ops, rlp_bytes, string(""))
+}
+
 func TestSync(t *testing.T) {
 	// changable
 	var height uint64 = 12970000
@@ -197,15 +243,11 @@ func TestSyncHeaderWithProofsRlpGas(t *testing.T) {
 	if err != nil {
 		t.Fatal("rlp encode error: ", err)
 	}
-	gaspric, err := topRelayer.wallet.GasPrice(context.Background())
-	if err != nil {
-		logger.Fatal(err)
-	}
 	packHeader, err := ethclient.PackSyncParam(rlp_bytes)
 	if err != nil {
 		logger.Fatal(err)
 	}
-	gaslimit, err := topRelayer.wallet.EstimateGas(context.Background(), &topRelayer.contract, gaspric, packHeader)
+	gaslimit, err := topRelayer.wallet.EstimateGas(context.Background(), &topRelayer.contract, packHeader)
 	if err != nil {
 		logger.Fatal(err)
 	}
