@@ -1,11 +1,12 @@
 package relayer
 
 import (
-	"errors"
+	"fmt"
 	"sync"
 
 	"toprelayer/config"
 	"toprelayer/relayer/crosschainrelayer"
+	"toprelayer/relayer/monitor"
 	"toprelayer/relayer/toprelayer"
 
 	"github.com/wonderivan/logger"
@@ -44,14 +45,22 @@ func startOneRelayer(chainName string, relayer IChainRelayer, cfg *config.Relaye
 	return nil
 }
 
-func StartRelayer(cfg *config.Config, pass string, wg *sync.WaitGroup) (err error) {
+func StartRelayer(cfg *config.Config, pass string, wg *sync.WaitGroup) error {
+	// start monitor
+	err := monitor.MonitorMsgInit(cfg.RelayerToRun)
+	if err != nil {
+		logger.Error("MonitorMsgInit fail:", err)
+		return err
+	}
+
+	// start relayer
 	topConfig, exist := cfg.RelayerConfig[config.TOP_CHAIN]
 	if !exist {
-		return errors.New("not found TOP chain config")
+		return fmt.Errorf("not found TOP chain config")
 	}
 	RelayerConfig, exist := cfg.RelayerConfig[cfg.RelayerToRun]
 	if !exist {
-		return errors.New("not found config of RelayerToRun")
+		return fmt.Errorf("not found config of RelayerToRun")
 	}
 	if cfg.RelayerToRun == config.TOP_CHAIN {
 		for name, c := range cfg.RelayerConfig {

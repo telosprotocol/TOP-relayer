@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"math/big"
 	"toprelayer/sdk"
 
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/wonderivan/logger"
 )
@@ -24,8 +26,9 @@ type TopBlock struct {
 }
 
 const (
-	GETTOPELECTBLOCKHEADBYHEIGHT = "topRelay_getBlockByNumber"
-	GETLATESTTOPELECTBLOCKHEIGHT = "topRelay_blockNumber"
+	getTopRelayBlockByNumber = "topRelay_getBlockByNumber"
+	getTopRelayBlockNumber   = "topRelay_blockNumber"
+	getTopBalance            = "top_getBalance"
 )
 
 func NewTopSdk(url string) (*TopSdk, error) {
@@ -38,7 +41,7 @@ func NewTopSdk(url string) (*TopSdk, error) {
 
 func (t *TopSdk) GetTopElectBlockHeadByHeight(height uint64) (*TopBlock, error) {
 	var data json.RawMessage
-	err := t.Rpc.CallContext(context.Background(), &data, GETTOPELECTBLOCKHEADBYHEIGHT, hexutil.EncodeUint64(height))
+	err := t.Rpc.CallContext(context.Background(), &data, getTopRelayBlockByNumber, hexutil.EncodeUint64(height))
 	if err != nil {
 		return &TopBlock{}, err
 	} else if len(data) == 0 {
@@ -56,7 +59,7 @@ func (t *TopSdk) GetTopElectBlockHeadByHeight(height uint64) (*TopBlock, error) 
 
 func (t *TopSdk) GetLatestTopElectBlockHeight() (uint64, error) {
 	var data json.RawMessage
-	err := t.Rpc.CallContext(context.Background(), &data, GETLATESTTOPELECTBLOCKHEIGHT)
+	err := t.Rpc.CallContext(context.Background(), &data, getTopRelayBlockNumber)
 	if err != nil {
 		return 0, err
 	} else if len(data) == 0 {
@@ -70,4 +73,10 @@ func (t *TopSdk) GetLatestTopElectBlockHeight() (uint64, error) {
 		return 0, err
 	}
 	return hexutil.DecodeUint64(res)
+}
+
+func (t *TopSdk) TopBalanceAt(ctx context.Context, account common.Address) (*big.Int, error) {
+	var result hexutil.Big
+	err := t.Rpc.CallContext(ctx, &result, getTopBalance, account)
+	return (*big.Int)(&result), err
 }
