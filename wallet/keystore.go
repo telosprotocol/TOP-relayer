@@ -4,41 +4,22 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"math/big"
 	"os"
 	"path/filepath"
 
 	"github.com/wonderivan/logger"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 )
-
-type KeyStoreProvider struct {
-	*keystore.KeyStore
-}
-
-type Provider interface {
-	SignTx(account accounts.Account, tx *types.Transaction, chainID *big.Int) (*types.Transaction, error)
-	UnlockAccount(accounts.Account, string) error
-}
 
 type encryptedKeyJSONV3 struct {
 	Address string              `json:"address"`
 	Crypto  keystore.CryptoJSON `json:"crypto"`
 	Id      string              `json:"id"`
 	Version int                 `json:"version"`
-}
-
-func newKeyStoreProvider(store *keystore.KeyStore, pass string) *KeyStoreProvider {
-	return &KeyStoreProvider{KeyStore: store}
-}
-
-func (p *KeyStoreProvider) UnlockAccount(account accounts.Account, pass string) error {
-	return p.Unlock(account, pass)
 }
 
 func createAccount(store *keystore.KeyStore, pass string) (accounts.Account, error) {
@@ -52,6 +33,15 @@ func createAccount(store *keystore.KeyStore, pass string) (accounts.Account, err
 
 func loadAccount(store *keystore.KeyStore, path, pass string) (accounts.Account, error) {
 	var keyfiles []string
+	{
+		_, err := os.Stat(path)
+		if err != nil {
+			_, err := createAccount(store, pass)
+			if err != nil {
+				return accounts.Account{}, err
+			}
+		}
+	}
 	kfs, err := getKeyfiles(path, keyfiles)
 	if err != nil {
 		logger.Error("getKeyfiles error:", err, "path:", path)

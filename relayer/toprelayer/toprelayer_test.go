@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"testing"
+	"time"
 	"toprelayer/config"
 	"toprelayer/contract/top/ethclient"
 	"toprelayer/relayer/toprelayer/ethashapp"
@@ -151,7 +152,7 @@ func TestGetIsConfirmedTxData(t *testing.T) {
 func TestInit(t *testing.T) {
 	// changable
 	var height uint64 = 12622433
-	var topUrl string = "http://192.168.30.200:8080"
+	var topUrl string = "http://159.223.105.19:8080"
 	var keyPath = "../../.relayer/wallet/top"
 
 	cfg := &config.Relayer{
@@ -159,7 +160,7 @@ func TestInit(t *testing.T) {
 		ChainId: topChainId,
 		KeyPath: keyPath,
 	}
-	topRelayer := &TopRelayer{}
+	topRelayer := &Eth2TopRelayer{}
 	err := topRelayer.Init(config.ETH_CHAIN, cfg, ethUrl, defaultPass)
 	if err != nil {
 		t.Fatal(err)
@@ -204,14 +205,17 @@ func TestSync(t *testing.T) {
 		ChainId: topChainId,
 		KeyPath: keyPath,
 	}
-	topRelayer := &TopRelayer{}
+	topRelayer := &Eth2TopRelayer{}
 	err := topRelayer.Init(config.ETH_CHAIN, cfg, ethUrl, defaultPass)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = topRelayer.signAndSendTransactions(height, height+1)
-	if err != nil {
-		t.Fatal("submitEthHeader:", err)
+	for h := height; h < 12970100; h++ {
+		err = topRelayer.signAndSendTransactions(h, h)
+		if err != nil {
+			t.Fatal("submitEthHeader:", err)
+		}
+		time.Sleep(time.Second * 30)
 	}
 }
 
@@ -226,7 +230,7 @@ func TestSyncHeaderWithProofsRlpGas(t *testing.T) {
 		ChainId: topChainId,
 		KeyPath: keyPath,
 	}
-	topRelayer := &TopRelayer{}
+	topRelayer := &Eth2TopRelayer{}
 	err := topRelayer.Init(config.ETH_CHAIN, cfg, ethUrl, defaultPass)
 	if err != nil {
 		t.Fatal(err)
@@ -247,7 +251,7 @@ func TestSyncHeaderWithProofsRlpGas(t *testing.T) {
 	if err != nil {
 		logger.Fatal(err)
 	}
-	gaslimit, err := topRelayer.wallet.EstimateGas(context.Background(), &topRelayer.contract, packHeader)
+	gaslimit, err := topRelayer.wallet.EstimateGas(context.Background(), &ethClientSystemContract, packHeader)
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -264,7 +268,7 @@ func TestGetEthClientHeight(t *testing.T) {
 		ChainId: topChainId,
 		KeyPath: keyPath,
 	}
-	topRelayer := &TopRelayer{}
+	topRelayer := &Eth2TopRelayer{}
 	err := topRelayer.Init(config.ETH_CHAIN, cfg, ethUrl, defaultPass)
 	if err != nil {
 		t.Fatal(err)

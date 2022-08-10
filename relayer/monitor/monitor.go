@@ -6,10 +6,11 @@ import (
 	"math/big"
 	"time"
 	"toprelayer/config"
-	"toprelayer/sdk"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/wonderivan/logger"
 )
 
@@ -29,17 +30,27 @@ var (
 )
 
 type Monitor struct {
-	account common.Address
-	txList  *list.List
-	sdk     *sdk.SDK
+	account   common.Address
+	txList    *list.List
+	ethclient *ethclient.Client
+	rpcclient *rpc.Client
 }
 
-func New(account common.Address, sdk *sdk.SDK) (*Monitor, error) {
+func New(account common.Address, url string) (*Monitor, error) {
 	monitor := new(Monitor)
 	monitor.txList = list.New()
 	monitor.txList.Init()
 	monitor.account = account
-	monitor.sdk = sdk
+	rpcclient, err := rpc.Dial(url)
+	if err != nil {
+		return nil, err
+	}
+	ethclient, err := ethclient.Dial(url)
+	if err != nil {
+		return nil, err
+	}
+	monitor.rpcclient = rpcclient
+	monitor.ethclient = ethclient
 
 	go func() {
 		errorNum := new(uint64)
@@ -87,7 +98,7 @@ func (monitor *Monitor) checkTx(errorNum *uint64) {
 			logger.Error("txList get front error")
 			break
 		}
-		receipt, err := monitor.sdk.TransactionReceipt(context.Background(), hash)
+		receipt, err := monitor.ethclient.TransactionReceipt(context.Background(), hash)
 		if err != nil {
 			*errorNum += 1
 			if *errorNum >= maxErrorNum {
@@ -112,7 +123,7 @@ func (monitor *Monitor) checkTx(errorNum *uint64) {
 func (monitor *Monitor) checkAccount() {
 	if relayerName == config.TOP_CHAIN {
 		var result hexutil.Big
-		err := monitor.sdk.Rpc.CallContext(context.Background(), &result, "top_getBalance", monitor.account, "latest")
+		err := monitor.rpcclient.CallContext(context.Background(), &result, "top_getBalance", monitor.account, "latest")
 		if err != nil {
 			logger.Error("get balance failed")
 		} else {
@@ -125,7 +136,7 @@ func (monitor *Monitor) checkAccount() {
 			}
 		}
 	} else if relayerName == config.ETH_CHAIN {
-		balance, err := monitor.sdk.BalanceAt(context.Background(), monitor.account, nil)
+		balance, err := monitor.ethclient.BalanceAt(context.Background(), monitor.account, nil)
 		if err != nil {
 			logger.Error("get balance failed")
 		} else {

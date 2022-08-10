@@ -90,7 +90,7 @@ func (te *CrossChainRelayer) Init(chainName string, cfg *config.Relayer, listenU
 		logger.Error("CrossChainRelayer", te.name, "NewTopClientCaller error:", err)
 		return err
 	}
-	te.monitor, err = monitor.New(te.wallet.CurrentAccount().Address, topsdk.SDK)
+	te.monitor, err = monitor.New(te.wallet.Address(), cfg.Url)
 	if err != nil {
 		logger.Error("TopRelayer from", te.name, "New monitor error:", te.contract)
 		return err
@@ -104,11 +104,11 @@ func (te *CrossChainRelayer) ChainId() uint64 {
 
 func (te *CrossChainRelayer) submitTopHeader(headers []byte) error {
 	logger.Info("CrossChainRelayer", te.name, "raw data:", common.Bytes2Hex(headers))
-	nonce, err := te.wallet.GetNonce(te.wallet.CurrentAccount().Address)
+	nonce, err := te.wallet.NonceAt(te.wallet.Address())
 	if err != nil {
 		return err
 	}
-	gaspric, err := te.wallet.GasPrice(context.Background())
+	gaspric, err := te.wallet.SuggestGasPrice()
 	if err != nil {
 		logger.Error("CrossChainRelayer", te.name, "GasPrice error:", err)
 		return err
@@ -126,17 +126,17 @@ func (te *CrossChainRelayer) submitTopHeader(headers []byte) error {
 	//test mock
 	//gaslimit := uint64(500000)
 
-	balance, err := te.wallet.GetBalance(te.wallet.CurrentAccount().Address)
+	balance, err := te.wallet.BalanceAt(te.wallet.Address())
 	if err != nil {
 		return err
 	}
 	if balance.Uint64() <= gaspric.Uint64()*gaslimit {
-		return fmt.Errorf("CrossChainRelayer %v account[%v] balance not enough:%v", te.name, te.wallet.CurrentAccount().Address, balance.Uint64())
+		return fmt.Errorf("CrossChainRelayer %v account[%v] balance not enough:%v", te.name, te.wallet.Address(), balance.Uint64())
 	}
 
 	//must init ops as bellow
 	ops := &bind.TransactOpts{
-		From:     te.wallet.CurrentAccount().Address,
+		From:     te.wallet.Address(),
 		Nonce:    big.NewInt(0).SetUint64(nonce),
 		GasPrice: gaspric,
 		GasLimit: gaslimit,
@@ -151,14 +151,14 @@ func (te *CrossChainRelayer) submitTopHeader(headers []byte) error {
 		return err
 	}
 	te.monitor.AddTx(sigTx.Hash())
-	logger.Info("CrossChainRelayer %v tx info, account[%v] balance:%v,nonce:%v,gasprice:%v,gaslimit:%v,length:%v,chainid:%v,hash:%v", te.name, te.wallet.CurrentAccount().Address, balance.Uint64(), nonce, gaspric.Uint64(), gaslimit, len(headers), te.chainId, sigTx.Hash())
+	logger.Info("CrossChainRelayer %v tx info, account[%v] balance:%v,nonce:%v,gasprice:%v,gaslimit:%v,length:%v,chainid:%v,hash:%v", te.name, te.wallet.Address(), balance.Uint64(), nonce, gaspric.Uint64(), gaslimit, len(headers), te.chainId, sigTx.Hash())
 	return nil
 }
 
 //callback function to sign tx before send.
 func (te *CrossChainRelayer) signTransaction(addr common.Address, tx *types.Transaction) (*types.Transaction, error) {
-	acc := te.wallet.CurrentAccount()
-	if strings.EqualFold(acc.Address.Hex(), addr.Hex()) {
+	acc := te.wallet.Address()
+	if strings.EqualFold(acc.Hex(), addr.Hex()) {
 		stx, err := te.wallet.SignTx(tx)
 		if err != nil {
 			return nil, err
@@ -194,7 +194,7 @@ func (te *CrossChainRelayer) StartRelayer(wg *sync.WaitGroup) error {
 			default:
 				opts := &bind.CallOpts{
 					Pending:     false,
-					From:        te.wallet.CurrentAccount().Address,
+					From:        te.wallet.Address(),
 					BlockNumber: nil,
 					Context:     context.Background(),
 				}

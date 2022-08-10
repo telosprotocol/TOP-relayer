@@ -129,8 +129,8 @@ func TestConvert(t *testing.T) {
 	// blockFlag := binary.BigEndian.Uint64(blockFlagBytes)
 	// fmt.Println(uint64(flag) & blockFlag)
 
-	blockFlagStr := "0x3"                         // 这里前两个字符要确定多少进制的
-	i, _ := strconv.ParseInt(blockFlagStr, 0, 64) // 第二个参数为0时会自动判断字符类型
+	blockFlagStr := "0x3"
+	i, _ := strconv.ParseInt(blockFlagStr, 0, 64)
 	fmt.Println(i)
 
 	if int64(flag)&i > 0 {

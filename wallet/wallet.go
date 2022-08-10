@@ -4,13 +4,11 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"os"
 	"toprelayer/sdk"
 
 	"github.com/wonderivan/logger"
 
 	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -33,51 +31,26 @@ func NewWallet(url, path, pass string, chainid uint64) (IWallet, error) {
 	return w.createChainWallet(chainid)
 }
 
-func newkeystore(path, pass string) (*keystore.KeyStore, error) {
+func (w *Wallet) initWallet(path, pass string) error {
 	if path == "" {
-		return nil, fmt.Errorf("empty keypath")
+		return fmt.Errorf("empty keypath")
 	}
 	store := keystore.NewKeyStore(path, keystore.StandardScryptN, keystore.StandardScryptP)
-	_, err := os.Stat(path)
-	if err != nil {
-		_, err := createAccount(store, pass)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return store, nil
-}
-func (w *Wallet) initWallet(path, pass string) error {
-	store, err := newkeystore(path, pass)
-	if err != nil {
-		return err
-	}
-
 	acc, err := loadAccount(store, path, pass)
 	if err != nil {
 		return err
 	}
 	logger.Info("wallet loads chain[%v] account:%v", w.chainId, acc.Address)
 	w.account = acc
-
-	p := newKeyStoreProvider(store, pass)
-	if p == nil {
-		return fmt.Errorf("keystore provider is nil")
-	}
-	w.provider = p
-	err = p.UnlockAccount(w.account, pass)
+	w.provider = store
+	err = store.Unlock(w.account, pass)
 	if err != nil {
 		return err
 	}
 
-	if w.sdk == nil {
-		return fmt.Errorf("fatal error: nil sdk!")
-	}
 	return w.verifyChainId()
 }
-func (w *Wallet) getNonceAt() (uint64, error) {
-	return w.sdk.NonceAt(context.Background(), w.account.Address, nil)
-}
+
 func (w *Wallet) verifyChainId() error {
 	chainId, err := w.sdk.ChainID(context.Background())
 	if err != nil {
@@ -92,29 +65,30 @@ func (w *Wallet) verifyChainId() error {
 	}
 	return nil
 }
-func (w *Wallet) GetBalance(address common.Address) (balance *big.Int, err error) {
-	return w.sdk.BalanceAt(context.Background(), address, nil)
-}
-func (w *Wallet) GetNonce(address common.Address) (uint64, error) {
-	return w.getNonceAt()
+
+func (w *Wallet) NonceAt(address common.Address) (uint64, error) {
+	return w.sdk.NonceAt(context.Background(), w.account.Address, nil)
 }
 
-func (w *Wallet) CurrentAccount() accounts.Account {
-	return w.currentAccount()
+func (w *Wallet) BalanceAt(address common.Address) (balance *big.Int, err error) {
+	return w.sdk.BalanceAt(context.Background(), address, nil)
 }
-func (w *Wallet) currentAccount() accounts.Account {
-	return w.account
+
+func (w *Wallet) Address() common.Address {
+	return w.account.Address
 }
+
 func (w *Wallet) ChainID() *big.Int {
 	return big.NewInt(0).SetUint64(w.chainId)
 }
-func (w *Wallet) GasPrice(ctx context.Context) (*big.Int, error) {
-	return w.sdk.SuggestGasPrice(ctx)
+
+func (w *Wallet) SuggestGasPrice() (*big.Int, error) {
+	return w.sdk.SuggestGasPrice(context.Background())
 }
 
 func (w *Wallet) EstimateGas(ctx context.Context, target *common.Address, data []byte) (uint64, error) {
 	msg := ethereum.CallMsg{
-		From:      w.CurrentAccount().Address,
+		From:      w.Address(),
 		To:        target,
 		GasPrice:  nil,
 		Gas:       0,
@@ -125,8 +99,8 @@ func (w *Wallet) EstimateGas(ctx context.Context, target *common.Address, data [
 	return w.sdk.EstimateGas(ctx, msg)
 }
 
-func (w *Wallet) GasTipCap(ctx context.Context) (*big.Int, error) {
-	return w.sdk.SuggestGasTipCap(ctx)
+func (w *Wallet) SuggestGasTipCap() (*big.Int, error) {
+	return w.sdk.SuggestGasTipCap(context.Background())
 }
 
 //sign tx
@@ -144,6 +118,6 @@ func (w *Wallet) createChainWallet(ID uint64) (IWallet, error) {
 	return w, nil
 }
 
-func (w *Wallet) GetReceipt(ctx context.Context, hash common.Hash) (*types.Receipt, error) {
-	return w.sdk.TransactionReceipt(ctx, hash)
+func (w *Wallet) TransactionReceipt(hash common.Hash) (*types.Receipt, error) {
+	return w.sdk.TransactionReceipt(context.Background(), hash)
 }

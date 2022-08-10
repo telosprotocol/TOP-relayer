@@ -14,9 +14,9 @@ import (
 
 var (
 	topRelayers = map[string]IChainRelayer{
-		config.ETH_CHAIN:  new(toprelayer.TopRelayer),
-		config.BSC_CHAIN:  new(toprelayer.TopRelayer),
-		config.HECO_CHAIN: new(toprelayer.TopRelayer)}
+		config.ETH_CHAIN:  new(toprelayer.Eth2TopRelayer),
+		config.BSC_CHAIN:  new(toprelayer.Bsc2TopRelayer),
+		config.HECO_CHAIN: new(toprelayer.Heco2TopRelayer)}
 
 	crossChainRelayer = new(crosschainrelayer.CrossChainRelayer)
 )
@@ -24,7 +24,6 @@ var (
 type IChainRelayer interface {
 	Init(chainName string, cfg *config.Relayer, listenUrl string, pass string) error
 	StartRelayer(*sync.WaitGroup) error
-	ChainId() uint64
 }
 
 func startOneRelayer(chainName string, relayer IChainRelayer, cfg *config.Relayer, listenUrl string, pass string, wg *sync.WaitGroup) error {
@@ -67,7 +66,7 @@ func StartRelayer(cfg *config.Config, pass string, wg *sync.WaitGroup) error {
 			if name == config.TOP_CHAIN {
 				continue
 			}
-			if name != config.ETH_CHAIN {
+			if name != config.ETH_CHAIN && name != config.BSC_CHAIN && name != config.HECO_CHAIN {
 				logger.Warn("TopRelayer not support:", name)
 				continue
 			}
