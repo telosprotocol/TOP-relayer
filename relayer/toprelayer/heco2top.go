@@ -8,15 +8,15 @@ import (
 	"sync"
 	"time"
 	"toprelayer/config"
-	"toprelayer/contract/top/ethclient"
+	ethbridge "toprelayer/contract/top/ethclient"
 	"toprelayer/relayer/toprelayer/congress"
-	"toprelayer/sdk/ethsdk"
 	"toprelayer/sdk/topsdk"
 	"toprelayer/wallet"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/wonderivan/logger"
 )
 
@@ -27,19 +27,17 @@ var (
 type Heco2TopRelayer struct {
 	context.Context
 	crossChainName string
-	chainId        uint64
 	wallet         wallet.IWallet
 	topsdk         *topsdk.TopSdk
 	contract       common.Address
-	ethsdk         *ethsdk.EthSdk
-	transactor     *ethclient.EthClientTransactor
-	callerSession  *ethclient.EthClientCallerSession
+	ethsdk         *ethclient.Client
+	transactor     *ethbridge.EthClientTransactor
+	callerSession  *ethbridge.EthClientCallerSession
 	congress       *congress.Congress
 }
 
 func (relayer *Heco2TopRelayer) Init(crossChainName string, cfg *config.Relayer, listenUrl string, pass string) error {
 	relayer.crossChainName = crossChainName
-	relayer.chainId = cfg.ChainId
 	topsdk, err := topsdk.NewTopSdk(cfg.Url)
 	if err != nil {
 		logger.Error("TopRelayer from", relayer.crossChainName, "NewTopSdk error:", err)
@@ -47,27 +45,27 @@ func (relayer *Heco2TopRelayer) Init(crossChainName string, cfg *config.Relayer,
 	}
 	relayer.topsdk = topsdk
 
-	w, err := wallet.NewWallet(cfg.Url, cfg.KeyPath, pass, cfg.ChainId)
+	w, err := wallet.NewWallet(cfg.Url, cfg.KeyPath, pass)
 	if err != nil {
 		logger.Error("TopRelayer from", relayer.crossChainName, "NewWallet error:", err)
 		return err
 	}
 	relayer.wallet = w
 
-	relayer.ethsdk, err = ethsdk.NewEthSdk(listenUrl)
+	relayer.ethsdk, err = ethclient.Dial(listenUrl)
 	if err != nil {
-		logger.Error("TopRelayer from", relayer.crossChainName, "NewEthSdk error:", crossChainName, listenUrl)
+		logger.Error("TopRelayer from", relayer.crossChainName, "ethsdk create error:", crossChainName, listenUrl)
 		return err
 	}
 	relayer.contract = hecoClientContract
-	relayer.transactor, err = ethclient.NewEthClientTransactor(relayer.contract, topsdk)
+	relayer.transactor, err = ethbridge.NewEthClientTransactor(relayer.contract, topsdk)
 	if err != nil {
 		logger.Error("TopRelayer from", relayer.crossChainName, "NewEthClientTransactor error:", relayer.contract)
 		return err
 	}
 
-	relayer.callerSession = new(ethclient.EthClientCallerSession)
-	relayer.callerSession.Contract, err = ethclient.NewEthClientCaller(relayer.contract, topsdk)
+	relayer.callerSession = new(ethbridge.EthClientCallerSession)
+	relayer.callerSession.Contract, err = ethbridge.NewEthClientCaller(relayer.contract, topsdk)
 	if err != nil {
 		logger.Error("TopRelayer from", relayer.crossChainName, "NewEthClientCaller error:", relayer.contract)
 		return err
@@ -84,10 +82,6 @@ func (relayer *Heco2TopRelayer) Init(crossChainName string, cfg *config.Relayer,
 	return nil
 }
 
-func (relayer *Heco2TopRelayer) ChainId() uint64 {
-	return relayer.chainId
-}
-
 func (et *Heco2TopRelayer) submitEthHeader(header []byte) error {
 	nonce, err := et.wallet.NonceAt(context.Background(), et.wallet.Address(), nil)
 	if err != nil {
@@ -99,7 +93,7 @@ func (et *Heco2TopRelayer) submitEthHeader(header []byte) error {
 		logger.Error("TopRelayer from", et.crossChainName, "GasPrice error:", err)
 		return err
 	}
-	packHeader, err := ethclient.PackSyncParam(header)
+	packHeader, err := ethbridge.PackSyncParam(header)
 	if err != nil {
 		logger.Error("TopRelayer from", et.crossChainName, "PackSyncParam error:", err)
 		return err
@@ -144,7 +138,7 @@ func (et *Heco2TopRelayer) signTransaction(addr common.Address, tx *types.Transa
 }
 
 func (et *Heco2TopRelayer) StartRelayer(wg *sync.WaitGroup) error {
-	logger.Info("Start TopRelayer from %v... chainid: %v, subBatch: %v certaintyBlocks: %v", et.crossChainName, et.chainId, BATCH_NUM, CONFIRM_NUM)
+	logger.Info("Start TopRelayer from %v... subBatch: %v certaintyBlocks: %v", et.crossChainName, BATCH_NUM, CONFIRM_NUM)
 	defer wg.Done()
 
 	done := make(chan struct{})
@@ -161,6 +155,7 @@ func (et *Heco2TopRelayer) StartRelayer(wg *sync.WaitGroup) error {
 			destHeight, err := et.callerSession.GetHeight()
 			if err != nil {
 				logger.Error("TopRelayer from ", et.crossChainName, " get height error:", err)
+				time.Sleep(time.Second * time.Duration(ERRDELAY))
 				continue
 			}
 			logger.Info("TopRelayer from", et.crossChainName, "check dest top Height:", destHeight)
@@ -280,7 +275,7 @@ func (et *Heco2TopRelayer) StartRelayer(wg *sync.WaitGroup) error {
 	}(done)
 
 	<-done
-	logger.Error("relayer [%v] timeout.", et.chainId)
+	logger.Error("relayer [%v] timeout.", et.crossChainName)
 	return nil
 }
 

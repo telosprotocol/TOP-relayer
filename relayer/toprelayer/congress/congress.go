@@ -7,11 +7,11 @@ import (
 	"io"
 	"math/big"
 	"time"
-	"toprelayer/sdk/ethsdk"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rlp"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/wonderivan/logger"
@@ -59,12 +59,12 @@ type Congress struct {
 	recents    *lru.ARCCache // Snapshots for recent block to speed up reorgs
 	signatures *lru.ARCCache // Signatures of recent blocks to speed up mining
 
-	client *ethsdk.EthSdk
+	client *ethclient.Client
 }
 
 // New creates a Congress proof-of-stake-authority consensus engine with the initial
 // validators set to the ones provided by the user.
-func New(client *ethsdk.EthSdk) *Congress {
+func New(client *ethclient.Client) *Congress {
 	// Allocate the snapshot caches and create the engine
 	recents, _ := lru.NewARC(inmemorySnapshots)
 	signatures, _ := lru.NewARC(inmemorySignatures)

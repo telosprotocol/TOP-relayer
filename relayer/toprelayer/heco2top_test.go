@@ -6,7 +6,6 @@ import (
 	"testing"
 	"toprelayer/config"
 	"toprelayer/relayer/toprelayer/congress"
-	"toprelayer/sdk/ethsdk"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -43,7 +42,7 @@ func TestGetHecoSyncData(t *testing.T) {
 	var start_height uint64 = 17276022
 	var sync_num uint64 = 1
 
-	ethsdk, err := ethsdk.NewEthSdk(hecoUrl)
+	ethsdk, err := ethclient.Dial(hecoUrl)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +76,6 @@ func TestHecoInit(t *testing.T) {
 
 	cfg := &config.Relayer{
 		Url:     topUrl,
-		ChainId: topChainId,
 		KeyPath: keyPath,
 	}
 	relayer := &Heco2TopRelayer{}

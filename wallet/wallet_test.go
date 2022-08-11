@@ -15,12 +15,11 @@ import (
 const (
 	defaultPass = "asd123"
 	defaultPath = "../.relayer/wallet/top"
-	chainid     = uint64(1023)
 	url         = "http://192.168.50.204:19086"
 )
 
 func TestGetBalance(t *testing.T) {
-	w, err := NewWallet(url, defaultPath, defaultPass, chainid)
+	w, err := NewWallet(url, defaultPath, defaultPass)
 	if err != nil {
 		t.Fatalf("new wallet error:%v", err)
 	}
@@ -34,7 +33,7 @@ func TestGetBalance(t *testing.T) {
 }
 
 func TestGetNonce(t *testing.T) {
-	w, err := NewWallet(url, defaultPath, defaultPass, chainid)
+	w, err := NewWallet(url, defaultPath, defaultPass)
 	if err != nil {
 		t.Fatalf("new wallet error:%v", err)
 	}
@@ -49,7 +48,7 @@ func TestGetNonce(t *testing.T) {
 }
 
 func TestGasPrice(t *testing.T) {
-	w, err := NewWallet(url, defaultPath, defaultPass, chainid)
+	w, err := NewWallet(url, defaultPath, defaultPass)
 	if err != nil {
 		t.Fatalf("new wallet error:%v", err)
 	}
@@ -62,7 +61,7 @@ func TestGasPrice(t *testing.T) {
 }
 
 func TestGasTip(t *testing.T) {
-	w, err := NewWallet(url, defaultPath, defaultPass, chainid)
+	w, err := NewWallet(url, defaultPath, defaultPass)
 	if err != nil {
 		t.Fatalf("new wallet error:%v", err)
 	}
@@ -74,7 +73,7 @@ func TestGasTip(t *testing.T) {
 }
 
 func TestSendTransaction(t *testing.T) {
-	w, err := NewWallet(url, defaultPath, defaultPass, chainid)
+	w, err := NewWallet(url, defaultPath, defaultPass)
 	if err != nil {
 		t.Fatalf("new wallet error:%v", err)
 	}

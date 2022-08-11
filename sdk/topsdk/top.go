@@ -18,11 +18,17 @@ type TopSdk struct {
 	url string
 }
 
+type BlockList struct {
+	Hash  string `json:"blockHash"`
+	Index string `json:"blockIndex"`
+}
 type TopBlock struct {
-	Number    string `json:"number"`
-	Header    string `json:"header"`
-	BlockType string `json:"blockType"`
-	ChainBits string `json:"chainBits"`
+	Number      string      `json:"number"`
+	Hash        string      `json:"hash"`
+	Header      string      `json:"header"`
+	BlockType   string      `json:"blockType"`
+	ChainBits   string      `json:"chainBits"`
+	RelatedList []BlockList `json:"blockList"`
 }
 
 const (
@@ -41,7 +47,7 @@ func NewTopSdk(url string) (*TopSdk, error) {
 
 func (t *TopSdk) GetTopElectBlockHeadByHeight(height uint64) (*TopBlock, error) {
 	var data json.RawMessage
-	err := t.Rpc.CallContext(context.Background(), &data, getTopRelayBlockByNumber, hexutil.EncodeUint64(height))
+	err := t.Rpc.CallContext(context.Background(), &data, getTopRelayBlockByNumber, hexutil.EncodeUint64(height), false, "transaction")
 	if err != nil {
 		return &TopBlock{}, err
 	} else if len(data) == 0 {

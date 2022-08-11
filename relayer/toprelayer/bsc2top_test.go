@@ -6,7 +6,6 @@ import (
 	"testing"
 	"toprelayer/config"
 	"toprelayer/relayer/toprelayer/congress"
-	"toprelayer/sdk/ethsdk"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -43,7 +42,7 @@ func TestGetBscSyncData(t *testing.T) {
 	var start_height uint64 = 17276022
 	var sync_num uint64 = 1
 
-	ethsdk, err := ethsdk.NewEthSdk(hecoUrl)
+	ethsdk, err := ethclient.Dial(hecoUrl)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,13 +71,11 @@ func TestBscInit(t *testing.T) {
 	// changable
 	var start_height uint64 = 20250000
 	var sync_num uint64 = 12
-	var bscUrl = "https://bsc-dataseed4.binance.org"
 	var topUrl string = "http://192.168.30.200:8080"
 	var keyPath = "../../.relayer/wallet/top"
 
 	cfg := &config.Relayer{
 		Url:     topUrl,
-		ChainId: topChainId,
 		KeyPath: keyPath,
 	}
 	relayer := &Heco2TopRelayer{}

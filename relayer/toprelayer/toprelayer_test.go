@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 	"toprelayer/config"
-	"toprelayer/contract/top/ethclient"
+	ethbridge "toprelayer/contract/top/ethclient"
 	"toprelayer/relayer/toprelayer/ethashapp"
-	"toprelayer/sdk/ethsdk"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/wonderivan/logger"
 )
@@ -28,15 +28,14 @@ import (
 
 // const ethUrl string = "https://eth-mainnet.token.im"
 const ethUrl = "https://ropsten.infura.io/v3/fb2a09e82a234971ad84203e6f75990e"
-const topChainId uint64 = 1023
 const defaultPass = "asd123"
 
 func TestGetHeaderRlp(t *testing.T) {
 	var height uint64 = 12989998
 
-	ethsdk, err := ethsdk.NewEthSdk(ethUrl)
+	ethsdk, err := ethclient.Dial(ethUrl)
 	if err != nil {
-		t.Fatal("NewEthSdk: ", err)
+		t.Fatal(err)
 	}
 	header, err := ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(height))
 	if err != nil {
@@ -53,9 +52,9 @@ func TestGetHeadersWithProofsRlp(t *testing.T) {
 	var start_height uint64 = 12970000
 	var sync_num uint64 = 1
 
-	ethsdk, err := ethsdk.NewEthSdk(ethUrl)
+	ethsdk, err := ethclient.Dial(ethUrl)
 	if err != nil {
-		t.Fatal("NewEthSdk: ", err)
+		t.Fatal(err)
 	}
 
 	var batch []byte
@@ -80,9 +79,9 @@ func TestGetHeadersWithProofsRlp(t *testing.T) {
 func TestGetInitTxData(t *testing.T) {
 	var height uint64 = 12622433
 
-	ethsdk, err := ethsdk.NewEthSdk(ethUrl)
+	ethsdk, err := ethclient.Dial(ethUrl)
 	if err != nil {
-		t.Fatal("NewEthSdk: ", err)
+		t.Fatal(err)
 	}
 	header, err := ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(height))
 	if err != nil {
@@ -92,7 +91,7 @@ func TestGetInitTxData(t *testing.T) {
 	if err != nil {
 		t.Fatal("EncodeToBytes: ", err)
 	}
-	input, err := ethclient.PackSyncParam(rlp_bytes)
+	input, err := ethbridge.PackSyncParam(rlp_bytes)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,9 +103,9 @@ func TestGetSyncTxData(t *testing.T) {
 	var start_height uint64 = 12970000
 	var sync_num uint64 = 1
 
-	ethsdk, err := ethsdk.NewEthSdk(ethUrl)
+	ethsdk, err := ethclient.Dial(ethUrl)
 	if err != nil {
-		t.Fatal("NewEthSdk: ", err)
+		t.Fatal(err)
 	}
 	var batch []byte
 	for h := start_height; h <= start_height+sync_num-1; h++ {
@@ -124,7 +123,7 @@ func TestGetSyncTxData(t *testing.T) {
 		}
 		batch = append(batch, rlp_bytes...)
 	}
-	input, err := ethclient.PackSyncParam(batch)
+	input, err := ethbridge.PackSyncParam(batch)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +131,7 @@ func TestGetSyncTxData(t *testing.T) {
 }
 
 func TestGetHeightTxData(t *testing.T) {
-	input, err := ethclient.PackGetHeightParam()
+	input, err := ethbridge.PackGetHeightParam()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +141,7 @@ func TestGetHeightTxData(t *testing.T) {
 func TestGetIsConfirmedTxData(t *testing.T) {
 	height := big.NewInt(12970000)
 	hash := common.HexToHash("13049bb8cfd97fe2333829f06df37c569db68d42c23097fbac64f2c61471f281")
-	input, err := ethclient.PackIsKnownParam(height, hash)
+	input, err := ethbridge.PackIsKnownParam(height, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,7 +156,6 @@ func TestInit(t *testing.T) {
 
 	cfg := &config.Relayer{
 		Url:     topUrl,
-		ChainId: topChainId,
 		KeyPath: keyPath,
 	}
 	topRelayer := &Eth2TopRelayer{}
@@ -202,7 +200,6 @@ func TestSync(t *testing.T) {
 
 	cfg := &config.Relayer{
 		Url:     topUrl,
-		ChainId: topChainId,
 		KeyPath: keyPath,
 	}
 	topRelayer := &Eth2TopRelayer{}
@@ -227,7 +224,6 @@ func TestSyncHeaderWithProofsRlpGas(t *testing.T) {
 
 	cfg := &config.Relayer{
 		Url:     topUrl,
-		ChainId: topChainId,
 		KeyPath: keyPath,
 	}
 	topRelayer := &Eth2TopRelayer{}
@@ -247,7 +243,7 @@ func TestSyncHeaderWithProofsRlpGas(t *testing.T) {
 	if err != nil {
 		t.Fatal("rlp encode error: ", err)
 	}
-	packHeader, err := ethclient.PackSyncParam(rlp_bytes)
+	packHeader, err := ethbridge.PackSyncParam(rlp_bytes)
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -265,7 +261,6 @@ func TestGetEthClientHeight(t *testing.T) {
 
 	cfg := &config.Relayer{
 		Url:     topUrl,
-		ChainId: topChainId,
 		KeyPath: keyPath,
 	}
 	topRelayer := &Eth2TopRelayer{}

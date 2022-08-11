@@ -4,7 +4,6 @@ import (
 	"context"
 	"math/big"
 	"testing"
-	"toprelayer/sdk/ethsdk"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -16,9 +15,9 @@ const hecoUrl = "https://http-mainnet.hecochain.com"
 func TestCheckValidatorsNum(t *testing.T) {
 	var height uint64 = 17276000
 
-	ethsdk, err := ethsdk.NewEthSdk(hecoUrl)
+	ethsdk, err := ethclient.Dial(hecoUrl)
 	if err != nil {
-		t.Fatal("NewEthSdk: ", err)
+		t.Fatal(err)
 	}
 	header, err := ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(height))
 	if err != nil {
@@ -38,9 +37,9 @@ func TestCheckValidatorsNum(t *testing.T) {
 func TestInit(t *testing.T) {
 	var height uint64 = 17276012
 
-	ethsdk, err := ethsdk.NewEthSdk(hecoUrl)
+	ethsdk, err := ethclient.Dial(hecoUrl)
 	if err != nil {
-		t.Fatal("NewEthSdk: ", err)
+		t.Fatal(err)
 	}
 
 	con := New(ethsdk)

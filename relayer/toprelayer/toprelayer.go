@@ -37,7 +37,6 @@ var (
 )
 
 type Eth2TopRelayer struct {
-	context.Context
 	wallet        wallet.IWallet
 	ethsdk        *ethclient.Client
 	transactor    *ethbridge.EthClientTransactor
@@ -48,7 +47,7 @@ type Eth2TopRelayer struct {
 type void struct{}
 
 func (relayer *Eth2TopRelayer) Init(crossChainName string, cfg *config.Relayer, listenUrl string, pass string) error {
-	w, err := wallet.NewWallet(cfg.Url, cfg.KeyPath, pass, cfg.ChainId)
+	w, err := wallet.NewWallet(cfg.Url, cfg.KeyPath, pass)
 	if err != nil {
 		logger.Error("Eth2TopRelayer NewWallet error:", err)
 		return err

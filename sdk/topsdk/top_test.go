@@ -49,3 +49,21 @@ func TestParseJson(t *testing.T) {
 	}
 	fmt.Println("type:", res.BlockType, ", number:", res.Number)
 }
+
+func TestFastFindAggregate(t *testing.T) {
+	url := "http://192.168.50.31:8080"
+	sdk, err := NewTopSdk(url)
+	if err != nil {
+		t.Fatalf("NewSDK failed,error:%v", err)
+	}
+	for h := 1; ; h += 1 {
+		result, err := sdk.GetTopElectBlockHeadByHeight(uint64(h))
+		if err != nil {
+			t.Fatalf("GetTopElectBlockHeadByHeight failed,error:%v", err)
+		}
+		if result.BlockType == "aggregate" {
+			t.Logf("GetTopElectBlockHeadByHeight ok ,result:%v", result)
+			break
+		}
+	}
+}

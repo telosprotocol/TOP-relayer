@@ -8,7 +8,6 @@ import (
 	"io"
 	"math/big"
 	"time"
-	"toprelayer/sdk/ethsdk"
 
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/wonderivan/logger"
@@ -17,6 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
@@ -103,11 +103,11 @@ type Parlia struct {
 
 	recentSnaps *lru.ARCCache // Snapshots for recent block to speed up
 	signatures  *lru.ARCCache // Signatures of recent blocks to speed up mining
-	client      *ethsdk.EthSdk
+	client      *ethclient.Client
 }
 
 // New creates a Parlia consensus engine.
-func New(client *ethsdk.EthSdk) *Parlia {
+func New(client *ethclient.Client) *Parlia {
 	// Allocate the snapshot caches and create the engine
 	recentSnaps, err := lru.NewARC(inMemorySnapshots)
 	if err != nil {

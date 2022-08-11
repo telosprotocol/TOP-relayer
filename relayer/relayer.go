@@ -63,6 +63,7 @@ func StartRelayer(cfg *config.Config, pass string, wg *sync.WaitGroup) error {
 	}
 	if cfg.RelayerToRun == config.TOP_CHAIN {
 		for name, c := range cfg.RelayerConfig {
+			logger.Info("name: ", name)
 			if name == config.TOP_CHAIN {
 				continue
 			}
@@ -77,8 +78,8 @@ func StartRelayer(cfg *config.Config, pass string, wg *sync.WaitGroup) error {
 			}
 			err := startOneRelayer(name, topRelayer, topConfig, c.Url, pass, wg)
 			if err != nil {
-				logger.Error("StartRelayer error:", err)
-				return err
+				logger.Error("StartRelayer %v error: %v", name, err)
+				continue
 			}
 		}
 	} else {

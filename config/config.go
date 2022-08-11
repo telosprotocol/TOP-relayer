@@ -35,9 +35,6 @@ var (
 )
 
 type Relayer struct {
-	// chain symbol
-	ChainId uint64 `json:"chainId"`
-
 	//submit config
 	Url      string `json:"url"`
 	Contract string `json:"contract"`
