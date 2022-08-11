@@ -40,7 +40,7 @@ var (
 	sendFlag = map[string]uint64{
 		config.ETH_CHAIN:  0x1,
 		config.BSC_CHAIN:  0x2,
-		config.HECO_CHAIN: 0x3}
+		config.HECO_CHAIN: 0x4}
 )
 
 type CrossChainRelayer struct {

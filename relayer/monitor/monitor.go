@@ -113,7 +113,7 @@ func (monitor *Monitor) checkTx(errorNum *uint64) {
 		if receipt.Status == 1 {
 			increaseCounter(TagSuccessTxCount, 1)
 		}
-		increaseCounter(TagGas, receipt.GasUsed)
+		pushRealtime(TagGas, receipt.GasUsed, hash.Hex())
 
 		*errorNum = 0
 		monitor.txList.Remove(element)
