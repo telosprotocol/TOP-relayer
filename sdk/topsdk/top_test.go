@@ -18,18 +18,12 @@ func TestGetTopElectBlockHeadByHeight(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSDK failed,error:%v", err)
 	}
-
-	// h, err := sdk.GetLatestTopElectBlockHeight()
-	// if err != nil {
-	// 	t.Fatalf("GetLatestTopElectBlockHeight failed,error:%v", err)
-	// }
 	var h uint64 = 1
-	var flag bool
-	result, flag, err := sdk.GetTopElectBlockHeadByHeight(h)
+	result, err := sdk.GetTopElectBlockHeadByHeight(h)
 	if err != nil {
 		t.Fatalf("GetTopElectBlockHeadByHeight failed,error:%v", err)
 	}
-	t.Logf("GetTopElectBlockHeadByHeight ok,flag:%v,result:%v", flag, result)
+	t.Logf("GetTopElectBlockHeadByHeight ok ,result:%v", result)
 }
 
 func TestGetLatestTopElectBlockHeight(t *testing.T) {

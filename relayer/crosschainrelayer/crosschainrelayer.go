@@ -104,11 +104,11 @@ func (te *CrossChainRelayer) ChainId() uint64 {
 
 func (te *CrossChainRelayer) submitTopHeader(headers []byte) error {
 	logger.Info("CrossChainRelayer", te.name, "raw data:", common.Bytes2Hex(headers))
-	nonce, err := te.wallet.NonceAt(te.wallet.Address())
+	nonce, err := te.wallet.NonceAt(context.Background(), te.wallet.Address(), nil)
 	if err != nil {
 		return err
 	}
-	gaspric, err := te.wallet.SuggestGasPrice()
+	gaspric, err := te.wallet.SuggestGasPrice(context.Background())
 	if err != nil {
 		logger.Error("CrossChainRelayer", te.name, "GasPrice error:", err)
 		return err
@@ -126,7 +126,7 @@ func (te *CrossChainRelayer) submitTopHeader(headers []byte) error {
 	//test mock
 	//gaslimit := uint64(500000)
 
-	balance, err := te.wallet.BalanceAt(te.wallet.Address())
+	balance, err := te.wallet.BalanceAt(context.Background(), te.wallet.Address(), nil)
 	if err != nil {
 		return err
 	}

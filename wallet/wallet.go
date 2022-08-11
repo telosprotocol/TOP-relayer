@@ -15,75 +15,65 @@ import (
 )
 
 func NewWallet(url, path, pass string, chainid uint64) (IWallet, error) {
-	sdk, err := sdk.NewSDK(url)
-	if err != nil {
-		return nil, err
+	if path == "" {
+		return nil, fmt.Errorf("empty keypath")
 	}
 
 	w := new(Wallet)
 	w.chainId = chainid
-	w.sdk = sdk
 
-	err = w.initWallet(path, pass)
+	sdk, err := sdk.NewSDK(url)
 	if err != nil {
 		return nil, err
 	}
-	return w.createChainWallet(chainid)
-}
+	w.sdk = sdk
 
-func (w *Wallet) initWallet(path, pass string) error {
-	if path == "" {
-		return fmt.Errorf("empty keypath")
-	}
 	store := keystore.NewKeyStore(path, keystore.StandardScryptN, keystore.StandardScryptP)
+	w.provider = store
+
 	acc, err := loadAccount(store, path, pass)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	logger.Info("wallet loads chain[%v] account:%v", w.chainId, acc.Address)
 	w.account = acc
-	w.provider = store
+
+	logger.Info("wallet loads chain[%v] account:%v", w.chainId, acc.Address)
+
+	// unlock
 	err = store.Unlock(w.account, pass)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	return w.verifyChainId()
-}
-
-func (w *Wallet) verifyChainId() error {
-	chainId, err := w.sdk.ChainID(context.Background())
+	// verify chainId
+	id, err := w.sdk.ChainID(context.Background())
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if chainId == nil {
-		return fmt.Errorf("wallet get chanid nil")
+	if w.chainId != id.Uint64() {
+		return nil, fmt.Errorf("ChainID does not match %v, want: %v", w.chainId, id.Uint64())
 	}
 
-	if w.chainId != chainId.Uint64() {
-		return fmt.Errorf("ChainID does not match %v, want: %v", w.chainId, chainId.Uint64())
-	}
-	return nil
+	return w, nil
 }
 
-func (w *Wallet) NonceAt(address common.Address) (uint64, error) {
-	return w.sdk.NonceAt(context.Background(), w.account.Address, nil)
+func (w *Wallet) NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error) {
+	return w.sdk.NonceAt(ctx, account, blockNumber)
 }
 
-func (w *Wallet) BalanceAt(address common.Address) (balance *big.Int, err error) {
-	return w.sdk.BalanceAt(context.Background(), address, nil)
+func (w *Wallet) BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (balance *big.Int, err error) {
+	return w.sdk.BalanceAt(ctx, account, nil)
 }
 
 func (w *Wallet) Address() common.Address {
 	return w.account.Address
 }
 
-func (w *Wallet) ChainID() *big.Int {
-	return big.NewInt(0).SetUint64(w.chainId)
+func (w *Wallet) ChainID(ctx context.Context) (*big.Int, error) {
+	return big.NewInt(0).SetUint64(w.chainId), nil
 }
 
-func (w *Wallet) SuggestGasPrice() (*big.Int, error) {
-	return w.sdk.SuggestGasPrice(context.Background())
+func (w *Wallet) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
+	return w.sdk.SuggestGasPrice(ctx)
 }
 
 func (w *Wallet) EstimateGas(ctx context.Context, target *common.Address, data []byte) (uint64, error) {
@@ -99,8 +89,8 @@ func (w *Wallet) EstimateGas(ctx context.Context, target *common.Address, data [
 	return w.sdk.EstimateGas(ctx, msg)
 }
 
-func (w *Wallet) SuggestGasTipCap() (*big.Int, error) {
-	return w.sdk.SuggestGasTipCap(context.Background())
+func (w *Wallet) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
+	return w.sdk.SuggestGasTipCap(ctx)
 }
 
 //sign tx
@@ -113,11 +103,6 @@ func (w *Wallet) SendTransaction(ctx context.Context, tx *types.Transaction) err
 	return w.sdk.SendTransaction(ctx, tx)
 }
 
-/*to create chains wallet...*/
-func (w *Wallet) createChainWallet(ID uint64) (IWallet, error) {
-	return w, nil
-}
-
-func (w *Wallet) TransactionReceipt(hash common.Hash) (*types.Receipt, error) {
-	return w.sdk.TransactionReceipt(context.Background(), hash)
+func (w *Wallet) TransactionReceipt(ctx context.Context, hash common.Hash) (*types.Receipt, error) {
+	return w.sdk.TransactionReceipt(ctx, hash)
 }

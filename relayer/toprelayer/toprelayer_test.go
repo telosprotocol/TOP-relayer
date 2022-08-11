@@ -173,16 +173,16 @@ func TestInit(t *testing.T) {
 	if err != nil {
 		t.Fatal("EncodeToBytes: ", err)
 	}
-	nonce, err := topRelayer.wallet.GetNonce(topRelayer.wallet.CurrentAccount().Address)
+	nonce, err := topRelayer.wallet.NonceAt(context.Background(), topRelayer.wallet.Address(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	gaspric, err := topRelayer.wallet.GasPrice(context.Background())
+	gaspric, err := topRelayer.wallet.SuggestGasPrice(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
 	ops := &bind.TransactOpts{
-		From:      topRelayer.wallet.CurrentAccount().Address,
+		From:      topRelayer.wallet.Address(),
 		Nonce:     big.NewInt(0).SetUint64(nonce),
 		GasLimit:  500000,
 		GasFeeCap: gaspric,

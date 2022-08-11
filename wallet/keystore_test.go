@@ -7,7 +7,7 @@ import (
 )
 
 func TestCreateAccount(t *testing.T) {
-	store := keystore.NewKeyStore(DEFAULTPATH, keystore.StandardScryptN, keystore.StandardScryptP)
+	store := keystore.NewKeyStore(defaultPath, keystore.StandardScryptN, keystore.StandardScryptP)
 	acc, err := createAccount(store, defaultPass)
 	if err != nil {
 		t.Fatal("CreateAccount error:", err)
@@ -16,8 +16,8 @@ func TestCreateAccount(t *testing.T) {
 }
 
 func TestLoadAccount(t *testing.T) {
-	store := keystore.NewKeyStore(DEFAULTPATH, keystore.StandardScryptN, keystore.StandardScryptP)
-	acc, err := loadAccount(store, DEFAULTPATH, defaultPass)
+	store := keystore.NewKeyStore(defaultPath, keystore.StandardScryptN, keystore.StandardScryptP)
+	acc, err := loadAccount(store, defaultPath, defaultPass)
 	if err != nil {
 		t.Fatal("load accounts failed,error:", err)
 	}
@@ -26,16 +26,13 @@ func TestLoadAccount(t *testing.T) {
 }
 
 func TestUnlockAccount(t *testing.T) {
-	store := keystore.NewKeyStore(DEFAULTPATH, keystore.StandardScryptN, keystore.StandardScryptP)
-	acc, err := loadAccount(store, DEFAULTPATH, defaultPass)
+	store := keystore.NewKeyStore(defaultPath, keystore.StandardScryptN, keystore.StandardScryptP)
+	acc, err := loadAccount(store, defaultPath, defaultPass)
 	if err != nil {
 		t.Fatal("load accounts failed,error:", err)
 	}
 
-	p := &KeyStoreProvider{
-		KeyStore: store,
-	}
-	err = p.UnlockAccount(acc, defaultPass)
+	err = store.Unlock(acc, defaultPass)
 	if err != nil {
 		t.Fatal(err)
 	}

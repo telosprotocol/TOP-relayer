@@ -21,15 +21,15 @@ type Wallet struct {
 //basic interface
 type IWallet interface {
 	Address() common.Address
-	ChainID() *big.Int
-	BalanceAt(address common.Address) (balance *big.Int, err error)
-	NonceAt(address common.Address) (uint64, error)
+	ChainID(ctx context.Context) (*big.Int, error)
+	BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (balance *big.Int, err error)
+	NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error)
 
-	SuggestGasPrice() (*big.Int, error)
-	SuggestGasTipCap() (*big.Int, error)
+	SuggestGasPrice(ctx context.Context) (*big.Int, error)
+	SuggestGasTipCap(ctx context.Context) (*big.Int, error)
 	EstimateGas(ctx context.Context, target *common.Address, data []byte) (uint64, error)
 
 	SignTx(tx *types.Transaction) (signedTx *types.Transaction, err error)
 	SendTransaction(ctx context.Context, tx *types.Transaction) error
-	TransactionReceipt(hash common.Hash) (*types.Receipt, error)
+	TransactionReceipt(ctx context.Context, hash common.Hash) (*types.Receipt, error)
 }

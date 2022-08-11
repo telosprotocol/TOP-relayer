@@ -99,16 +99,16 @@ func TestBscInit(t *testing.T) {
 		batch = append(batch, rlp_bytes...)
 	}
 
-	nonce, err := relayer.wallet.GetNonce(relayer.wallet.CurrentAccount().Address)
+	nonce, err := relayer.wallet.NonceAt(context.Background(), relayer.wallet.Address(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	gaspric, err := relayer.wallet.GasPrice(context.Background())
+	gaspric, err := relayer.wallet.SuggestGasPrice(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
 	ops := &bind.TransactOpts{
-		From:      relayer.wallet.CurrentAccount().Address,
+		From:      relayer.wallet.Address(),
 		Nonce:     big.NewInt(0).SetUint64(nonce),
 		GasLimit:  500000,
 		GasFeeCap: gaspric,

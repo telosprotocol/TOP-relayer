@@ -93,12 +93,12 @@ func (relayer *Eth2TopRelayer) Init(crossChainName string, cfg *config.Relayer, 
 }
 
 func (et *Eth2TopRelayer) submitEthHeader(header []byte) error {
-	nonce, err := et.wallet.NonceAt(et.wallet.Address())
+	nonce, err := et.wallet.NonceAt(context.Background(), et.wallet.Address(), nil)
 	if err != nil {
 		logger.Error("Eth2TopRelayer GetNonce error:", err)
 		return err
 	}
-	gaspric, err := et.wallet.SuggestGasPrice()
+	gaspric, err := et.wallet.SuggestGasPrice(context.Background())
 	if err != nil {
 		logger.Error("Eth2TopRelayer GasPrice error:", err)
 		return err

@@ -89,12 +89,12 @@ func (relayer *Bsc2TopRelayer) ChainId() uint64 {
 }
 
 func (et *Bsc2TopRelayer) submitEthHeader(header []byte) error {
-	nonce, err := et.wallet.NonceAt(et.wallet.Address())
+	nonce, err := et.wallet.NonceAt(context.Background(), et.wallet.Address(), nil)
 	if err != nil {
 		logger.Error("TopRelayer from", et.crossChainName, "GetNonce error:", err)
 		return err
 	}
-	gaspric, err := et.wallet.SuggestGasPrice()
+	gaspric, err := et.wallet.SuggestGasPrice(context.Background())
 	if err != nil {
 		logger.Error("TopRelayer from", et.crossChainName, "GasPrice error:", err)
 		return err
