@@ -76,7 +76,7 @@ type realtimeMsg struct {
 
 type realtimeMsgContent struct {
 	Count  uint64 `json:"count"`
-	Value  uint64 `json:"value"`
+	Value  uint64 `json:"amount"`
 	Detail string `json:"detail"`
 }
 
@@ -208,7 +208,7 @@ func pushAlarm(tag string, value uint64) {
 
 func pushRealtime(tag string, value uint64, detail string) {
 	realtimeCounter += 1
-	msg := realtimeMsg{Category: category, Tag: tag, Name: "realtime", Content: realtimeMsgContent{Count: realtimeCounter, Value: value, Detail: detail}}
+	msg := realtimeMsg{Category: category, Tag: tag, Name: "real_time", Content: realtimeMsgContent{Count: realtimeCounter, Value: value, Detail: detail}}
 	j, err := json.Marshal(msg)
 	if err == nil {
 		msgList.PushBack(string(j))
