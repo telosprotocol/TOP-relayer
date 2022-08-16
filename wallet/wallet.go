@@ -4,29 +4,46 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"toprelayer/sdk"
+	"toprelayer/util"
 
 	"github.com/wonderivan/logger"
 
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
 )
 
-func NewWallet(url, path, pass string) (IWallet, error) {
+type Wallet struct {
+	chainId   uint64
+	provider  *keystore.KeyStore
+	account   accounts.Account // active account
+	ethclient *ethclient.Client
+	rpc       *rpc.Client
+}
+
+func NewWallet(url, path, pass string) (*Wallet, error) {
 	if path == "" {
 		return nil, fmt.Errorf("empty keypath")
 	}
 
 	w := new(Wallet)
 
-	sdk, err := sdk.NewSDK(url)
+	rpcclient, err := rpc.Dial(url)
 	if err != nil {
 		return nil, err
 	}
-	w.sdk = sdk
+	w.rpc = rpcclient
+
+	ethclient, err := ethclient.Dial(url)
+	if err != nil {
+		return nil, err
+	}
+	w.ethclient = ethclient
 
 	store := keystore.NewKeyStore(path, keystore.StandardScryptN, keystore.StandardScryptP)
 	w.provider = store
@@ -39,7 +56,7 @@ func NewWallet(url, path, pass string) (IWallet, error) {
 	w.account = acc
 
 	// chainId
-	id, err := w.sdk.ChainID(context.Background())
+	id, err := w.ethclient.ChainID(context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -57,11 +74,11 @@ func NewWallet(url, path, pass string) (IWallet, error) {
 }
 
 func (w *Wallet) NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error) {
-	return w.sdk.NonceAt(ctx, account, blockNumber)
+	return w.ethclient.NonceAt(ctx, account, blockNumber)
 }
 
 func (w *Wallet) BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (balance *big.Int, err error) {
-	return w.sdk.BalanceAt(ctx, account, nil)
+	return w.ethclient.BalanceAt(ctx, account, nil)
 }
 
 func (w *Wallet) Address() common.Address {
@@ -73,7 +90,7 @@ func (w *Wallet) ChainID(ctx context.Context) (*big.Int, error) {
 }
 
 func (w *Wallet) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
-	return w.sdk.SuggestGasPrice(ctx)
+	return w.ethclient.SuggestGasPrice(ctx)
 }
 
 func (w *Wallet) EstimateGas(ctx context.Context, target *common.Address, data []byte) (uint64, error) {
@@ -86,11 +103,11 @@ func (w *Wallet) EstimateGas(ctx context.Context, target *common.Address, data [
 		GasTipCap: nil,
 		Data:      data,
 	}
-	return w.sdk.EstimateGas(ctx, msg)
+	return w.ethclient.EstimateGas(ctx, msg)
 }
 
 func (w *Wallet) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
-	return w.sdk.SuggestGasTipCap(ctx)
+	return w.ethclient.SuggestGasTipCap(ctx)
 }
 
 //sign tx
@@ -100,21 +117,41 @@ func (w *Wallet) SignTx(tx *types.Transaction) (signedTx *types.Transaction, err
 
 //send signed tx
 func (w *Wallet) SendTransaction(ctx context.Context, tx *types.Transaction) error {
-	return w.sdk.SendTransaction(ctx, tx)
+	return w.ethclient.SendTransaction(ctx, tx)
 }
 
 func (w *Wallet) TransactionReceipt(ctx context.Context, hash common.Hash) (*types.Receipt, error) {
-	return w.sdk.TransactionReceipt(ctx, hash)
+	return w.ethclient.TransactionReceipt(ctx, hash)
 }
 
 func (w *Wallet) TopBalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (balance *big.Int, err error) {
 	var result hexutil.Big
-	err = w.sdk.Rpc.CallContext(ctx, &result, "top_getBalance", account)
+	err = w.rpc.CallContext(ctx, &result, "top_getBalance", account)
 	return (*big.Int)(&result), err
 }
 
 func (w *Wallet) TopBlockNumber(ctx context.Context) (uint64, error) {
 	var result hexutil.Uint64
-	err := w.sdk.Rpc.CallContext(ctx, &result, "topRelay_blockNumber")
+	err := w.rpc.CallContext(ctx, &result, "topRelay_blockNumber")
 	return uint64(result), err
+}
+
+func toBlockNumArg(number *big.Int) string {
+	if number == nil {
+		return "latest"
+	}
+	pending := big.NewInt(-1)
+	if number.Cmp(pending) == 0 {
+		return "pending"
+	}
+	return hexutil.EncodeBig(number)
+}
+
+func (w *Wallet) TopHeaderByNumber(ctx context.Context, number *big.Int) (*util.TopHeader, error) {
+	var head *util.TopHeader
+	err := w.rpc.CallContext(ctx, &head, "topRelay_getBlockByNumber", toBlockNumArg(number), false, "transaction")
+	if err == nil && head == nil {
+		err = ethereum.NotFound
+	}
+	return head, err
 }

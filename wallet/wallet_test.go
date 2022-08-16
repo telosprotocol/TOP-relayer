@@ -29,6 +29,7 @@ func TestGetBalance(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get[%v] balance error:%v", addr, err)
 	}
+	
 	t.Logf("addr[%v] balance:%v", addr, b.Uint64())
 }
 

@@ -16,7 +16,7 @@ import (
 	"toprelayer/config"
 	"toprelayer/contract/eth/topclient"
 	"toprelayer/relayer/monitor"
-	"toprelayer/sdk/topsdk"
+	"toprelayer/util"
 	"toprelayer/wallet"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -51,7 +51,7 @@ var (
 )
 
 type VerifyInfo struct {
-	Block      *topsdk.TopBlock
+	Block      *util.TopHeader
 	VerifyList []string
 }
 
@@ -67,8 +67,7 @@ type VerifyResp struct {
 type CrossChainRelayer struct {
 	name       string
 	contract   common.Address
-	wallet     wallet.IWallet
-	topsdk     *topsdk.TopSdk
+	wallet     *wallet.Wallet
 	transactor *topclient.TopClientTransactor
 	caller     *topclient.TopClientCaller
 	monitor    *monitor.Monitor
@@ -78,12 +77,6 @@ type CrossChainRelayer struct {
 func (te *CrossChainRelayer) Init(chainName string, cfg *config.Relayer, listenUrl string, pass string) error {
 	te.name = chainName
 
-	topsdk, err := topsdk.NewTopSdk(listenUrl)
-	if err != nil {
-		logger.Error("CrossChainRelayer", te.name, "NewTopSdk error:", err)
-		return err
-	}
-	te.topsdk = topsdk
 	if cfg.Contract == "" {
 		logger.Error("CrossChainRelayer", te.name, "contract nil:", cfg.Contract)
 		return fmt.Errorf("contract error")
@@ -192,7 +185,7 @@ func (te *CrossChainRelayer) queryBlocks(lo, hi uint64) (uint64, uint64, error) 
 
 	flag := sendFlag[te.name]
 	for h := lo; h <= hi; h++ {
-		block, err := te.topsdk.GetTopElectBlockHeadByHeight(h)
+		block, err := te.wallet.TopHeaderByNumber(context.Background(), big.NewInt(0).SetUint64(h))
 		if err != nil {
 			logger.Error("CrossChainRelayer", te.name, "GetTopElectBlockHeadByHeight error:", err)
 			break
@@ -336,7 +329,7 @@ func (te *CrossChainRelayer) StartRelayer(wg *sync.WaitGroup) error {
 					break
 				}
 				logger.Info("CrossChainRelayer", te.name, "dest eth Height:", toHeight)
-				fromHeight, err := te.topsdk.GetLatestTopElectBlockHeight()
+				fromHeight, err := te.wallet.TopBlockNumber(context.Background())
 				if err != nil {
 					logger.Error(err)
 					delay = time.Duration(ERRDELAY)

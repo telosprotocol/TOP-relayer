@@ -10,7 +10,6 @@ import (
 	"toprelayer/config"
 	ethbridge "toprelayer/contract/top/ethclient"
 	"toprelayer/relayer/toprelayer/congress"
-	"toprelayer/sdk/topsdk"
 	"toprelayer/wallet"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -27,8 +26,7 @@ var (
 type Heco2TopRelayer struct {
 	context.Context
 	crossChainName string
-	wallet         wallet.IWallet
-	topsdk         *topsdk.TopSdk
+	wallet         *wallet.Wallet
 	contract       common.Address
 	ethsdk         *ethclient.Client
 	transactor     *ethbridge.EthClientTransactor
@@ -38,12 +36,6 @@ type Heco2TopRelayer struct {
 
 func (relayer *Heco2TopRelayer) Init(crossChainName string, cfg *config.Relayer, listenUrl string, pass string) error {
 	relayer.crossChainName = crossChainName
-	topsdk, err := topsdk.NewTopSdk(cfg.Url)
-	if err != nil {
-		logger.Error("TopRelayer from", relayer.crossChainName, "NewTopSdk error:", err)
-		return err
-	}
-	relayer.topsdk = topsdk
 
 	w, err := wallet.NewWallet(cfg.Url, cfg.KeyPath, pass)
 	if err != nil {
@@ -58,14 +50,20 @@ func (relayer *Heco2TopRelayer) Init(crossChainName string, cfg *config.Relayer,
 		return err
 	}
 	relayer.contract = hecoClientContract
-	relayer.transactor, err = ethbridge.NewEthClientTransactor(relayer.contract, topsdk)
+
+	topethlient, err := ethclient.Dial(cfg.Url)
+	if err != nil {
+		logger.Error("TopRelayer new topethlient error:", err)
+		return err
+	}
+	relayer.transactor, err = ethbridge.NewEthClientTransactor(relayer.contract, topethlient)
 	if err != nil {
 		logger.Error("TopRelayer from", relayer.crossChainName, "NewEthClientTransactor error:", relayer.contract)
 		return err
 	}
 
 	relayer.callerSession = new(ethbridge.EthClientCallerSession)
-	relayer.callerSession.Contract, err = ethbridge.NewEthClientCaller(relayer.contract, topsdk)
+	relayer.callerSession.Contract, err = ethbridge.NewEthClientCaller(relayer.contract, topethlient)
 	if err != nil {
 		logger.Error("TopRelayer from", relayer.crossChainName, "NewEthClientCaller error:", relayer.contract)
 		return err

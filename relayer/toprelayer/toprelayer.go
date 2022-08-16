@@ -11,7 +11,6 @@ import (
 	ethbridge "toprelayer/contract/top/ethclient"
 	"toprelayer/relayer/monitor"
 	"toprelayer/relayer/toprelayer/ethashapp"
-	"toprelayer/sdk/topsdk"
 	"toprelayer/wallet"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -37,7 +36,7 @@ var (
 )
 
 type Eth2TopRelayer struct {
-	wallet        wallet.IWallet
+	wallet        *wallet.Wallet
 	ethsdk        *ethclient.Client
 	transactor    *ethbridge.EthClientTransactor
 	callerSession *ethbridge.EthClientCallerSession
@@ -59,20 +58,21 @@ func (relayer *Eth2TopRelayer) Init(crossChainName string, cfg *config.Relayer, 
 		logger.Error("Eth2TopRelayer ethclient.Dial error:", err)
 		return err
 	}
-	topsdk, err := topsdk.NewTopSdk(cfg.Url)
+
+	topethlient, err := ethclient.Dial(cfg.Url)
 	if err != nil {
-		logger.Error("Eth2TopRelayer NewTopSdk error:", err)
+		logger.Error("Eth2TopRelayer new topethlient error:", err)
 		return err
 	}
 
-	relayer.transactor, err = ethbridge.NewEthClientTransactor(ethClientSystemContract, topsdk)
+	relayer.transactor, err = ethbridge.NewEthClientTransactor(ethClientSystemContract, topethlient)
 	if err != nil {
 		logger.Error("Eth2TopRelayer NewEthClientTransactor error:", err)
 		return err
 	}
 
 	relayer.callerSession = new(ethbridge.EthClientCallerSession)
-	relayer.callerSession.Contract, err = ethbridge.NewEthClientCaller(ethClientSystemContract, topsdk)
+	relayer.callerSession.Contract, err = ethbridge.NewEthClientCaller(ethClientSystemContract, topethlient)
 	if err != nil {
 		logger.Error("Eth2TopRelayer NewEthClientCaller error:", err)
 		return err
