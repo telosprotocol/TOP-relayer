@@ -23,10 +23,10 @@ const (
 
 var (
 	topBalanceAlarmLimit = big.NewInt(3000)
-	ethBalanceAlarmLimit = big.NewInt(10e9)
+	ethBalanceAlarmLimit = big.NewInt(1e3)
 
-	topBalancePrecision = big.NewInt(10e6)
-	ethBalancePrecision = big.NewInt(10e9)
+	topBalancePrecision = big.NewInt(1e6)
+	ethBalancePrecision = big.NewInt(1e15)
 )
 
 type Monitor struct {
@@ -70,15 +70,15 @@ func New(account common.Address, url string) (*Monitor, error) {
 
 func (monitor *Monitor) AddTx(hash common.Hash) {
 	if monitor.txList.Len() == 0 {
-		increaseCounter(TagTotalTxCount, 1)
+		increaseCounter(TagTotalTxCount, common.Big1)
 		monitor.txList.PushBack(hash)
 		return
 	}
 	last_hash, _ := monitor.txList.Back().Value.(common.Hash)
 	if last_hash == hash {
-		increaseCounter(TagRepeatTxCount, 1)
+		increaseCounter(TagRepeatTxCount, common.Big1)
 	} else {
-		increaseCounter(TagTotalTxCount, 1)
+		increaseCounter(TagTotalTxCount, common.Big1)
 		monitor.txList.PushBack(hash)
 	}
 }
@@ -111,7 +111,7 @@ func (monitor *Monitor) checkTx(errorNum *uint64) {
 
 		logger.Debug("%v tx: %v, status: %v, gasUsed: %v", category, hash, receipt.Status, receipt.GasUsed)
 		if receipt.Status == 1 {
-			increaseCounter(TagSuccessTxCount, 1)
+			increaseCounter(TagSuccessTxCount, common.Big1)
 		}
 		pushRealtime(TagGas, receipt.GasUsed, hash.Hex())
 
@@ -128,9 +128,9 @@ func (monitor *Monitor) checkAccount() {
 			logger.Error("get balance failed")
 		} else {
 			balance := (*big.Int)(&result)
-			topBalance := big.NewInt(0).Div(balance, topBalancePrecision).Uint64()
+			topBalance := big.NewInt(0).Div(balance, topBalancePrecision)
 			modifyCounter(TagBalance, topBalance)
-			if balance.Cmp(topBalanceAlarmLimit) < 0 {
+			if topBalance.Cmp(topBalanceAlarmLimit) < 0 {
 				pushAlarm(TagBalance, topBalance)
 				logger.Warn("%v low balance: %v", category, balance)
 			}
@@ -140,9 +140,9 @@ func (monitor *Monitor) checkAccount() {
 		if err != nil {
 			logger.Error("get balance failed")
 		} else {
-			gwei := big.NewInt(0).Div(balance, ethBalancePrecision).Uint64()
+			gwei := big.NewInt(0).Div(balance, ethBalancePrecision)
 			modifyCounter(TagBalance, gwei)
-			if balance.Cmp(ethBalanceAlarmLimit) < 0 {
+			if gwei.Cmp(ethBalanceAlarmLimit) < 0 {
 				pushAlarm(TagBalance, gwei)
 				logger.Warn("%v low balance: %v", category, balance)
 			}

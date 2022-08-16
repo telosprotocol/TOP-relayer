@@ -4,8 +4,10 @@ import (
 	"container/list"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/wonderivan/logger"
 )
 
@@ -31,11 +33,10 @@ var (
 	alarmCounter    uint64 = 0
 	realtimeCounter uint64 = 0
 
-	totalTxCount   uint64 = 0
-	repeatTxCount  uint64 = 0
-	successTxCount uint64 = 0
-	balance        uint64 = 0
-	usedGas        uint64 = 0
+	totalTxCount   = common.Big0
+	repeatTxCount  = common.Big0
+	successTxCount = common.Big0
+	balance        = common.Big0
 
 	msgList     = list.New()
 	category    = ""
@@ -50,8 +51,8 @@ type counterMsg struct {
 }
 
 type counterMsgContent struct {
-	Count uint64 `json:"count"`
-	Value uint64 `json:"value"`
+	Count uint64   `json:"count"`
+	Value *big.Int `json:"value"`
 }
 
 type alarmMsg struct {
@@ -62,9 +63,9 @@ type alarmMsg struct {
 }
 
 type alarmMsgContent struct {
-	Count  uint64 `json:"count"`
-	Value  uint64 `json:"value"`
-	Detail string `json:"detail"`
+	Count  uint64   `json:"count"`
+	Value  *big.Int `json:"value"`
+	Detail string   `json:"detail"`
 }
 
 type realtimeMsg struct {
@@ -105,20 +106,20 @@ func MonitorMsgInit(relayer string) error {
 	return nil
 }
 
-func increaseCounter(tag string, value uint64) error {
+func increaseCounter(tag string, value *big.Int) error {
 	if tag == TagTotalTxCount {
-		totalTxCount += value
+		totalTxCount = common.Big0.Add(totalTxCount, value)
 	} else if tag == TagRepeatTxCount {
-		repeatTxCount += value
+		repeatTxCount = common.Big0.Add(repeatTxCount, value)
 	} else if tag == TagSuccessTxCount {
-		successTxCount += value
+		successTxCount = common.Big0.Add(successTxCount, value)
 	} else {
 		return fmt.Errorf("increaseCounter not found tag %v", tag)
 	}
 	return nil
 }
 
-func modifyCounter(tag string, value uint64) error {
+func modifyCounter(tag string, value *big.Int) error {
 	if tag == TagBalance {
 		balance = value
 	} else {
@@ -171,9 +172,10 @@ func pushCounterMsg() {
 		}
 	}
 	{
-		var rate uint64 = 0
-		if totalTxCount != 0 {
-			rate = successTxCount * 100 / totalTxCount
+		var rate = common.Big0
+		if totalTxCount.Cmp(common.Big0) > 0 {
+			cnt := common.Big0.Mul(successTxCount, big.NewInt(100))
+			rate = common.Big0.Div(cnt, totalTxCount)
 		}
 		msg := counterMsg{Category: category, Tag: TagSuccessTxRate, Name: "counter", Content: counterMsgContent{Count: timerCounter, Value: rate}}
 		j, err := json.Marshal(msg)
@@ -188,16 +190,9 @@ func pushCounterMsg() {
 			msgList.PushBack(string(j))
 		}
 	}
-	{
-		msg := counterMsg{Category: category, Tag: TagGas, Name: "counter", Content: counterMsgContent{Count: timerCounter, Value: usedGas}}
-		j, err := json.Marshal(msg)
-		if err == nil {
-			msgList.PushBack(string(j))
-		}
-	}
 }
 
-func pushAlarm(tag string, value uint64) {
+func pushAlarm(tag string, value *big.Int) {
 	alarmCounter += 1
 	msg := alarmMsg{Category: category, Tag: tag, Name: "alarm", Content: alarmMsgContent{Count: alarmCounter, Value: value, Detail: DetailBalanceWarn}}
 	j, err := json.Marshal(msg)
