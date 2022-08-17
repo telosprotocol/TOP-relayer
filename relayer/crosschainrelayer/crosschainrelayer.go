@@ -83,7 +83,7 @@ func (te *CrossChainRelayer) Init(chainName string, cfg *config.Relayer, listenU
 	}
 	te.contract = common.HexToAddress(cfg.Contract)
 
-	w, err := wallet.NewWallet(cfg.Url, cfg.KeyPath, pass)
+	w, err := wallet.NewEthWallet(cfg.Url, listenUrl, cfg.KeyPath, pass)
 	if err != nil {
 		logger.Error("CrossChainRelayer", te.name, "NewWallet error:", err)
 		return err

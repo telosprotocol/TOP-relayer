@@ -37,7 +37,7 @@ type Bsc2TopRelayer struct {
 func (relayer *Bsc2TopRelayer) Init(crossChainName string, cfg *config.Relayer, listenUrl string, pass string) error {
 	relayer.crossChainName = crossChainName
 
-	w, err := wallet.NewWallet(cfg.Url, cfg.KeyPath, pass)
+	w, err := wallet.NewEthWallet(cfg.Url, listenUrl, cfg.KeyPath, pass)
 	if err != nil {
 		logger.Error("TopRelayer from", relayer.crossChainName, "NewWallet error:", err)
 		return err

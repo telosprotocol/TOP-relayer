@@ -26,18 +26,29 @@ type Wallet struct {
 	rpc       *rpc.Client
 }
 
-func NewWallet(url, path, pass string) (*Wallet, error) {
+func NewTopWallet(topurl, path, pass string) (*Wallet, error) {
+	return newWallet(topurl, path, pass)
+}
+
+func NewEthWallet(ethurl, topurl, path, pass string) (*Wallet, error) {
+	w, err := newWallet(ethurl, path, pass)
+	if err != nil {
+		return nil, err
+	}
+	rpcclient, err := rpc.Dial(topurl)
+	if err != nil {
+		return nil, err
+	}
+	w.rpc = rpcclient
+	return w, nil
+}
+
+func newWallet(url, path, pass string) (*Wallet, error) {
 	if path == "" {
 		return nil, fmt.Errorf("empty keypath")
 	}
 
 	w := new(Wallet)
-
-	rpcclient, err := rpc.Dial(url)
-	if err != nil {
-		return nil, err
-	}
-	w.rpc = rpcclient
 
 	ethclient, err := ethclient.Dial(url)
 	if err != nil {
