@@ -6,10 +6,11 @@ import (
 	"math/big"
 	"time"
 	"toprelayer/config"
-	"toprelayer/sdk"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/wonderivan/logger"
 )
 
@@ -22,24 +23,34 @@ const (
 
 var (
 	topBalanceAlarmLimit = big.NewInt(3000)
-	ethBalanceAlarmLimit = big.NewInt(10e9)
+	ethBalanceAlarmLimit = big.NewInt(1e3)
 
-	topBalancePrecision = big.NewInt(10e6)
-	ethBalancePrecision = big.NewInt(10e9)
+	topBalancePrecision = big.NewInt(1e6)
+	ethBalancePrecision = big.NewInt(1e15)
 )
 
 type Monitor struct {
-	account common.Address
-	txList  *list.List
-	sdk     *sdk.SDK
+	account   common.Address
+	txList    *list.List
+	ethclient *ethclient.Client
+	rpcclient *rpc.Client
 }
 
-func New(account common.Address, sdk *sdk.SDK) (*Monitor, error) {
+func New(account common.Address, url string) (*Monitor, error) {
 	monitor := new(Monitor)
 	monitor.txList = list.New()
 	monitor.txList.Init()
 	monitor.account = account
-	monitor.sdk = sdk
+	rpcclient, err := rpc.Dial(url)
+	if err != nil {
+		return nil, err
+	}
+	ethclient, err := ethclient.Dial(url)
+	if err != nil {
+		return nil, err
+	}
+	monitor.rpcclient = rpcclient
+	monitor.ethclient = ethclient
 
 	go func() {
 		errorNum := new(uint64)
@@ -59,15 +70,15 @@ func New(account common.Address, sdk *sdk.SDK) (*Monitor, error) {
 
 func (monitor *Monitor) AddTx(hash common.Hash) {
 	if monitor.txList.Len() == 0 {
-		increaseCounter(TagTotalTxCount, 1)
+		increaseCounter(TagTotalTxCount, common.Big1)
 		monitor.txList.PushBack(hash)
 		return
 	}
 	last_hash, _ := monitor.txList.Back().Value.(common.Hash)
 	if last_hash == hash {
-		increaseCounter(TagRepeatTxCount, 1)
+		increaseCounter(TagRepeatTxCount, common.Big1)
 	} else {
-		increaseCounter(TagTotalTxCount, 1)
+		increaseCounter(TagTotalTxCount, common.Big1)
 		monitor.txList.PushBack(hash)
 	}
 }
@@ -87,7 +98,7 @@ func (monitor *Monitor) checkTx(errorNum *uint64) {
 			logger.Error("txList get front error")
 			break
 		}
-		receipt, err := monitor.sdk.TransactionReceipt(context.Background(), hash)
+		receipt, err := monitor.ethclient.TransactionReceipt(context.Background(), hash)
 		if err != nil {
 			*errorNum += 1
 			if *errorNum >= maxErrorNum {
@@ -100,9 +111,9 @@ func (monitor *Monitor) checkTx(errorNum *uint64) {
 
 		logger.Debug("%v tx: %v, status: %v, gasUsed: %v", category, hash, receipt.Status, receipt.GasUsed)
 		if receipt.Status == 1 {
-			increaseCounter(TagSuccessTxCount, 1)
+			increaseCounter(TagSuccessTxCount, common.Big1)
 		}
-		increaseCounter(TagGas, receipt.GasUsed)
+		pushRealtime(TagGas, receipt.GasUsed, hash.Hex())
 
 		*errorNum = 0
 		monitor.txList.Remove(element)
@@ -112,26 +123,26 @@ func (monitor *Monitor) checkTx(errorNum *uint64) {
 func (monitor *Monitor) checkAccount() {
 	if relayerName == config.TOP_CHAIN {
 		var result hexutil.Big
-		err := monitor.sdk.Rpc.CallContext(context.Background(), &result, "top_getBalance", monitor.account, "latest")
+		err := monitor.rpcclient.CallContext(context.Background(), &result, "top_getBalance", monitor.account, "latest")
 		if err != nil {
 			logger.Error("get balance failed")
 		} else {
 			balance := (*big.Int)(&result)
-			topBalance := big.NewInt(0).Div(balance, topBalancePrecision).Uint64()
+			topBalance := big.NewInt(0).Div(balance, topBalancePrecision)
 			modifyCounter(TagBalance, topBalance)
-			if balance.Cmp(topBalanceAlarmLimit) < 0 {
+			if topBalance.Cmp(topBalanceAlarmLimit) < 0 {
 				pushAlarm(TagBalance, topBalance)
 				logger.Warn("%v low balance: %v", category, balance)
 			}
 		}
 	} else if relayerName == config.ETH_CHAIN {
-		balance, err := monitor.sdk.BalanceAt(context.Background(), monitor.account, nil)
+		balance, err := monitor.ethclient.BalanceAt(context.Background(), monitor.account, nil)
 		if err != nil {
 			logger.Error("get balance failed")
 		} else {
-			gwei := big.NewInt(0).Div(balance, ethBalancePrecision).Uint64()
+			gwei := big.NewInt(0).Div(balance, ethBalancePrecision)
 			modifyCounter(TagBalance, gwei)
-			if balance.Cmp(ethBalanceAlarmLimit) < 0 {
+			if gwei.Cmp(ethBalanceAlarmLimit) < 0 {
 				pushAlarm(TagBalance, gwei)
 				logger.Warn("%v low balance: %v", category, balance)
 			}

@@ -1,9 +1,12 @@
 package util
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"math/big"
 	"os"
+	"syscall"
 	"toprelayer/config"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -80,10 +83,40 @@ func VerifyEthSignature(ethtx *types.Transaction) error {
 
 func ReadPassword(cfg *config.Config) (string, error) {
 	fmt.Print(">>> Please Enter " + cfg.RelayerToRun + " pasword:\n>>> ")
-	pass, err := terminal.ReadPassword(int(os.Stdin.Fd()))
-	if err != nil {
-		return string(pass), err
+
+	var passwd string
+	if terminal.IsTerminal(syscall.Stdin) {
+		pass, err := terminal.ReadPassword(syscall.Stdin)
+		if err != nil {
+			return string(pass), err
+		}
+		passwd = string(pass)
+	} else {
+		var b [1]byte
+		var pw []byte
+		for {
+			n, err := os.Stdin.Read(b[:])
+			// terminal.ReadPassword discards any '\r', so we do the same
+			if n > 0 && b[0] != '\r' {
+				if b[0] == '\n' {
+					return string(pw), nil
+				}
+				pw = append(pw, b[0])
+				// limit size, so that a wrong input won't fill up the memory
+				if len(pw) > 1024 {
+					err = errors.New("password too long")
+				}
+			}
+			if err != nil {
+				// terminal.ReadPassword accepts EOF-terminated passwords
+				// if non-empty, so we do the same
+				if err == io.EOF && len(pw) > 0 {
+					err = nil
+				}
+				return string(pw), err
+			}
+		}
 	}
 	fmt.Println()
-	return string(pass), nil
+	return passwd, nil
 }
