@@ -213,6 +213,9 @@ func (te *CrossChainRelayer) queryBlocks(lo, hi uint64) (uint64, uint64, error) 
 
 			var list []string
 			for _, v := range block.RelatedList {
+				if v.Hash == block.Hash {
+					continue
+				}
 				list = append(list, v.Hash)
 			}
 			te.verifyList.PushBack(VerifyInfo{Block: block, VerifyList: list})
