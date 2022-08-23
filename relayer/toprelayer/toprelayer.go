@@ -45,7 +45,7 @@ type Eth2TopRelayer struct {
 
 type void struct{}
 
-func (relayer *Eth2TopRelayer) Init(crossChainName string, cfg *config.Relayer, listenUrl string, pass string) error {
+func (relayer *Eth2TopRelayer) Init(cfg *config.Relayer, listenUrl string, pass string) error {
 	w, err := wallet.NewTopWallet(cfg.Url, cfg.KeyPath, pass)
 	if err != nil {
 		logger.Error("Eth2TopRelayer NewWallet error:", err)

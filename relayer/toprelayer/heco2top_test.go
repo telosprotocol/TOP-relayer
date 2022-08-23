@@ -79,7 +79,7 @@ func TestHecoInit(t *testing.T) {
 		KeyPath: keyPath,
 	}
 	relayer := &Heco2TopRelayer{}
-	err := relayer.Init(config.HECO_CHAIN, cfg, ethUrl, defaultPass)
+	err := relayer.Init(cfg, ethUrl, defaultPass)
 	if err != nil {
 		t.Fatal(err)
 	}

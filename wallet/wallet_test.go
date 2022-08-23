@@ -4,7 +4,6 @@ import (
 	"context"
 	"math/big"
 	"testing"
-	"toprelayer/util"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
@@ -19,7 +18,7 @@ const (
 )
 
 func TestGetBalance(t *testing.T) {
-	w, err := NewWallet(url, defaultPath, defaultPass)
+	w, err := NewTopWallet(url, defaultPath, defaultPass)
 	if err != nil {
 		t.Fatalf("new wallet error:%v", err)
 	}
@@ -29,12 +28,12 @@ func TestGetBalance(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get[%v] balance error:%v", addr, err)
 	}
-	
+
 	t.Logf("addr[%v] balance:%v", addr, b.Uint64())
 }
 
 func TestGetNonce(t *testing.T) {
-	w, err := NewWallet(url, defaultPath, defaultPass)
+	w, err := NewTopWallet(url, defaultPath, defaultPass)
 	if err != nil {
 		t.Fatalf("new wallet error:%v", err)
 	}
@@ -49,7 +48,7 @@ func TestGetNonce(t *testing.T) {
 }
 
 func TestGasPrice(t *testing.T) {
-	w, err := NewWallet(url, defaultPath, defaultPass)
+	w, err := NewTopWallet(url, defaultPath, defaultPass)
 	if err != nil {
 		t.Fatalf("new wallet error:%v", err)
 	}
@@ -62,7 +61,7 @@ func TestGasPrice(t *testing.T) {
 }
 
 func TestGasTip(t *testing.T) {
-	w, err := NewWallet(url, defaultPath, defaultPass)
+	w, err := NewTopWallet(url, defaultPath, defaultPass)
 	if err != nil {
 		t.Fatalf("new wallet error:%v", err)
 	}
@@ -74,7 +73,7 @@ func TestGasTip(t *testing.T) {
 }
 
 func TestSendTransaction(t *testing.T) {
-	w, err := NewWallet(url, defaultPath, defaultPass)
+	w, err := NewTopWallet(url, defaultPath, defaultPass)
 	if err != nil {
 		t.Fatalf("new wallet error:%v", err)
 	}

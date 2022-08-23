@@ -33,9 +33,6 @@ const (
 	ERRDELAY     int64 = 10
 	WAITDELAY    int64 = 60
 
-	CONFIRM_NUM uint64 = 0
-	BATCH_NUM   uint64 = 10
-
 	ELECTION_BLOCK    = "election"
 	AGGREGATE_BLOCK   = "aggregate"
 	TRANSACTION_BLOCK = "transactions"
@@ -46,8 +43,6 @@ var (
 		config.ETH_CHAIN:  0x1,
 		config.BSC_CHAIN:  0x2,
 		config.HECO_CHAIN: 0x4}
-
-	verifyServerUrl = "http://192.168.20.10:8080/v1/aggragation/bridge/manage/checkRelayBlockHashs"
 )
 
 type VerifyInfo struct {
@@ -65,16 +60,18 @@ type VerifyResp struct {
 }
 
 type CrossChainRelayer struct {
-	name       string
-	contract   common.Address
-	wallet     *wallet.Wallet
-	transactor *topclient.TopClientTransactor
-	caller     *topclient.TopClientCaller
-	monitor    *monitor.Monitor
-	verifyList *list.List
+	name         string
+	contract     common.Address
+	wallet       *wallet.Wallet
+	transactor   *topclient.TopClientTransactor
+	caller       *topclient.TopClientCaller
+	monitor      *monitor.Monitor
+	serverUrl    string
+	serverEnable bool
+	verifyList   *list.List
 }
 
-func (te *CrossChainRelayer) Init(chainName string, cfg *config.Relayer, listenUrl string, pass string) error {
+func (te *CrossChainRelayer) Init(chainName string, cfg *config.Relayer, listenUrl string, pass string, server config.Server) error {
 	te.name = chainName
 
 	if cfg.Contract == "" {
@@ -109,7 +106,13 @@ func (te *CrossChainRelayer) Init(chainName string, cfg *config.Relayer, listenU
 		logger.Error("TopRelayer from", te.name, "New monitor error:", err)
 		return err
 	}
+	te.serverUrl = server.Url
+	if server.Url != "" && server.Enable == "true" {
+		te.serverEnable = true
+	}
 	te.verifyList = list.New()
+
+	logger.Info(te)
 	return nil
 }
 
@@ -227,7 +230,7 @@ func (te *CrossChainRelayer) serverVerify(info []string) bool {
 	data["relayBlockHashs"] = info
 	logger.Info("verify data:", data)
 	jsonData, _ := json.Marshal(data)
-	resp, err := http.Post(verifyServerUrl, "application/json", bytes.NewReader(jsonData))
+	resp, err := http.Post(te.serverUrl, "application/json", bytes.NewReader(jsonData))
 	if err != nil {
 		logger.Error("post verify server error:", err)
 		return false
@@ -262,11 +265,13 @@ func (te *CrossChainRelayer) verifyAndSendTransaction() {
 		logger.Error("txList get front error")
 		return
 	}
-	if !te.serverVerify(info.VerifyList) {
-		logger.Info("%v verify not pass", info.Block.Hash)
-		return
+	if te.serverEnable {
+		if !te.serverVerify(info.VerifyList) {
+			logger.Info("%v verify not pass", info.Block.Hash)
+			return
+		}
+		logger.Info("%v verify pass", info.Block.Hash)
 	}
-	logger.Info("%v verify pass", info.Block.Hash)
 	// send transaction
 	var batchHeaders [][]byte
 	batchHeaders = append(batchHeaders, common.Hex2Bytes(info.Block.Header[2:]))
@@ -287,7 +292,7 @@ func (te *CrossChainRelayer) verifyAndSendTransaction() {
 }
 
 func (te *CrossChainRelayer) StartRelayer(wg *sync.WaitGroup) error {
-	logger.Info("Start CrossChainRelayer %v..., subBatch: %v certaintyBlocks: %v", te.name, BATCH_NUM, CONFIRM_NUM)
+	logger.Info("Start CrossChainRelayer %v...", te.name)
 	defer wg.Done()
 
 	done := make(chan struct{})
@@ -340,7 +345,7 @@ func (te *CrossChainRelayer) StartRelayer(wg *sync.WaitGroup) error {
 				if lastSubHeight <= toHeight && toHeight < lastUnsubHeight {
 					toHeight = lastUnsubHeight
 				}
-				if toHeight+1+CONFIRM_NUM > fromHeight {
+				if toHeight+1 > fromHeight {
 					if set := timeout.Reset(timeoutDuration); !set {
 						logger.Error("CrossChainRelayer", te.name, "reset timeout falied!")
 						delay = time.Duration(ERRDELAY)
@@ -351,7 +356,7 @@ func (te *CrossChainRelayer) StartRelayer(wg *sync.WaitGroup) error {
 					break
 				}
 				syncStartHeight := toHeight + 1
-				limitEndHeight := fromHeight - CONFIRM_NUM
+				limitEndHeight := fromHeight
 
 				subHeight, unsubHeight, err := te.queryBlocks(syncStartHeight, limitEndHeight)
 				if err != nil {

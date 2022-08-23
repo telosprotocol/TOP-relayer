@@ -45,7 +45,7 @@ func TestSeverVerify(t *testing.T) {
 		Contract: ethContract,
 	}
 	relayer := &CrossChainRelayer{}
-	err := relayer.Init(config.ETH_CHAIN, cfg, listenUrl, defaultPass)
+	err := relayer.Init(config.ETH_CHAIN, cfg, listenUrl, defaultPass, config.Server{})
 	if err != nil {
 		t.Fatal(err)
 	}

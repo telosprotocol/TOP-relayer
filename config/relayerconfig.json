@@ -1,12 +1,12 @@
 {
     "relayer_config": {
         "TOP": {
-            "url": "http://192.168.50.31:8080",
+            "url": "",
             "keypath": ".relayer/wallet/top"
         },
         "ETH": {
-            "url": "https://ropsten.infura.io/v3/fb2a09e82a234971ad84203e6f75990e",
-            "contract": "0x0E62B4A03D615ae0B088345FD26eB8782F2a861F",
+            "url": "https://eth-mainnet.token.im",
+            "contract": "",
             "keypath": ".relayer/wallet/eth"
         },
         "BSC": {
@@ -20,5 +20,9 @@
             "keypath": ".relayer/wallet/heco"
         }
     },
-    "relayer_to_run": "TOP"
+    "relayer_to_run": "TOP",
+    "server": {
+        "url": "",
+        "enable": "false"
+    }
 }

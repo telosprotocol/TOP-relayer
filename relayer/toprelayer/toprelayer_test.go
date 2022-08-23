@@ -159,7 +159,7 @@ func TestInit(t *testing.T) {
 		KeyPath: keyPath,
 	}
 	topRelayer := &Eth2TopRelayer{}
-	err := topRelayer.Init(config.ETH_CHAIN, cfg, ethUrl, defaultPass)
+	err := topRelayer.Init(cfg, ethUrl, defaultPass)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,7 +203,7 @@ func TestSync(t *testing.T) {
 		KeyPath: keyPath,
 	}
 	topRelayer := &Eth2TopRelayer{}
-	err := topRelayer.Init(config.ETH_CHAIN, cfg, ethUrl, defaultPass)
+	err := topRelayer.Init(cfg, ethUrl, defaultPass)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,7 +227,7 @@ func TestSyncHeaderWithProofsRlpGas(t *testing.T) {
 		KeyPath: keyPath,
 	}
 	topRelayer := &Eth2TopRelayer{}
-	err := topRelayer.Init(config.ETH_CHAIN, cfg, ethUrl, defaultPass)
+	err := topRelayer.Init(cfg, ethUrl, defaultPass)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -264,7 +264,7 @@ func TestGetEthClientHeight(t *testing.T) {
 		KeyPath: keyPath,
 	}
 	topRelayer := &Eth2TopRelayer{}
-	err := topRelayer.Init(config.ETH_CHAIN, cfg, ethUrl, defaultPass)
+	err := topRelayer.Init(cfg, ethUrl, defaultPass)
 	if err != nil {
 		t.Fatal(err)
 	}

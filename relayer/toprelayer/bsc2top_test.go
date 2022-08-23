@@ -79,7 +79,7 @@ func TestBscInit(t *testing.T) {
 		KeyPath: keyPath,
 	}
 	relayer := &Heco2TopRelayer{}
-	err := relayer.Init(config.BSC_CHAIN, cfg, bscUrl, defaultPass)
+	err := relayer.Init(cfg, bscUrl, defaultPass)
 	if err != nil {
 		t.Fatal(err)
 	}
