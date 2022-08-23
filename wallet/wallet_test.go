@@ -107,11 +107,6 @@ func TestSendTransaction(t *testing.T) {
 		t.Fatalf("Failed to sign with unlocked account: %v", err)
 	}
 
-	err = util.VerifyEthSignature(stx)
-	if err != nil {
-		t.Fatalf("VerifyEthSignature error: %v", err)
-	}
-
 	data, err := stx.MarshalBinary()
 	if err != nil {
 		t.Fatal("MarshalBinary error:", err)

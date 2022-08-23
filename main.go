@@ -29,6 +29,9 @@ func init() {
 	app.Copyright = "2017-present Telos Foundation & contributors"
 	app.Action = start
 	app.Flags = nodeFlags
+	app.Commands = []*cli.Command{
+		util.VersionCommand,
+	}
 }
 
 func main() {
