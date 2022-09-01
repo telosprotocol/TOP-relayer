@@ -33,10 +33,10 @@ var (
 	alarmCounter    uint64 = 0
 	realtimeCounter uint64 = 0
 
-	totalTxCount   = common.Big0
-	repeatTxCount  = common.Big0
-	successTxCount = common.Big0
-	balance        = common.Big0
+	totalTxCount   = big.NewInt(0)
+	repeatTxCount  = big.NewInt(0)
+	successTxCount = big.NewInt(0)
+	balance        = big.NewInt(0)
 
 	msgList     = list.New()
 	category    = ""
@@ -108,11 +108,11 @@ func MonitorMsgInit(relayer string) error {
 
 func increaseCounter(tag string, value *big.Int) error {
 	if tag == TagTotalTxCount {
-		totalTxCount = common.Big0.Add(totalTxCount, value)
+		totalTxCount = big.NewInt(0).Add(totalTxCount, value)
 	} else if tag == TagRepeatTxCount {
-		repeatTxCount = common.Big0.Add(repeatTxCount, value)
+		repeatTxCount = big.NewInt(0).Add(repeatTxCount, value)
 	} else if tag == TagSuccessTxCount {
-		successTxCount = common.Big0.Add(successTxCount, value)
+		successTxCount = big.NewInt(0).Add(successTxCount, value)
 	} else {
 		return fmt.Errorf("increaseCounter not found tag %v", tag)
 	}
@@ -172,10 +172,10 @@ func pushCounterMsg() {
 		}
 	}
 	{
-		var rate = common.Big0
+		rate := big.NewInt(0)
 		if totalTxCount.Cmp(common.Big0) > 0 {
-			cnt := common.Big0.Mul(successTxCount, big.NewInt(100))
-			rate = common.Big0.Div(cnt, totalTxCount)
+			cnt := big.NewInt(0).Mul(successTxCount, big.NewInt(100))
+			rate = big.NewInt(0).Div(cnt, totalTxCount)
 		}
 		msg := counterMsg{Category: category, Tag: TagSuccessTxRate, Name: "counter", Content: counterMsgContent{Count: timerCounter, Value: rate}}
 		j, err := json.Marshal(msg)

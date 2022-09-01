@@ -22,14 +22,37 @@ var (
 )
 
 type IChainRelayer interface {
-	Init(chainName string, cfg *config.Relayer, listenUrl string, pass string) error
+	Init(cfg *config.Relayer, listenUrl string, pass string) error
 	StartRelayer(*sync.WaitGroup) error
 }
 
-func startOneRelayer(chainName string, relayer IChainRelayer, cfg *config.Relayer, listenUrl string, pass string, wg *sync.WaitGroup) error {
-	err := relayer.Init(chainName, cfg, listenUrl, pass)
+type ICrossChainRelayer interface {
+	Init(chainName string, cfg *config.Relayer, listenUrl string, pass string, server config.Server) error
+	StartRelayer(*sync.WaitGroup) error
+}
+
+func startTopRelayer(relayer IChainRelayer, cfg *config.Relayer, listenUrl string, pass string, wg *sync.WaitGroup) error {
+	err := relayer.Init(cfg, listenUrl, pass)
 	if err != nil {
-		logger.Error("startOneRelayer error:", err)
+		logger.Error("startTopRelayer error:", err)
+		return err
+	}
+
+	wg.Add(1)
+	go func() {
+		err = relayer.StartRelayer(wg)
+	}()
+	if err != nil {
+		logger.Error("relayer.StartRelayer error:", err)
+		return err
+	}
+	return nil
+}
+
+func startCrossChainRelayer(relayer ICrossChainRelayer, chainName string, cfg *config.Relayer, listenUrl string, pass string, server config.Server, wg *sync.WaitGroup) error {
+	err := relayer.Init(chainName, cfg, listenUrl, pass, server)
+	if err != nil {
+		logger.Error("startCrossChainRelayer error:", err)
 		return err
 	}
 
@@ -76,14 +99,14 @@ func StartRelayer(cfg *config.Config, pass string, wg *sync.WaitGroup) error {
 				logger.Warn("unknown chain config:", name)
 				continue
 			}
-			err := startOneRelayer(name, topRelayer, topConfig, c.Url, pass, wg)
+			err := startTopRelayer(topRelayer, topConfig, c.Url, pass, wg)
 			if err != nil {
 				logger.Error("StartRelayer %v error: %v", name, err)
 				continue
 			}
 		}
 	} else {
-		err := startOneRelayer(cfg.RelayerToRun, crossChainRelayer, RelayerConfig, topConfig.Url, pass, wg)
+		err := startCrossChainRelayer(crossChainRelayer, cfg.RelayerToRun, RelayerConfig, topConfig.Url, pass, cfg.ServerConfig, wg)
 		if err != nil {
 			logger.Error("StartRelayer error:", err)
 			return err
