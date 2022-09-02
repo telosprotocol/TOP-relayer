@@ -9,7 +9,6 @@ import (
 	"runtime"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/consensus/ethash"
 	"github.com/ethereum/go-ethereum/crypto"
 	"golang.org/x/crypto/sha3"
@@ -98,9 +97,9 @@ func hashimotoIndices(hash []byte, nonce uint64, size uint64, lookup func(index 
 	for i, val := range mix {
 		binary.LittleEndian.PutUint32(digest[i*4:], val)
 	}
-	ethashResult := crypto.Keccak256(append(seed, digest...))
-	fmt.Printf("digest: %s\n", hexutil.Encode(digest))
-	fmt.Printf("ethash result: %s\n", hexutil.Encode(ethashResult))
+	// ethashResult := crypto.Keccak256(append(seed, digest...))
+	// fmt.Printf("digest: %s\n", hexutil.Encode(digest))
+	// fmt.Printf("ethash result: %s\n", hexutil.Encode(ethashResult))
 
 	return result
 }

@@ -30,7 +30,7 @@ var (
 
 // EthClientMetaData contains all meta data concerning the EthClient contract.
 var EthClientMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[],\"name\":\"get_height\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"height\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"height\",\"type\":\"uint256\"},{\"internalType\":\"bytes32\",\"name\":\"data\",\"type\":\"bytes32\"}],\"name\":\"is_known\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"ret\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"blockHeader\",\"type\":\"bytes\"}],\"name\":\"sync\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
+	ABI: "[{\"inputs\":[],\"name\":\"get_height\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"height\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"genesis\",\"type\":\"bytes\"},{\"internalType\":\"string\",\"name\":\"emitter\",\"type\":\"string\"}],\"name\":\"init\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"height\",\"type\":\"uint256\"},{\"internalType\":\"bytes32\",\"name\":\"data\",\"type\":\"bytes32\"}],\"name\":\"is_known\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"ret\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"blockHeader\",\"type\":\"bytes\"}],\"name\":\"sync\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
 }
 
 // EthClientABI is the input ABI used to generate the binding from.
@@ -239,6 +239,27 @@ func (_EthClient *EthClientSession) IsKnown(height *big.Int, data [32]byte) (boo
 // Solidity: function is_known(uint256 height, bytes32 data) view returns(bool ret)
 func (_EthClient *EthClientCallerSession) IsKnown(height *big.Int, data [32]byte) (bool, error) {
 	return _EthClient.Contract.IsKnown(&_EthClient.CallOpts, height, data)
+}
+
+// Init is a paid mutator transaction binding the contract method 0x6158600d.
+//
+// Solidity: function init(bytes genesis, string emitter) returns(bool success)
+func (_EthClient *EthClientTransactor) Init(opts *bind.TransactOpts, genesis []byte, emitter string) (*types.Transaction, error) {
+	return _EthClient.contract.Transact(opts, "init", genesis, emitter)
+}
+
+// Init is a paid mutator transaction binding the contract method 0x6158600d.
+//
+// Solidity: function init(bytes genesis, string emitter) returns(bool success)
+func (_EthClient *EthClientSession) Init(genesis []byte, emitter string) (*types.Transaction, error) {
+	return _EthClient.Contract.Init(&_EthClient.TransactOpts, genesis, emitter)
+}
+
+// Init is a paid mutator transaction binding the contract method 0x6158600d.
+//
+// Solidity: function init(bytes genesis, string emitter) returns(bool success)
+func (_EthClient *EthClientTransactorSession) Init(genesis []byte, emitter string) (*types.Transaction, error) {
+	return _EthClient.Contract.Init(&_EthClient.TransactOpts, genesis, emitter)
 }
 
 // Sync is a paid mutator transaction binding the contract method 0x7eefcfa2.

@@ -5,17 +5,17 @@ import (
 	"fmt"
 	"math/big"
 	"testing"
-	"toprelayer/sdk/ethsdk"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
 func TestGetHeaderWithProof(t *testing.T) {
 	var url string = "https://api.mycryptoapi.com/eth"
-	ethsdk, err := ethsdk.NewEthSdk(url)
+	ethsdk, err := ethclient.Dial(url)
 	if err != nil {
-		t.Fatal("NewEthSdk: ", err)
+		t.Fatal(err)
 	}
 	header, err := ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(12970000))
 	if err != nil {

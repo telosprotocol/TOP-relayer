@@ -8,7 +8,7 @@ import (
 	"github.com/wonderivan/logger"
 )
 
-var (
+const (
 	TOP_CHAIN  string = "TOP"
 	ETH_CHAIN  string = "ETH"
 	BSC_CHAIN  string = "BSC"
@@ -34,19 +34,26 @@ var (
 	}`
 )
 
-type Relayer struct {
-	// chain symbol
-	ChainId uint64 `json:"chainId"`
+var (
+	ServerConfig Server
+)
 
+type Relayer struct {
 	//submit config
 	Url      string `json:"url"`
 	Contract string `json:"contract"`
 	KeyPath  string `json:"keypath"`
 }
 
+type Server struct {
+	Url    string `json:"url"`
+	Enable string `json:"enable"`
+}
+
 type Config struct {
 	RelayerConfig map[string]*Relayer `json:"relayer_config"`
 	RelayerToRun  string              `json:"relayer_to_run"`
+	ServerConfig  Server              `json:"server"`
 }
 
 func LoadRelayerConfig(path string) (*Config, error) {
@@ -61,6 +68,7 @@ func LoadRelayerConfig(path string) (*Config, error) {
 		log.Fatal("Unmarshal config file failed:", err)
 		return nil, err
 	}
+	ServerConfig = config.ServerConfig
 	return config, nil
 }
 
