@@ -202,7 +202,7 @@ func (te *CrossChainRelayer) queryBlocks(lo, hi uint64) (uint64, uint64, error) 
 		if submit {
 			logger.Debug(">>>>> submit header")
 			lastSubHeight = h
-			te.blockList.PushBack(&block)
+			te.blockList.PushBack(*block)
 			break
 		} else {
 			lastUnsubHeight = h
@@ -228,6 +228,7 @@ func (te *CrossChainRelayer) verifyAndSendTransaction() {
 	}
 	if res := doWithHeader(header); res == false {
 		logger.Info("do with header not ok:", header.Hash)
+		return
 	}
 	logger.Info("do with header ok:", header.Hash)
 
