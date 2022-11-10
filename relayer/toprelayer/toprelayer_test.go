@@ -155,7 +155,7 @@ func TestInit(t *testing.T) {
 	var keyPath = "../../.relayer/wallet/top"
 
 	cfg := &config.Relayer{
-		Url:     topUrl,
+		Url:     []string{topUrl},
 		KeyPath: keyPath,
 	}
 	topRelayer := &Eth2TopRelayer{}
@@ -199,7 +199,7 @@ func TestSync(t *testing.T) {
 	var keyPath = "../../.relayer/wallet/top"
 
 	cfg := &config.Relayer{
-		Url:     topUrl,
+		Url:     []string{topUrl},
 		KeyPath: keyPath,
 	}
 	topRelayer := &Eth2TopRelayer{}
@@ -223,7 +223,7 @@ func TestSyncHeaderWithProofsRlpGas(t *testing.T) {
 	var keyPath = "../../.relayer/wallet/top"
 
 	cfg := &config.Relayer{
-		Url:     topUrl,
+		Url:     []string{topUrl},
 		KeyPath: keyPath,
 	}
 	topRelayer := &Eth2TopRelayer{}
@@ -260,7 +260,7 @@ func TestGetEthClientHeight(t *testing.T) {
 	var keyPath = "../../.relayer/wallet/top"
 
 	cfg := &config.Relayer{
-		Url:     topUrl,
+		Url:     []string{topUrl},
 		KeyPath: keyPath,
 	}
 	topRelayer := &Eth2TopRelayer{}

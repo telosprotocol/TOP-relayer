@@ -1,21 +1,30 @@
 {
     "relayer_config": {
         "TOP": {
-            "url": "",
+            "url": [
+                ""
+            ],
             "keypath": ".relayer/wallet/top"
         },
         "ETH": {
-            "url": "https://eth-mainnet.token.im",
+            "url": [
+                "https://eth-mainnet.token.im",
+                "https://lodestar-mainnet.chainsafe.io"
+            ],
             "contract": "",
             "keypath": ".relayer/wallet/eth"
         },
         "BSC": {
-            "url": "https://bsc-dataseed1.binance.org",
+            "url": [
+                "https://bsc-dataseed1.binance.org"
+            ],
             "contract": "",
             "keypath": ".relayer/wallet/bsc"
         },
         "HECO": {
-            "url": "https://http-mainnet.hecochain.com",
+            "url": [
+                "https://http-mainnet.hecochain.com"
+            ],
             "contract": "",
             "keypath": ".relayer/wallet/heco"
         }
