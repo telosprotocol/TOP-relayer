@@ -303,3 +303,7 @@ func (et *Bsc2TopRelayer) signAndSendTransactions(lo, hi uint64) error {
 
 	return nil
 }
+
+func (relayer *Bsc2TopRelayer) GetInitData() ([]byte, error) {
+	return nil, nil
+}

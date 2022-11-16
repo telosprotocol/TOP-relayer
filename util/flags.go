@@ -14,7 +14,8 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
-var ( // relayer config
+var (
+	// relayer config
 	ConfigFileFlag = cli.StringFlag{
 		Name:  "config",
 		Usage: "configuration file",

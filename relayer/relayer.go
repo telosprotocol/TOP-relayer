@@ -1,6 +1,7 @@
 package relayer
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
@@ -24,6 +25,7 @@ var (
 type IChainRelayer interface {
 	Init(cfg *config.Relayer, listenUrl []string, pass string) error
 	StartRelayer(*sync.WaitGroup) error
+	GetInitData() ([]byte, error)
 }
 
 type ICrossChainRelayer interface {
@@ -114,4 +116,35 @@ func StartRelayer(cfg *config.Config, pass string, wg *sync.WaitGroup) error {
 	}
 
 	return nil
+}
+
+func GetInitData(cfg *config.Config, pass, chainName string) ([]byte, error) {
+	if cfg.RelayerToRun != config.TOP_CHAIN {
+		err := errors.New("RelayerToRun error")
+		logger.Error(err)
+		return nil, err
+	}
+	if chainName != config.ETH_CHAIN {
+		err := errors.New("chain not support init data")
+		logger.Error(err)
+		return nil, err
+	}
+	c, exist := cfg.RelayerConfig[chainName]
+	if !exist {
+		err := errors.New("not found chain config")
+		logger.Error(err)
+		return nil, err
+	}
+	topRelayer, exist := topRelayers[chainName]
+	if !exist {
+		err := errors.New("not found chain relayer")
+		logger.Error(err)
+		return nil, err
+	}
+	err := topRelayer.Init(c, c.Url, pass)
+	if err != nil {
+		logger.Error("Init error:", err)
+		return nil, err
+	}
+	return topRelayer.GetInitData()
 }

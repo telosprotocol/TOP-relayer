@@ -31,6 +31,7 @@ func init() {
 	app.Flags = nodeFlags
 	app.Commands = []*cli.Command{
 		util.VersionCommand,
+		util.GetInitDataCommand,
 	}
 }
 

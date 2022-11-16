@@ -2,20 +2,17 @@ package beaconrpc
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 	"strconv"
 	"testing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rlp"
-	primitives "github.com/prysmaticlabs/prysm/v3/consensus-types/primitives"
-	eth "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
 )
 
+const LOCAL_GRPC_URL = "localhost:4000"
 const SEPOLIA_URL = "https://lodestar-sepolia.chainsafe.io"
 const SEPOLIA_ETH1_URL = "https://rpc.sepolia.org"
 
@@ -23,7 +20,7 @@ func TestGetBeaconHeaderAndBlockForBlockId(t *testing.T) {
 	var s uint64 = 969983
 	ss := strconv.Itoa(969983)
 
-	c, err := NewBeaconGrpcClient(SEPOLIA_URL)
+	c, err := NewBeaconGrpcClient(LOCAL_GRPC_URL, SEPOLIA_URL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +55,7 @@ func TestGetBeaconHeaderAndBlockForBlockId(t *testing.T) {
 }
 
 func TestGetBeaconBlockForBlockIdErrNoBlockForSlot(t *testing.T) {
-	c, err := NewBeaconGrpcClient(SEPOLIA_URL)
+	c, err := NewBeaconGrpcClient(LOCAL_GRPC_URL, SEPOLIA_URL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,175 +71,76 @@ func TestGetBeaconBlockForBlockIdErrNoBlockForSlot(t *testing.T) {
 	}
 }
 
-func TestGetLightClientUpdate(t *testing.T) {
-	c, err := NewBeaconGrpcClient(SEPOLIA_URL)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = c.GetLightClientUpdate(122)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestGetFinalizedLightClientUpdateWithSyncCommityUpdate(t *testing.T) {
-	c, err := NewBeaconGrpcClient(SEPOLIA_URL)
-	if err != nil {
-		t.Fatal(err)
-	}
-	update, err := c.GetFinalizedLightClientUpdateWithSyncCommityUpdate()
-	if err != nil {
-		t.Fatal(err)
-	}
-	fmt.Println(update)
-}
-
-type ExtendedBeaconBlockHeader struct {
-	Header             *BeaconBlockHeader
-	BeaconBlockRoot    []byte
-	ExecutionBlockHash []byte
-}
-
-func (h *ExtendedBeaconBlockHeader) Encode() ([]byte, error) {
-	headerBytes, err := h.Header.Encode()
-	if err != nil {
-		return nil, err
-	}
-	b1, err := rlp.EncodeToBytes(headerBytes)
-	if err != nil {
-		return nil, err
-	}
-	b2, err := rlp.EncodeToBytes(h.BeaconBlockRoot)
-	if err != nil {
-		return nil, err
-	}
-	b3, err := rlp.EncodeToBytes(h.ExecutionBlockHash)
-	if err != nil {
-		return nil, err
-	}
-	var rlpBytes []byte
-	rlpBytes = append(rlpBytes, b1...)
-	rlpBytes = append(rlpBytes, b2...)
-	rlpBytes = append(rlpBytes, b3...)
-	return rlpBytes, nil
-}
-
-type InitInput struct {
-	FinalizedExecutionHeader *types.Header
-	FinalizedBeaconHeader    *ExtendedBeaconBlockHeader
-	CurrentSyncCommittee     *eth.SyncCommittee
-	NextSyncCommittee        *eth.SyncCommittee
-}
-
-func (init *InitInput) Encode() ([]byte, error) {
-	b1, err := rlp.EncodeToBytes(init.FinalizedExecutionHeader)
-	if err != nil {
-		return nil, err
-	}
-	b2, err := init.FinalizedBeaconHeader.Encode()
-	if err != nil {
-		return nil, err
-	}
-	b3, err := rlp.EncodeToBytes(init.CurrentSyncCommittee)
-	if err != nil {
-		return nil, err
-	}
-	b4, err := rlp.EncodeToBytes(init.NextSyncCommittee)
-	if err != nil {
-		return nil, err
-	}
-	var rlpBytes []byte
-	rlpBytes = append(rlpBytes, b1...)
-	rlpBytes = append(rlpBytes, b2...)
-	rlpBytes = append(rlpBytes, b3...)
-	rlpBytes = append(rlpBytes, b4...)
-	list, err := rlp.EncodeToBytes(rlpBytes)
-	if err != nil {
-		return nil, err
-	}
-	return list, nil
-}
-
 func TestEth1(t *testing.T) {
+	// config
+	height := big.NewInt(0).SetUint64(2256927)
+	hash := common.HexToHash("d26a8a468987d1ea34406ba622a4ae44eb67922d4166784cc84496a8b04be874")
+
+	// test
 	eth1, err := ethclient.Dial(SEPOLIA_ETH1_URL)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	header, err := eth1.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(2252532))
+	h1, err := eth1.HeaderByNumber(context.Background(), height)
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Println(header)
+	t.Log("HeaderByNumber:", h1)
+
+	h2, err := eth1.HeaderByHash(context.Background(), hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("HeaderByHash:", h2)
 }
 
-func TestInitInputData(t *testing.T) {
-	c, err := NewBeaconGrpcClient(SEPOLIA_URL)
+func TestGetEth1Data(t *testing.T) {
+	// config
+	start := uint64(2260231)
+	end := uint64(2264210)
+	// test
+	eth1, err := ethclient.Dial(SEPOLIA_ETH1_URL)
 	if err != nil {
 		t.Fatal(err)
 	}
+	for h := start; h <= end; h += 1 {
+		header, err := eth1.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(h))
+		if err != nil {
+			t.Fatal(err)
+		}
+		bytes, err := rlp.EncodeToBytes(header)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log(h, common.Bytes2Hex(bytes))
+		time.Sleep(time.Millisecond * 500)
+	}
+}
 
-	lastSlot, err := c.GetLastFinalizedSlotNumber()
+func TestGetLightClientUpdateData(t *testing.T) {
+	c, err := NewBeaconGrpcClient(LOCAL_GRPC_URL, SEPOLIA_URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lastSlot, err := c.GetLastSlotNumber()
 	if err != nil {
 		t.Fatal(err)
 	}
 	lastPeriod := GetPeriodForSlot(lastSlot)
-	lastUpdate, err := c.GetLightClientUpdate(lastPeriod)
+	update, err := c.GetLightClientUpdate(lastPeriod)
 	if err != nil {
 		t.Fatal(err)
 	}
-	prevUpdate, err := c.GetLightClientUpdate(lastPeriod - 1)
+	bytes, err := update.Encode()
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	var beaconHeader eth.BeaconBlockHeader
-	beaconHeader.Slot = primitives.Slot(lastUpdate.FinalizedUpdate.HeaderUpdate.BeaconHeader.Slot)
-	beaconHeader.ProposerIndex = primitives.ValidatorIndex(lastUpdate.FinalizedUpdate.HeaderUpdate.BeaconHeader.ProposerIndex)
-	beaconHeader.BodyRoot = lastUpdate.FinalizedUpdate.HeaderUpdate.BeaconHeader.BodyRoot
-	beaconHeader.ParentRoot = lastUpdate.FinalizedUpdate.HeaderUpdate.BeaconHeader.ParentRoot
-	beaconHeader.StateRoot = lastUpdate.FinalizedUpdate.HeaderUpdate.BeaconHeader.StateRoot
-	root, err := beaconHeader.HashTreeRoot()
-	if err != nil {
-		t.Fatal(err)
-	}
-	finalizedHeader := new(ExtendedBeaconBlockHeader)
-	finalizedHeader.BeaconBlockRoot = root[:]
-	finalizedHeader.Header = lastUpdate.FinalizedUpdate.HeaderUpdate.BeaconHeader
-	finalizedHeader.ExecutionBlockHash = lastUpdate.FinalizedUpdate.HeaderUpdate.ExecutionBlockHash
-
-	finalitySlot := lastUpdate.FinalizedUpdate.HeaderUpdate.BeaconHeader.Slot
-	finalizeBody, err := c.GetBeaconBlockBodyForBlockId(strconv.FormatUint(finalitySlot, 10))
-	if err != nil {
-		t.Fatal(err)
-	}
-	number := finalizeBody.GetExecutionPayload().BlockNumber
-
-	eth1, err := ethclient.Dial(SEPOLIA_ETH1_URL)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	header, err := eth1.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(number))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	initParam := new(InitInput)
-	initParam.FinalizedExecutionHeader = header
-	initParam.FinalizedBeaconHeader = finalizedHeader
-	initParam.NextSyncCommittee = lastUpdate.NextSyncCommitteeUpdate.NextSyncCommittee
-	initParam.CurrentSyncCommittee = prevUpdate.NextSyncCommitteeUpdate.NextSyncCommittee
-
-	bytes, err := initParam.Encode()
-	if err != nil {
-		t.Fatal(err)
-	}
-	fmt.Println(common.Bytes2Hex(bytes))
+	t.Log(common.Bytes2Hex(bytes))
 }
 
-func TestLightClientUpdateData(t *testing.T) {
-	c, err := NewBeaconGrpcClient(SEPOLIA_URL)
+func TestGetFinalizedLightClientUpdateData(t *testing.T) {
+	c, err := NewBeaconGrpcClient(LOCAL_GRPC_URL, SEPOLIA_URL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -254,5 +152,5 @@ func TestLightClientUpdateData(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Println(common.Bytes2Hex(bytes))
+	t.Log(common.Bytes2Hex(bytes))
 }

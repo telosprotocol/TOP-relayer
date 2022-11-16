@@ -16,7 +16,7 @@ import (
 	"toprelayer/config"
 	"toprelayer/contract/eth/topclient"
 	"toprelayer/relayer/monitor"
-	"toprelayer/util"
+	top "toprelayer/types"
 	"toprelayer/wallet"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -46,7 +46,7 @@ var (
 )
 
 type VerifyInfo struct {
-	Block      *util.TopHeader
+	Block      *top.TopHeader
 	VerifyList []string
 }
 

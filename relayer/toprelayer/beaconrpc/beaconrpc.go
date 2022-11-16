@@ -37,8 +37,8 @@ type BeaconGrpcClient struct {
 	httpurl    string
 }
 
-func NewBeaconGrpcClient(httpurl string) (*BeaconGrpcClient, error) {
-	grpc, err := grpc.Dial("localhost:4000", grpc.WithTransportCredentials(insecure.NewCredentials()))
+func NewBeaconGrpcClient(grpcUrl, httpUrl string) (*BeaconGrpcClient, error) {
+	grpc, err := grpc.Dial(grpcUrl, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		logger.Error("grpc.Dial error:", err)
 		return nil, err
@@ -51,7 +51,7 @@ func NewBeaconGrpcClient(httpurl string) (*BeaconGrpcClient, error) {
 		client:      pb.NewBeaconChainClient(grpc),
 		debugclient: pb.NewBeaconDebugClient(grpc),
 		httpclient:  &http.Client{Transport: tr},
-		httpurl:     httpurl,
+		httpurl:     httpUrl,
 	}
 	return c, nil
 }
@@ -220,16 +220,6 @@ func (c *BeaconGrpcClient) GetFinalizedLightClientUpdate() (*LightClientUpdate, 
 	return c.LightClientUpdateConvertNoCommitteeConvert(&result.Data)
 }
 
-func (c *BeaconGrpcClient) GetFinalizedLightClientUpdateWithSyncCommityUpdate() (*LightClientUpdate, error) {
-	lastSlot, err := c.GetLastSlotNumber()
-	if err != nil {
-		logger.Error("GetLastSlotNumber error:", err)
-		return nil, err
-	}
-	lastPeriod := GetPeriodForSlot(lastSlot)
-	return c.GetLightClientUpdate(lastPeriod)
-}
-
 type BeaconBlockHeaderData struct {
 	Slot          string `json:"slot"`
 	ProposerIndex string `json:"proposer_index"`
@@ -253,6 +243,7 @@ type LightClientUpdateDataNoCommittee struct {
 	FinalizedHeader *BeaconBlockHeaderData `json:"finalized_header"`
 	FinalityBranch  []string               `json:"finality_branch"`
 	SyncAggregate   *SyncAggregateData     `json:"sync_aggregate"`
+	SignatureSlot   string                 `json:"signature_slot"`
 }
 
 type LightClientUpdateData struct {
@@ -262,6 +253,7 @@ type LightClientUpdateData struct {
 	SyncAggregate           *SyncAggregateData     `json:"sync_aggregate"`
 	NextSyncCommittee       *SyncCommitteeData     `json:"next_sync_committee"`
 	NextSyncCommitteeBranch []string               `json:"next_sync_committee_branch"`
+	SignatureSlot           string                 `json:"signature_slot"`
 }
 
 type LightClientUpdateNoCommitteeMsg struct {
@@ -529,23 +521,6 @@ func (c *BeaconGrpcClient) FinalizedUpdateConvert(header *BeaconBlockHeaderData,
 	return update, nil
 }
 
-func (c *BeaconGrpcClient) SignatureSlot(attestedHeader *BeaconBlockHeader, aggregate *SyncAggregate) (uint64, error) {
-	signatureSlot := attestedHeader.Slot
-	for {
-		body, err := c.GetBeaconBlockBodyForBlockId(strconv.FormatUint(signatureSlot, 10))
-		if err == nil {
-			if string(body.SyncAggregate.SyncCommitteeSignature) == string(aggregate.SyncCommitteeSignature) {
-				break
-			}
-		}
-		signatureSlot += 1
-		if signatureSlot-attestedHeader.Slot > 10 {
-			return 0, errors.New("signature not found")
-		}
-	}
-	return signatureSlot, nil
-}
-
 func (c *BeaconGrpcClient) LightClientUpdateConvertNoCommitteeConvert(data *LightClientUpdateDataNoCommittee) (*LightClientUpdate, error) {
 	attestedHeader, err := c.BeaconHeaderconvert(data.AttestedHeader)
 	if err != nil {
@@ -562,9 +537,9 @@ func (c *BeaconGrpcClient) LightClientUpdateConvertNoCommitteeConvert(data *Ligh
 		logger.Error("FinalizedUpdateConvert error:", err)
 		return nil, err
 	}
-	slot, err := c.SignatureSlot(attestedHeader, aggregate)
+	slot, err := strconv.ParseUint(data.SignatureSlot, 0, 64)
 	if err != nil {
-		logger.Error("SignatureSlot error:", err)
+		logger.Error("ParseUint error:", err)
 		return nil, err
 	}
 	update := new(LightClientUpdate)
@@ -597,9 +572,9 @@ func (c *BeaconGrpcClient) LightClientUpdateConvert(data *LightClientUpdateData)
 		logger.Error("FinalizedUpdateConvert error:", err)
 		return nil, err
 	}
-	slot, err := c.SignatureSlot(attestedHeader, aggregate)
+	slot, err := strconv.ParseUint(data.SignatureSlot, 0, 64)
 	if err != nil {
-		logger.Error("SignatureSlot error:", err)
+		logger.Error("ParseUint error:", err)
 		return nil, err
 	}
 	update := new(LightClientUpdate)

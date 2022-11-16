@@ -8,8 +8,7 @@
         },
         "ETH": {
             "url": [
-                "https://eth-mainnet.token.im",
-                "https://lodestar-mainnet.chainsafe.io"
+                "https://eth-mainnet.token.im"
             ],
             "contract": "",
             "keypath": ".relayer/wallet/eth"

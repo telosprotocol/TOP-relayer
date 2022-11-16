@@ -297,3 +297,7 @@ func (et *Heco2TopRelayer) signAndSendTransactions(lo, hi uint64) error {
 
 	return nil
 }
+
+func (relayer *Heco2TopRelayer) GetInitData() ([]byte, error) {
+	return nil, nil
+}
