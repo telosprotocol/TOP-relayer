@@ -26,11 +26,12 @@ var (
 	_ = common.Big1
 	_ = types.BloomLookup
 	_ = event.NewSubscription
+	_ = abi.ConvertType
 )
 
 // Eth2ClientMetaData contains all meta data concerning the Eth2Client contract.
 var Eth2ClientMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[{\"internalType\":\"uint64\",\"name\":\"height\",\"type\":\"uint64\"}],\"name\":\"block_hash_safe\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"hash\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"finalized_beacon_block_header\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"header\",\"type\":\"bytes\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"finalized_beacon_block_root\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"root\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"finalized_beacon_block_slot\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"slot\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"get_light_client_state\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"state\",\"type\":\"bytes\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"genesis\",\"type\":\"bytes\"}],\"name\":\"init\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"initialized\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"inited\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"data\",\"type\":\"bytes32\"}],\"name\":\"is_known_execution_header\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"known\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"last_block_number\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"number\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"update\",\"type\":\"bytes\"}],\"name\":\"submit_beacon_chain_light_client_update\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"header\",\"type\":\"bytes\"}],\"name\":\"submit_execution_header\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
+	ABI: "[{\"inputs\":[{\"internalType\":\"uint64\",\"name\":\"height\",\"type\":\"uint64\"}],\"name\":\"block_hash_safe\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"hash\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"disable_reset\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"finalized_beacon_block_header\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"header\",\"type\":\"bytes\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"finalized_beacon_block_root\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"root\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"finalized_beacon_block_slot\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"slot\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"get_light_client_state\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"state\",\"type\":\"bytes\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"genesis\",\"type\":\"bytes\"}],\"name\":\"init\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"initialized\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"inited\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"height\",\"type\":\"uint256\"},{\"internalType\":\"bytes32\",\"name\":\"data\",\"type\":\"bytes32\"}],\"name\":\"is_confirmed\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"known\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"data\",\"type\":\"bytes32\"}],\"name\":\"is_known_execution_header\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"known\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"last_block_number\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"number\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"reset\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"update\",\"type\":\"bytes\"}],\"name\":\"submit_beacon_chain_light_client_update\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"header\",\"type\":\"bytes\"}],\"name\":\"submit_execution_header\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
 }
 
 // Eth2ClientABI is the input ABI used to generate the binding from.
@@ -134,11 +135,11 @@ func NewEth2ClientFilterer(address common.Address, filterer bind.ContractFiltere
 
 // bindEth2Client binds a generic wrapper to an already deployed contract.
 func bindEth2Client(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
-	parsed, err := abi.JSON(strings.NewReader(Eth2ClientABI))
+	parsed, err := Eth2ClientMetaData.GetAbi()
 	if err != nil {
 		return nil, err
 	}
-	return bind.NewBoundContract(address, parsed, caller, transactor, filterer), nil
+	return bind.NewBoundContract(address, *parsed, caller, transactor, filterer), nil
 }
 
 // Call invokes the (constant) contract method with params as input values and
@@ -365,6 +366,37 @@ func (_Eth2Client *Eth2ClientCallerSession) Initialized() (bool, error) {
 	return _Eth2Client.Contract.Initialized(&_Eth2Client.CallOpts)
 }
 
+// IsConfirmed is a free data retrieval call binding the contract method 0xd398572f.
+//
+// Solidity: function is_confirmed(uint256 height, bytes32 data) view returns(bool known)
+func (_Eth2Client *Eth2ClientCaller) IsConfirmed(opts *bind.CallOpts, height *big.Int, data [32]byte) (bool, error) {
+	var out []interface{}
+	err := _Eth2Client.contract.Call(opts, &out, "is_confirmed", height, data)
+
+	if err != nil {
+		return *new(bool), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
+
+	return out0, err
+
+}
+
+// IsConfirmed is a free data retrieval call binding the contract method 0xd398572f.
+//
+// Solidity: function is_confirmed(uint256 height, bytes32 data) view returns(bool known)
+func (_Eth2Client *Eth2ClientSession) IsConfirmed(height *big.Int, data [32]byte) (bool, error) {
+	return _Eth2Client.Contract.IsConfirmed(&_Eth2Client.CallOpts, height, data)
+}
+
+// IsConfirmed is a free data retrieval call binding the contract method 0xd398572f.
+//
+// Solidity: function is_confirmed(uint256 height, bytes32 data) view returns(bool known)
+func (_Eth2Client *Eth2ClientCallerSession) IsConfirmed(height *big.Int, data [32]byte) (bool, error) {
+	return _Eth2Client.Contract.IsConfirmed(&_Eth2Client.CallOpts, height, data)
+}
+
 // IsKnownExecutionHeader is a free data retrieval call binding the contract method 0x43b1378b.
 //
 // Solidity: function is_known_execution_header(bytes32 data) view returns(bool known)
@@ -427,6 +459,27 @@ func (_Eth2Client *Eth2ClientCallerSession) LastBlockNumber() (uint64, error) {
 	return _Eth2Client.Contract.LastBlockNumber(&_Eth2Client.CallOpts)
 }
 
+// DisableReset is a paid mutator transaction binding the contract method 0xb5a61069.
+//
+// Solidity: function disable_reset() returns(bool success)
+func (_Eth2Client *Eth2ClientTransactor) DisableReset(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _Eth2Client.contract.Transact(opts, "disable_reset")
+}
+
+// DisableReset is a paid mutator transaction binding the contract method 0xb5a61069.
+//
+// Solidity: function disable_reset() returns(bool success)
+func (_Eth2Client *Eth2ClientSession) DisableReset() (*types.Transaction, error) {
+	return _Eth2Client.Contract.DisableReset(&_Eth2Client.TransactOpts)
+}
+
+// DisableReset is a paid mutator transaction binding the contract method 0xb5a61069.
+//
+// Solidity: function disable_reset() returns(bool success)
+func (_Eth2Client *Eth2ClientTransactorSession) DisableReset() (*types.Transaction, error) {
+	return _Eth2Client.Contract.DisableReset(&_Eth2Client.TransactOpts)
+}
+
 // Init is a paid mutator transaction binding the contract method 0x4ddf47d4.
 //
 // Solidity: function init(bytes genesis) returns(bool success)
@@ -446,6 +499,27 @@ func (_Eth2Client *Eth2ClientSession) Init(genesis []byte) (*types.Transaction, 
 // Solidity: function init(bytes genesis) returns(bool success)
 func (_Eth2Client *Eth2ClientTransactorSession) Init(genesis []byte) (*types.Transaction, error) {
 	return _Eth2Client.Contract.Init(&_Eth2Client.TransactOpts, genesis)
+}
+
+// Reset is a paid mutator transaction binding the contract method 0xd826f88f.
+//
+// Solidity: function reset() returns(bool success)
+func (_Eth2Client *Eth2ClientTransactor) Reset(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _Eth2Client.contract.Transact(opts, "reset")
+}
+
+// Reset is a paid mutator transaction binding the contract method 0xd826f88f.
+//
+// Solidity: function reset() returns(bool success)
+func (_Eth2Client *Eth2ClientSession) Reset() (*types.Transaction, error) {
+	return _Eth2Client.Contract.Reset(&_Eth2Client.TransactOpts)
+}
+
+// Reset is a paid mutator transaction binding the contract method 0xd826f88f.
+//
+// Solidity: function reset() returns(bool success)
+func (_Eth2Client *Eth2ClientTransactorSession) Reset() (*types.Transaction, error) {
+	return _Eth2Client.Contract.Reset(&_Eth2Client.TransactOpts)
 }
 
 // SubmitBeaconChainLightClientUpdate is a paid mutator transaction binding the contract method 0x2e139f0c.

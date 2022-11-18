@@ -13,6 +13,7 @@ import (
 	"toprelayer/config"
 	eth2bridge "toprelayer/contract/top/eth2client"
 	"toprelayer/relayer/toprelayer/beaconrpc"
+	"toprelayer/relayer/toprelayer/ethashapp"
 	"toprelayer/relayer/toprelayer/ethtypes"
 	"toprelayer/wallet"
 
@@ -329,6 +330,7 @@ func (relayer *Eth2TopRelayerV2) submitEthHeader(headers []byte) error {
 		logger.Error("Eth2TopRelayerV2 txOption error:", err)
 		return err
 	}
+	logger.Info("Eth2TopRelayer submitEthHeader data:", common.Bytes2Hex(headers))
 	sigTx, err := relayer.transactor.SubmitExecutionHeader(ops, headers)
 	if err != nil {
 		logger.Error("Eth2TopRelayer sync error:", err)
@@ -349,6 +351,7 @@ func (relayer *Eth2TopRelayerV2) submitLightClientUpdate(update []byte) error {
 		logger.Error("Eth2TopRelayerV2 txOption error:", err)
 		return err
 	}
+	logger.Info("Eth2TopRelayer submitLightClientUpdate data:", common.Bytes2Hex(update))
 	sigTx, err := relayer.transactor.SubmitBeaconChainLightClientUpdate(ops, update)
 	if err != nil {
 		logger.Error("Eth2TopRelayer SubmitBeaconChainLightClientUpdate error:", err)
@@ -439,12 +442,15 @@ func (relayer *Eth2TopRelayerV2) StartRelayer(wg *sync.WaitGroup) error {
 							break
 						}
 						if curSlot != eth2Slot {
+							logger.Info("Eth2TopRelayerV2 headers update not finish, continue update headers next round")
 							delay = time.Duration(SUCCESSDELAY)
 							break
 						} else {
 							topSlot = curSlot
 						}
 					}
+					logger.Info("Eth2TopRelayerV2 headers update finish, update light client update for a while")
+					time.Sleep(time.Second * time.Duration(SUCCESSDELAY))
 					relayer.sendLightClientUpdatesWithChecks(topSlot)
 
 					if set := timeout.Reset(timeoutDuration); !set {
@@ -481,7 +487,14 @@ func (relayer *Eth2TopRelayerV2) getExecutionBlocksBetween(start, end uint64) ([
 		if err != nil {
 			logger.Error("rlp encode error: ", err)
 		}
-		batchHeaders = append(batchHeaders, rlp_bytes...)
+		var out ethashapp.Output
+		out.HeaderRLP = string(rlp_bytes)
+		outBytes, err := rlp.EncodeToBytes(out)
+		if err != nil {
+			logger.Error("Eth2TopRelayerV2 Output rlp encode error: ", err)
+			return nil, 0, err
+		}
+		batchHeaders = append(batchHeaders, outBytes...)
 		curSlot += 1
 	}
 	curSlot -= 1
