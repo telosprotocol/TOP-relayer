@@ -37,7 +37,7 @@ const (
 )
 
 var (
-	eth2ClientSystemContract = common.HexToAddress("0xff00000000000000000000000000000000000010")
+	eth2ClientSystemContract = common.HexToAddress("0xff00000000000000000000000000000000000009")
 )
 
 type Eth2TopRelayerV2 struct {
@@ -106,8 +106,9 @@ func (relayer *Eth2TopRelayerV2) Init(cfg *config.Relayer, listenUrl []string, p
 
 func (relayer *Eth2TopRelayerV2) blockKnownOnTop(slot uint64) (bool, error) {
 	hash, err := relayer.beaconrpcclient.GetBlockHashForSlot(slot)
+	logger.Debug("blockKnownOnTop slot %v, hash %v, err: %v", slot, hash, err)
 	if err != nil {
-		logger.Error("Eth2TopRelayerV2 GetBlockHashForSlot error", err)
+		logger.Error("Eth2TopRelayerV2 GetBlockHashForSlot %v error %v", slot, err)
 		return false, err
 	}
 	return relayer.callerSession.IsKnownExecutionHeader(hash)
@@ -147,6 +148,7 @@ func (relayer *Eth2TopRelayerV2) linearSearchForward(slot, maxSlot uint64) (uint
 			break
 		}
 	}
+	logger.Debug("linearSearchForward return slot: %v", slot)
 	return slot, nil
 }
 
@@ -179,6 +181,7 @@ func (relayer *Eth2TopRelayerV2) linearSearchBackward(startSlot, lastSlot uint64
 
 func (relayer *Eth2TopRelayerV2) linerSlotSearch(slot, finalizedSlot, lastEthSlot uint64) (uint64, error) {
 	if slot == finalizedSlot {
+		logger.Debug("slot equal finalizedSlot %v go forward", slot)
 		return relayer.linearSearchForward(slot, lastEthSlot)
 	}
 	known, err := relayer.blockKnownOnTop(slot)
@@ -196,8 +199,10 @@ func (relayer *Eth2TopRelayerV2) linerSlotSearch(slot, finalizedSlot, lastEthSlo
 		}
 	}
 	if known {
+		logger.Debug("slot %v known, go forward", slot)
 		return relayer.linearSearchForward(slot, lastEthSlot)
 	} else {
+		logger.Debug("slot %v unknown, go backward", slot)
 		return relayer.linearSearchBackward(finalizedSlot, slot)
 	}
 }
@@ -217,6 +222,7 @@ func (relayer *Eth2TopRelayerV2) getLastEth2SlotOnTop(lastEthSlot uint64) (uint6
 	if lastSubmittedSlot > finalizedSlot {
 		slot = lastSubmittedSlot
 	}
+	logger.Debug("getLastEth2SlotOnTop finalizedSlot: %v, lastSubmittedSlot: %v, slot: %v", finalizedSlot, lastSubmittedSlot, slot)
 	return relayer.linerSlotSearch(slot, finalizedSlot, lastEthSlot)
 }
 
@@ -286,6 +292,8 @@ func (relayer *Eth2TopRelayerV2) sendLightClientUpdatesWithChecks(slot uint64) (
 			return false, err
 		}
 		return true, nil
+	} else {
+		logger.Debug("Eth2TopRelayerV2 no need to light client update")
 	}
 	return false, nil
 }
@@ -301,12 +309,12 @@ func (relayer *Eth2TopRelayerV2) txOption(packData []byte) (*bind.TransactOpts, 
 		logger.Error("Eth2TopRelayerV2 GasPrice error:", err)
 		return nil, err
 	}
-	gaslimit, err := relayer.wallet.EstimateGas(context.Background(), &ethClientSystemContract, packData)
+	gaslimit, err := relayer.wallet.EstimateGas(context.Background(), &eth2ClientSystemContract, packData)
 	if err != nil {
 		logger.Error("Eth2TopRelayer EstimateGas error:", err)
 		return nil, err
 	}
-	logger.Info("Eth2TopRelayer tx option info, account[%v] nonce:%v,capfee:%v,hash:%v,size:%v", relayer.wallet.Address(), nonce, gaspric)
+	logger.Info("Eth2TopRelayer tx option info, account[%v] nonce:%v,capfee:%v", relayer.wallet.Address(), nonce, gaspric)
 	return &bind.TransactOpts{
 		From:      relayer.wallet.Address(),
 		Nonce:     big.NewInt(0).SetUint64(nonce),
@@ -387,6 +395,9 @@ func (relayer *Eth2TopRelayerV2) StartRelayer(wg *sync.WaitGroup) error {
 		logger.Debug("Eth2TopRelayerV2 set timeout: %v hours", FATALTIMEOUT)
 		var delay time.Duration = time.Duration(1)
 
+		prevPeriod := uint64(0)
+		curPeriod := uint64(0)
+
 		for {
 			time.Sleep(time.Second * delay)
 			select {
@@ -441,7 +452,14 @@ func (relayer *Eth2TopRelayerV2) StartRelayer(wg *sync.WaitGroup) error {
 							delay = time.Duration(ERRDELAY)
 							break
 						}
-						if curSlot != eth2Slot {
+						if prevPeriod == 0 {
+							prevPeriod, err = relayer.getLastFinalizedSlotOnTop()
+							if err != nil {
+								logger.Error("Eth2TopRelayerV2 getLastFinalizedSlotOnTop error:", err)
+							}
+						}
+						curPeriod = beaconrpc.GetPeriodForSlot(curSlot)
+						if (curSlot != eth2Slot) && (curPeriod == prevPeriod) {
 							logger.Info("Eth2TopRelayerV2 headers update not finish, continue update headers next round")
 							delay = time.Duration(SUCCESSDELAY)
 							break
@@ -451,7 +469,12 @@ func (relayer *Eth2TopRelayerV2) StartRelayer(wg *sync.WaitGroup) error {
 					}
 					logger.Info("Eth2TopRelayerV2 headers update finish, update light client update for a while")
 					time.Sleep(time.Second * time.Duration(SUCCESSDELAY))
-					relayer.sendLightClientUpdatesWithChecks(topSlot)
+					ret, err := relayer.sendLightClientUpdatesWithChecks(topSlot)
+					if err != nil {
+						logger.Error("Eth2TopRelayerV2 sendLightClientUpdatesWithChecks error:", err)
+					} else if ret == true {
+						prevPeriod = curPeriod
+					}
 
 					if set := timeout.Reset(timeoutDuration); !set {
 						logger.Error("Eth2TopRelayerV2 reset timeout falied!")
@@ -472,8 +495,9 @@ func (relayer *Eth2TopRelayerV2) StartRelayer(wg *sync.WaitGroup) error {
 
 func (relayer *Eth2TopRelayerV2) getExecutionBlocksBetween(start, end uint64) ([]byte, uint64, error) {
 	curSlot := start
+	headersCnt := 0
 	var batchHeaders []byte
-	for (len(batchHeaders) < HEADER_BATCH_SIZE) && (curSlot <= end) {
+	for (headersCnt < HEADER_BATCH_SIZE) && (curSlot <= end) {
 		header, err := relayer.getExecutionBlockBySlot(curSlot)
 		if err != nil {
 			if beaconrpc.IsErrorNoBlockForSlot(err) {
@@ -496,6 +520,7 @@ func (relayer *Eth2TopRelayerV2) getExecutionBlocksBetween(start, end uint64) ([
 		}
 		batchHeaders = append(batchHeaders, outBytes...)
 		curSlot += 1
+		headersCnt += 1
 	}
 	curSlot -= 1
 	return batchHeaders, curSlot, nil
@@ -919,9 +944,14 @@ func (relayer *Eth2TopRelayerV2) GetInitData() ([]byte, error) {
 		logger.Error("GetLightClientUpdate error:", err)
 		return nil, err
 	}
-	prevUpdate, err := relayer.beaconrpcclient.GetLightClientUpdate(lastPeriod - 1)
+	// prevUpdate, err := relayer.beaconrpcclient.GetLightClientUpdate(lastPeriod - 1)
+	// if err != nil {
+	// 	logger.Error("GetLightClientUpdate error:", err)
+	// 	return nil, err
+	// }
+	prevUpdate, err := relayer.beaconrpcclient.GetNextSyncCommitteeUpdate(lastPeriod - 1)
 	if err != nil {
-		logger.Error("GetLightClientUpdate error:", err)
+		logger.Error("GetNextSyncCommitteeUpdate error:", err)
 		return nil, err
 	}
 
@@ -959,7 +989,7 @@ func (relayer *Eth2TopRelayerV2) GetInitData() ([]byte, error) {
 	initParam.FinalizedExecutionHeader = header
 	initParam.FinalizedBeaconHeader = finalizedHeader
 	initParam.NextSyncCommittee = lastUpdate.NextSyncCommitteeUpdate.NextSyncCommittee
-	initParam.CurrentSyncCommittee = prevUpdate.NextSyncCommitteeUpdate.NextSyncCommittee
+	initParam.CurrentSyncCommittee = prevUpdate.NextSyncCommittee
 
 	bytes, err := initParam.Encode()
 	if err != nil {

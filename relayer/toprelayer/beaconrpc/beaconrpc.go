@@ -63,7 +63,7 @@ func IsErrorNoBlockForSlot(err error) bool {
 func (c *BeaconGrpcClient) GetBeaconBlockBodyForBlockId(id string) (*v2.BeaconBlockBodyBellatrix, error) {
 	resp, err := c.client.GetBlockV2(context.Background(), &v2.BlockRequestV2{BlockId: []byte(id)})
 	if err != nil {
-		logger.Error("GetBlockV2 error:", err)
+		logger.Error("GetBlockV2 id %v error %v", id, err)
 		return nil, err
 	}
 	signedBlock, ok := resp.Data.Message.(*v2.SignedBeaconBlockContainer_BellatrixBlock)
@@ -118,7 +118,7 @@ func (c *BeaconGrpcClient) GetBlockNumberForSlot(slot uint64) (uint64, error) {
 func (c *BeaconGrpcClient) GetBlockHashForSlot(slot uint64) (common.Hash, error) {
 	b, err := c.GetBeaconBlockBodyForBlockId(strconv.FormatUint(slot, 10))
 	if err != nil {
-		logger.Error("GetBeaconBlockBodyForBlockId error:", err)
+		logger.Error("GetBeaconBlockBodyForBlockId slot %v error %v", slot, err)
 		return common.Hash{}, err
 	}
 	return common.BytesToHash(b.GetExecutionPayload().BlockHash), nil
@@ -195,6 +195,38 @@ func (c *BeaconGrpcClient) GetLightClientUpdate(period uint64) (*LightClientUpda
 		return nil, err
 	}
 	return c.LightClientUpdateConvert(&result.Data[0])
+}
+
+func (c *BeaconGrpcClient) GetNextSyncCommitteeUpdate(period uint64) (*SyncCommitteeUpdate, error) {
+	str := fmt.Sprintf("%s/eth/v1/beacon/light_client/updates?start_period=%d&count=1", c.httpurl, period)
+	resp, err := c.httpclient.Get(str)
+	if err != nil {
+		logger.Error("http Get error:", err)
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result LightClientUpdateMsg
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		logger.Error("outil.ReadAll error:", err)
+		return nil, err
+	}
+	if len(body) == 0 {
+		logger.Error("body empty")
+		return nil, errors.New("http body empty")
+	}
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		logger.Error("Unmarshal error:", err)
+		return nil, err
+	}
+	committeeUpdate, err := c.CommitteeConvert(result.Data[0].NextSyncCommittee, result.Data[0].NextSyncCommitteeBranch)
+	if err != nil {
+		logger.Error("CommitteeConvert error:", err)
+		return nil, err
+	}
+	return committeeUpdate, nil
 }
 
 func (c *BeaconGrpcClient) GetFinalizedLightClientUpdate() (*LightClientUpdate, error) {
