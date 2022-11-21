@@ -33,7 +33,7 @@ import (
 
 const (
 	ONE_EPOCH_IN_SLOTS = 32
-	HEADER_BATCH_SIZE  = 64
+	HEADER_BATCH_SIZE  = 128
 )
 
 var (
@@ -459,7 +459,8 @@ func (relayer *Eth2TopRelayerV2) StartRelayer(wg *sync.WaitGroup) error {
 							}
 						}
 						curPeriod = beaconrpc.GetPeriodForSlot(curSlot)
-						if (curSlot != eth2Slot) && (curPeriod == prevPeriod) {
+						logger.Info("Eth2TopRelayerV2 prev_period: %v, cur_period: %v", prevPeriod, curPeriod)
+						if curSlot+8 < eth2Slot {
 							logger.Info("Eth2TopRelayerV2 headers update not finish, continue update headers next round")
 							delay = time.Duration(SUCCESSDELAY)
 							break
