@@ -31,21 +31,21 @@ type Bsc2TopRelayer struct {
 	parlia        *parlia.Parlia
 }
 
-func (relayer *Bsc2TopRelayer) Init(cfg *config.Relayer, listenUrl string, pass string) error {
-	w, err := wallet.NewEthWallet(cfg.Url, listenUrl, cfg.KeyPath, pass)
+func (relayer *Bsc2TopRelayer) Init(cfg *config.Relayer, listenUrl []string, pass string) error {
+	w, err := wallet.NewEthWallet(cfg.Url[0], listenUrl[0], cfg.KeyPath, pass)
 	if err != nil {
 		logger.Error("Bsc2TopRelayer NewWallet error:", err)
 		return err
 	}
 	relayer.wallet = w
 
-	relayer.ethsdk, err = ethclient.Dial(listenUrl)
+	relayer.ethsdk, err = ethclient.Dial(listenUrl[0])
 	if err != nil {
 		logger.Error("Bsc2TopRelayer ethsdk create error:", listenUrl)
 		return err
 	}
 
-	topethlient, err := ethclient.Dial(cfg.Url)
+	topethlient, err := ethclient.Dial(cfg.Url[0])
 	if err != nil {
 		logger.Error("Bsc2TopRelayer new topethlient error:", err)
 		return err
@@ -302,4 +302,8 @@ func (et *Bsc2TopRelayer) signAndSendTransactions(lo, hi uint64) error {
 	}
 
 	return nil
+}
+
+func (relayer *Bsc2TopRelayer) GetInitData() ([]byte, error) {
+	return nil, nil
 }

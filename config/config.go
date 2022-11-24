@@ -40,9 +40,9 @@ var (
 
 type Relayer struct {
 	//submit config
-	Url      string `json:"url"`
-	Contract string `json:"contract"`
-	KeyPath  string `json:"keypath"`
+	Url      []string `json:"url"`
+	Contract string   `json:"contract"`
+	KeyPath  string   `json:"keypath"`
 }
 
 type Server struct {

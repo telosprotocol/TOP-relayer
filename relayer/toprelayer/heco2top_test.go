@@ -75,11 +75,11 @@ func TestHecoInit(t *testing.T) {
 	var keyPath = "../../.relayer/wallet/top"
 
 	cfg := &config.Relayer{
-		Url:     topUrl,
+		Url:     []string{topUrl},
 		KeyPath: keyPath,
 	}
 	relayer := &Heco2TopRelayer{}
-	err := relayer.Init(cfg, ethUrl, defaultPass)
+	err := relayer.Init(cfg, []string{ethUrl}, defaultPass)
 	if err != nil {
 		t.Fatal(err)
 	}

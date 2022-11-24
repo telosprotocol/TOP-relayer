@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"toprelayer/util"
+
+	top "toprelayer/types"
 
 	"github.com/wonderivan/logger"
 
@@ -158,8 +159,8 @@ func toBlockNumArg(number *big.Int) string {
 	return hexutil.EncodeBig(number)
 }
 
-func (w *Wallet) TopHeaderByNumber(ctx context.Context, number *big.Int) (*util.TopHeader, error) {
-	var head *util.TopHeader
+func (w *Wallet) TopHeaderByNumber(ctx context.Context, number *big.Int) (*top.TopHeader, error) {
+	var head *top.TopHeader
 	err := w.rpc.CallContext(ctx, &head, "topRelay_getBlockByNumber", toBlockNumArg(number), false, "transaction")
 	if err == nil && head == nil {
 		err = ethereum.NotFound

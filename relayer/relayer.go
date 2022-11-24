@@ -1,6 +1,7 @@
 package relayer
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
@@ -14,7 +15,7 @@ import (
 
 var (
 	topRelayers = map[string]IChainRelayer{
-		config.ETH_CHAIN:  new(toprelayer.Eth2TopRelayer),
+		config.ETH_CHAIN:  new(toprelayer.Eth2TopRelayerV2),
 		config.BSC_CHAIN:  new(toprelayer.Bsc2TopRelayer),
 		config.HECO_CHAIN: new(toprelayer.Heco2TopRelayer)}
 
@@ -22,16 +23,17 @@ var (
 )
 
 type IChainRelayer interface {
-	Init(cfg *config.Relayer, listenUrl string, pass string) error
+	Init(cfg *config.Relayer, listenUrl []string, pass string) error
 	StartRelayer(*sync.WaitGroup) error
+	GetInitData() ([]byte, error)
 }
 
 type ICrossChainRelayer interface {
-	Init(chainName string, cfg *config.Relayer, listenUrl string, pass string, server config.Server) error
+	Init(chainName string, cfg *config.Relayer, listenUrl []string, pass string, server config.Server) error
 	StartRelayer(*sync.WaitGroup) error
 }
 
-func startTopRelayer(relayer IChainRelayer, cfg *config.Relayer, listenUrl string, pass string, wg *sync.WaitGroup) error {
+func startTopRelayer(relayer IChainRelayer, cfg *config.Relayer, listenUrl []string, pass string, wg *sync.WaitGroup) error {
 	err := relayer.Init(cfg, listenUrl, pass)
 	if err != nil {
 		logger.Error("startTopRelayer error:", err)
@@ -49,7 +51,7 @@ func startTopRelayer(relayer IChainRelayer, cfg *config.Relayer, listenUrl strin
 	return nil
 }
 
-func startCrossChainRelayer(relayer ICrossChainRelayer, chainName string, cfg *config.Relayer, listenUrl string, pass string, server config.Server, wg *sync.WaitGroup) error {
+func startCrossChainRelayer(relayer ICrossChainRelayer, chainName string, cfg *config.Relayer, listenUrl []string, pass string, server config.Server, wg *sync.WaitGroup) error {
 	err := relayer.Init(chainName, cfg, listenUrl, pass, server)
 	if err != nil {
 		logger.Error("startCrossChainRelayer error:", err)
@@ -114,4 +116,35 @@ func StartRelayer(cfg *config.Config, pass string, wg *sync.WaitGroup) error {
 	}
 
 	return nil
+}
+
+func GetInitData(cfg *config.Config, pass, chainName string) ([]byte, error) {
+	if cfg.RelayerToRun != config.TOP_CHAIN {
+		err := errors.New("RelayerToRun error")
+		logger.Error(err)
+		return nil, err
+	}
+	if chainName != config.ETH_CHAIN {
+		err := errors.New("chain not support init data")
+		logger.Error(err)
+		return nil, err
+	}
+	c, exist := cfg.RelayerConfig[chainName]
+	if !exist {
+		err := errors.New("not found chain config")
+		logger.Error(err)
+		return nil, err
+	}
+	topRelayer, exist := topRelayers[chainName]
+	if !exist {
+		err := errors.New("not found chain relayer")
+		logger.Error(err)
+		return nil, err
+	}
+	err := topRelayer.Init(c, c.Url, pass)
+	if err != nil {
+		logger.Error("Init error:", err)
+		return nil, err
+	}
+	return topRelayer.GetInitData()
 }

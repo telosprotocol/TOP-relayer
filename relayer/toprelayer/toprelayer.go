@@ -43,10 +43,8 @@ type Eth2TopRelayer struct {
 	monitor       *monitor.Monitor
 }
 
-type void struct{}
-
 func (relayer *Eth2TopRelayer) Init(cfg *config.Relayer, listenUrl string, pass string) error {
-	w, err := wallet.NewTopWallet(cfg.Url, cfg.KeyPath, pass)
+	w, err := wallet.NewTopWallet(cfg.Url[0], cfg.KeyPath, pass)
 	if err != nil {
 		logger.Error("Eth2TopRelayer NewWallet error:", err)
 		return err
@@ -59,7 +57,7 @@ func (relayer *Eth2TopRelayer) Init(cfg *config.Relayer, listenUrl string, pass 
 		return err
 	}
 
-	topethlient, err := ethclient.Dial(cfg.Url)
+	topethlient, err := ethclient.Dial(cfg.Url[0])
 	if err != nil {
 		logger.Error("Eth2TopRelayer new topethlient error:", err)
 		return err
@@ -83,7 +81,7 @@ func (relayer *Eth2TopRelayer) Init(cfg *config.Relayer, listenUrl string, pass 
 		BlockNumber: nil,
 		Context:     context.Background(),
 	}
-	relayer.monitor, err = monitor.New(relayer.wallet.Address(), cfg.Url)
+	relayer.monitor, err = monitor.New(relayer.wallet.Address(), cfg.Url[0])
 	if err != nil {
 		logger.Error("Eth2TopRelayer New monitor error", err)
 		return err

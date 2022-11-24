@@ -16,7 +16,7 @@ import (
 	"toprelayer/config"
 	"toprelayer/contract/eth/topclient"
 	"toprelayer/relayer/monitor"
-	"toprelayer/util"
+	top "toprelayer/types"
 	"toprelayer/wallet"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -46,7 +46,7 @@ var (
 )
 
 type VerifyInfo struct {
-	Block      *util.TopHeader
+	Block      *top.TopHeader
 	VerifyList []string
 }
 
@@ -71,7 +71,7 @@ type CrossChainRelayer struct {
 	verifyList   *list.List
 }
 
-func (te *CrossChainRelayer) Init(chainName string, cfg *config.Relayer, listenUrl string, pass string, server config.Server) error {
+func (te *CrossChainRelayer) Init(chainName string, cfg *config.Relayer, listenUrl []string, pass string, server config.Server) error {
 	te.name = chainName
 
 	if cfg.Contract == "" {
@@ -80,14 +80,14 @@ func (te *CrossChainRelayer) Init(chainName string, cfg *config.Relayer, listenU
 	}
 	te.contract = common.HexToAddress(cfg.Contract)
 
-	w, err := wallet.NewEthWallet(cfg.Url, listenUrl, cfg.KeyPath, pass)
+	w, err := wallet.NewEthWallet(cfg.Url[0], listenUrl[0], cfg.KeyPath, pass)
 	if err != nil {
 		logger.Error("CrossChainRelayer", te.name, "NewWallet error:", err)
 		return err
 	}
 	te.wallet = w
 
-	ethsdk, err := ethclient.Dial(cfg.Url)
+	ethsdk, err := ethclient.Dial(cfg.Url[0])
 	if err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func (te *CrossChainRelayer) Init(chainName string, cfg *config.Relayer, listenU
 		logger.Error("CrossChainRelayer", te.name, "NewTopClientCaller error:", err)
 		return err
 	}
-	te.monitor, err = monitor.New(te.wallet.Address(), cfg.Url)
+	te.monitor, err = monitor.New(te.wallet.Address(), cfg.Url[0])
 	if err != nil {
 		logger.Error("TopRelayer from", te.name, "New monitor error:", err)
 		return err

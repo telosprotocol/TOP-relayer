@@ -40,12 +40,12 @@ func TestSeverVerify(t *testing.T) {
 	ethContract := "0x0E62B4A03D615ae0B088345FD26eB8782F2a861F"
 
 	cfg := &config.Relayer{
-		Url:      ethUrl,
+		Url:      []string{ethUrl},
 		KeyPath:  defaultKeyPath,
 		Contract: ethContract,
 	}
 	relayer := &CrossChainRelayer{}
-	err := relayer.Init(config.ETH_CHAIN, cfg, listenUrl, defaultPass, config.Server{})
+	err := relayer.Init(config.ETH_CHAIN, cfg, []string{listenUrl}, defaultPass, config.Server{})
 	if err != nil {
 		t.Fatal(err)
 	}
