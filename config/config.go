@@ -9,10 +9,11 @@ import (
 )
 
 const (
-	TOP_CHAIN  string = "TOP"
-	ETH_CHAIN  string = "ETH"
-	BSC_CHAIN  string = "BSC"
-	HECO_CHAIN string = "HECO"
+	TOP_CHAIN     string = "TOP"
+	ETH_CHAIN     string = "ETH"
+	BSC_CHAIN     string = "BSC"
+	HECO_CHAIN    string = "HECO"
+	OPEN_ALLIANCE string = "OPEN_ALLIANCE"
 
 	LOG_DIR    string = "log"
 	LOG_CONFIG string = `{
