@@ -125,7 +125,7 @@ func GetInitData(cfg *config.Config, pass, chainName string) ([]byte, error) {
 		logger.Error(err)
 		return nil, err
 	}
-	if chainName != config.ETH_CHAIN {
+	if chainName != config.ETH_CHAIN && chainName != config.BSC_CHAIN && chainName != config.HECO_CHAIN {
 		err := errors.New("chain not support init data")
 		logger.Error(err)
 		return nil, err
