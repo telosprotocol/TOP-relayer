@@ -9,7 +9,6 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"toprelayer/config"
-	"toprelayer/relayer"
 	"toprelayer/version"
 )
 
@@ -26,23 +25,33 @@ func versionPrint(ctx *cli.Context) error {
 }
 
 func getInitData(ctx *cli.Context) error {
-	if ctx.Args().Len() != 1 {
-		return errors.New("need chain_name as the only argument")
+	argsNum := ctx.Args().Len()
+	if argsNum <= 1 {
+		return errors.New("invalid args")
 	}
 	chainName := ctx.Args().First()
-	if len(chainName) == 0 {
+
+	var bytes []byte
+	var err error
+	if chainName == config.ETH_CHAIN {
+		if argsNum == 4 {
+			bytes, err = getEthInitData(ctx.Args().Get(1), ctx.Args().Get(2), ctx.Args().Get(3))
+		} else if argsNum == 5 {
+			bytes, err = getEthInitDataWithHeight(ctx.Args().Get(1), ctx.Args().Get(2), ctx.Args().Get(3), ctx.Args().Get(4))
+		} else {
+			return errors.New("invalid arg nums")
+		}
+	} else if (chainName == config.BSC_CHAIN) || (chainName == config.HECO_CHAIN) {
+		if argsNum == 2 {
+			bytes, err = getBscOrHecoInitData(ctx.Args().Get(1))
+		} else if argsNum == 3 {
+			bytes, err = getBscOrHecoInitDataWithHeight(ctx.Args().Get(1), ctx.Args().Get(2))
+		} else {
+			return errors.New("invalid arg nums")
+		}
+	} else {
 		return errors.New("invalid chain_name")
 	}
-
-	cfg, err := config.LoadRelayerConfig(ctx.String("config"))
-	if err != nil {
-		return err
-	}
-	pass, err := MakePassword(ctx, cfg)
-	if err != nil {
-		return err
-	}
-	bytes, err := relayer.GetInitData(cfg, pass, chainName)
 	if err != nil {
 		return err
 	}
@@ -65,7 +74,7 @@ The output of this command is supposed to be machine-readable.
 		Action:    getInitData,
 		Name:      "get_init_data",
 		Usage:     "Print init hex data",
-		ArgsUsage: "<chain_name>",
+		ArgsUsage: "<chain_name> <urls...> [height]",
 		Category:  "MISCELLANEOUS COMMANDS",
 		Description: `
 The output of this command is hex data.

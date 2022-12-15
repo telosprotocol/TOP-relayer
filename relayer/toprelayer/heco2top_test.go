@@ -17,12 +17,13 @@ import (
 const hecoUrl = "https://http-mainnet.hecochain.com"
 
 func TestGetHecoInitData(t *testing.T) {
-	var height uint64 = 17276000
-
 	ethclient, err := ethclient.Dial(hecoUrl)
 	if err != nil {
 		t.Fatal(err)
 	}
+	destHeight, err := ethclient.BlockNumber(context.Background())
+	height := (destHeight - 11) / 200 * 200
+	logger.Info("heco init with height: %v - %v", height, height+11)
 	var batch []byte
 	for i := height; i <= height+11; i++ {
 		header, err := ethclient.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(i))
