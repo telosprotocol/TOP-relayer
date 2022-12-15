@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 	"toprelayer/config"
-	ethbridge "toprelayer/contract/top/ethclient"
 	"toprelayer/contract/top/openallianceclient"
 	rpc "toprelayer/rpc/openalliance_rpc"
 	"toprelayer/wallet"
@@ -24,7 +23,7 @@ const (
 )
 
 var (
-	openAllianceClientSystemContract = common.HexToAddress("0xff00000000000000000000000000000000000002")
+	openAllianceClientSystemContract = common.HexToAddress("0x0a0EAA229b2fB2a199EA5c27596f0310657B5479")
 )
 
 type OpenAlliance2TopRelayer struct {
@@ -83,8 +82,7 @@ func (relayer *OpenAlliance2TopRelayer) signAndSendTransactions(lo, hi uint64) e
 			logger.Error("OpenAlliance2TopRelayer HeaderByNumber error:", err)
 			break
 		}
-		bytes := common.Hex2Bytes(header.Header[2:])
-		batchHeaders = append(batchHeaders, bytes)
+		batchHeaders = append(batchHeaders, common.Hex2Bytes(header.Header[2:]))
 	}
 	if len(batchHeaders) > 0 {
 		data, err := rlp.EncodeToBytes(batchHeaders)
@@ -102,6 +100,7 @@ func (relayer *OpenAlliance2TopRelayer) signAndSendTransactions(lo, hi uint64) e
 }
 
 func (relayer *OpenAlliance2TopRelayer) submitEthHeader(header []byte) error {
+	logger.Info("CrossChainRelayer OpenAlliance2TopRelayer raw data:", common.Bytes2Hex(header))
 	nonce, err := relayer.wallet.NonceAt(context.Background(), relayer.wallet.Address(), nil)
 	if err != nil {
 		logger.Error("OpenAlliance2TopRelayer GetNonce error:", err)
@@ -112,12 +111,12 @@ func (relayer *OpenAlliance2TopRelayer) submitEthHeader(header []byte) error {
 		logger.Error("OpenAlliance2TopRelayer GasPrice error:", err)
 		return err
 	}
-	packHeader, err := ethbridge.PackSyncParam(header)
+	packHeader, err := openallianceclient.PackSyncParam(header)
 	if err != nil {
 		logger.Error("OpenAlliance2TopRelayer PackSyncParam error:", err)
 		return err
 	}
-	gaslimit, err := relayer.wallet.EstimateGas(context.Background(), &ethClientSystemContract, packHeader)
+	gaslimit, err := relayer.wallet.EstimateGas(context.Background(), &openAllianceClientSystemContract, packHeader)
 	if err != nil {
 		logger.Error("OpenAlliance2TopRelayer EstimateGas error:", err)
 		return err
@@ -167,6 +166,17 @@ func (relayer *OpenAlliance2TopRelayer) StartRelayer(wg *sync.WaitGroup) error {
 				done <- struct{}{}
 				return
 			default:
+				init, err := relayer.callerSession.Initialized()
+				if err != nil {
+					logger.Error(err)
+					delay = time.Duration(ERRDELAY)
+					break
+				}
+				if !init {
+					logger.Info("OpenAlliance2TopRelayer not init yet")
+					delay = time.Duration(ERRDELAY)
+					break
+				}
 				destHeight, err := relayer.callerSession.MaxMainHeight()
 				if err != nil {
 					logger.Error(err)
@@ -174,16 +184,16 @@ func (relayer *OpenAlliance2TopRelayer) StartRelayer(wg *sync.WaitGroup) error {
 					break
 				}
 				logger.Info("OpenAlliance2TopRelayer check dest top Height:", destHeight)
-				if destHeight == 0 {
-					if set := timeout.Reset(timeoutDuration); !set {
-						logger.Error("OpenAlliance2TopRelayer reset timeout falied!")
-						delay = time.Duration(ERRDELAY)
-						break
-					}
-					logger.Info("OpenAlliance2TopRelayer not init yet")
-					delay = time.Duration(ERRDELAY)
-					break
-				}
+				// if destHeight == 0 {
+				// 	if set := timeout.Reset(timeoutDuration); !set {
+				// 		logger.Error("OpenAlliance2TopRelayer reset timeout falied!")
+				// 		delay = time.Duration(ERRDELAY)
+				// 		break
+				// 	}
+				// 	logger.Info("OpenAlliance2TopRelayer not init yet")
+				// 	delay = time.Duration(ERRDELAY)
+				// 	break
+				// }
 				srcHeight, err := relayer.openAllianceRpc.BlockNumber(context.Background())
 				if err != nil {
 					logger.Error(err)
@@ -208,7 +218,8 @@ func (relayer *OpenAlliance2TopRelayer) StartRelayer(wg *sync.WaitGroup) error {
 				if syncNum > openAllianceBatchNum {
 					syncNum = openAllianceBatchNum
 				}
-				syncEndHeight := syncStartHeight + syncNum - 1
+				syncEndHeight := syncStartHeight
+				//  + syncNum - 1
 				logger.Info("OpenAlliance2TopRelayer sync from %v to %v", syncStartHeight, syncEndHeight)
 
 				err = relayer.signAndSendTransactions(syncStartHeight, syncEndHeight)
