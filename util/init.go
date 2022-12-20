@@ -239,7 +239,7 @@ func getEthInitDataWithHeight(eth1, prysm, lodestar, slot string) ([]byte, error
 	return bytes, nil
 }
 
-func getBscOrHecoInitData(url string) ([]byte, error) {
+func getHecoInitData(url string) ([]byte, error) {
 	ethsdk, err := ethclient.Dial(url)
 	if err != nil {
 		logger.Error("getBscOrHecoInitDataWithHeight ethsdk create error:", err)
@@ -272,7 +272,7 @@ func getBscOrHecoInitData(url string) ([]byte, error) {
 	return batch, nil
 }
 
-func getBscOrHecoInitDataWithHeight(url, h string) ([]byte, error) {
+func getHecoInitDataWithHeight(url, h string) ([]byte, error) {
 	height, err := strconv.ParseUint(h, 0, 64)
 	if err != nil {
 		logger.Error("getBscOrHecoInitDataWithHeight ParseInt error:", err)
@@ -287,6 +287,103 @@ func getBscOrHecoInitDataWithHeight(url, h string) ([]byte, error) {
 
 	logger.Info("init with height: %v - %v", height, height+11)
 	var batch []byte
+	for i := height; i <= height+11; i++ {
+		header, err := ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(i))
+		if err != nil {
+			logger.Error("getBscOrHecoInitDataWithHeight HeaderByNumber error:", err)
+			return nil, err
+		}
+		rlp_bytes, err := rlp.EncodeToBytes(header)
+		if err != nil {
+			logger.Error("getBscOrHecoInitDataWithHeight EncodeToBytes error:", err)
+			return nil, err
+		}
+		batch = append(batch, rlp_bytes...)
+	}
+
+	return batch, nil
+}
+
+func getBscInitData(url string) ([]byte, error) {
+	ethsdk, err := ethclient.Dial(url)
+	if err != nil {
+		logger.Error("getBscOrHecoInitDataWithHeight ethsdk create error:", err)
+		return nil, err
+	}
+	height, err := ethsdk.BlockNumber(context.Background())
+	if err != nil {
+		logger.Error("getBscOrHecoInitDataWithHeight BlockNumber error:", err)
+		return nil, err
+	}
+
+	height = (height - 11) / 200 * 200
+
+	if height <= 200 {
+		logger.Error("param error")
+		return nil, nil
+	}
+
+	logger.Info("init with height: %v - %v", height, height+11)
+	var batch []byte
+	header, err := ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(height-200))
+	if err != nil {
+		logger.Error("getBscOrHecoInitDataWithHeight HeaderByNumber error:", err)
+		return nil, err
+	}
+	rlp_bytes, err := rlp.EncodeToBytes(header)
+	if err != nil {
+		logger.Error("getBscOrHecoInitDataWithHeight EncodeToBytes error:", err)
+		return nil, err
+	}
+	batch = append(batch, rlp_bytes...)
+	for i := height; i <= height+11; i++ {
+		header, err := ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(i))
+		if err != nil {
+			logger.Error("getBscOrHecoInitDataWithHeight HeaderByNumber error:", err)
+			return nil, err
+		}
+		rlp_bytes, err := rlp.EncodeToBytes(header)
+		if err != nil {
+			logger.Error("getBscOrHecoInitDataWithHeight EncodeToBytes error:", err)
+			return nil, err
+		}
+		batch = append(batch, rlp_bytes...)
+	}
+
+	return batch, nil
+}
+
+func getBscInitDataWithHeight(url, h string) ([]byte, error) {
+	height, err := strconv.ParseUint(h, 0, 64)
+	if err != nil {
+		logger.Error("getBscOrHecoInitDataWithHeight ParseInt error:", err)
+		return nil, err
+	}
+	ethsdk, err := ethclient.Dial(url)
+	if err != nil {
+		logger.Error("getBscOrHecoInitDataWithHeight ethsdk create error:", err)
+		return nil, err
+	}
+	height = (height - 11) / 200 * 200
+
+	if height <= 200 {
+		logger.Error("param error")
+		return nil, nil
+	}
+
+	logger.Info("init with height: %v - %v", height, height+11)
+	var batch []byte
+	header, err := ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(height-200))
+	if err != nil {
+		logger.Error("getBscOrHecoInitDataWithHeight HeaderByNumber error:", err)
+		return nil, err
+	}
+	rlp_bytes, err := rlp.EncodeToBytes(header)
+	if err != nil {
+		logger.Error("getBscOrHecoInitDataWithHeight EncodeToBytes error:", err)
+		return nil, err
+	}
+	batch = append(batch, rlp_bytes...)
 	for i := height; i <= height+11; i++ {
 		header, err := ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(i))
 		if err != nil {
