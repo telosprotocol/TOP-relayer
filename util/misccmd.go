@@ -41,11 +41,19 @@ func getInitData(ctx *cli.Context) error {
 		} else {
 			return errors.New("invalid arg nums")
 		}
-	} else if (chainName == config.BSC_CHAIN) || (chainName == config.HECO_CHAIN) {
+	} else if chainName == config.BSC_CHAIN {
 		if argsNum == 2 {
-			bytes, err = getBscOrHecoInitData(ctx.Args().Get(1))
+			bytes, err = getBscInitData(ctx.Args().Get(1))
 		} else if argsNum == 3 {
-			bytes, err = getBscOrHecoInitDataWithHeight(ctx.Args().Get(1), ctx.Args().Get(2))
+			bytes, err = getBscInitDataWithHeight(ctx.Args().Get(1), ctx.Args().Get(2))
+		} else {
+			return errors.New("invalid arg nums")
+		}
+	} else if chainName == config.HECO_CHAIN {
+		if argsNum == 2 {
+			bytes, err = getHecoInitData(ctx.Args().Get(1))
+		} else if argsNum == 3 {
+			bytes, err = getHecoInitDataWithHeight(ctx.Args().Get(1), ctx.Args().Get(2))
 		} else {
 			return errors.New("invalid arg nums")
 		}
