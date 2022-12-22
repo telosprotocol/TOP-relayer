@@ -42,9 +42,10 @@ var (
 type Snapshot struct {
 	sigCache *lru.ARCCache // Cache of recent block signatures to speed up ecrecover
 
-	Number           uint64                      `json:"number"`             // Block number where the snapshot was created
-	Hash             common.Hash                 `json:"hash"`               // Block hash where the snapshot was created
-	Validators       map[common.Address]struct{} `json:"validators"`         // Set of authorized validators at this moment
+	Number           uint64                      `json:"number"`     // Block number where the snapshot was created
+	Hash             common.Hash                 `json:"hash"`       // Block hash where the snapshot was created
+	Validators       map[common.Address]struct{} `json:"validators"` // Set of authorized validators at this moment
+	LastValidators   map[common.Address]struct{} `json:"last_validators"`
 	Recents          map[uint64]common.Address   `json:"recents"`            // Set of recent validators for spam protections
 	RecentForkHashes map[uint64]string           `json:"recent_fork_hashes"` // Set of recent forkHash
 }
@@ -56,6 +57,7 @@ func newSnapshot(
 	sigCache *lru.ARCCache,
 	number uint64,
 	hash common.Hash,
+	lastValidators []common.Address,
 	validators []common.Address,
 ) *Snapshot {
 	snap := &Snapshot{
@@ -65,6 +67,10 @@ func newSnapshot(
 		Recents:          make(map[uint64]common.Address),
 		RecentForkHashes: make(map[uint64]string),
 		Validators:       make(map[common.Address]struct{}),
+		LastValidators:   make(map[common.Address]struct{}),
+	}
+	for _, v := range lastValidators {
+		snap.LastValidators[v] = struct{}{}
 	}
 	for _, v := range validators {
 		snap.Validators[v] = struct{}{}
@@ -109,11 +115,15 @@ func (s *Snapshot) copy() *Snapshot {
 		sigCache:         s.sigCache,
 		Number:           s.Number,
 		Hash:             s.Hash,
+		LastValidators:   make(map[common.Address]struct{}),
 		Validators:       make(map[common.Address]struct{}),
 		Recents:          make(map[uint64]common.Address),
 		RecentForkHashes: make(map[uint64]string),
 	}
 
+	for v := range s.LastValidators {
+		cpy.LastValidators[v] = struct{}{}
+	}
 	for v := range s.Validators {
 		cpy.Validators[v] = struct{}{}
 	}
@@ -164,7 +174,9 @@ func (s *Snapshot) apply(headers []*types.Header, chainId *big.Int) (*Snapshot, 
 		if err != nil {
 			return nil, err
 		}
-		if _, ok := snap.Validators[validator]; !ok {
+		_, ok1 := snap.Validators[validator]
+		_, ok2 := snap.LastValidators[validator]
+		if !ok1 && !ok2 {
 			return nil, errUnauthorizedValidator
 		}
 		for _, recent := range snap.Recents {
@@ -197,7 +209,7 @@ func (s *Snapshot) apply(headers []*types.Header, chainId *big.Int) (*Snapshot, 
 					delete(snap.Recents, number-uint64(newLimit)-uint64(i))
 				}
 			}
-
+			snap.LastValidators = snap.Validators
 			snap.Validators = newVals
 		}
 	}

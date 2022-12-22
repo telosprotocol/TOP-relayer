@@ -68,6 +68,46 @@ func TestGetHecoSyncData(t *testing.T) {
 	logger.Debug(common.Bytes2Hex(batch))
 }
 
+func TestHecoInitContract(t *testing.T) {
+	var topUrl string = "http://192.168.30.200:8080"
+	var keyPath = "../../.relayer/wallet/top"
+
+	cfg := &config.Relayer{
+		Url:     []string{topUrl},
+		KeyPath: keyPath,
+	}
+	relayer := &Heco2TopRelayer{}
+	err := relayer.Init(cfg, []string{hecoUrl}, defaultPass)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nonce, err := relayer.wallet.NonceAt(context.Background(), relayer.wallet.Address(), nil)
+	if err != nil {
+		t.Error(err)
+	}
+	gaspric, err := relayer.wallet.SuggestGasPrice(context.Background())
+	if err != nil {
+		t.Error(err)
+	}
+	//must init ops as bellow
+	ops := &bind.TransactOpts{
+		From:      relayer.wallet.Address(),
+		Nonce:     big.NewInt(0).SetUint64(nonce),
+		GasLimit:  50000,
+		GasFeeCap: gaspric,
+		GasTipCap: big.NewInt(0),
+		Signer:    relayer.signTransaction,
+		Context:   context.Background(),
+		NoSend:    false,
+	}
+	var initHeaders []byte
+	tx, err := relayer.transactor.Init(ops, initHeaders, "")
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log(tx.Hash())
+}
+
 func TestHecoInit(t *testing.T) {
 	// changable
 	var start_height uint64 = 17276000
