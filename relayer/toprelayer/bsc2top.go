@@ -16,6 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/wonderivan/logger"
 )
 
@@ -304,6 +305,28 @@ func (et *Bsc2TopRelayer) signAndSendTransactions(lo, hi uint64) error {
 	return nil
 }
 
-func (relayer *Bsc2TopRelayer) GetInitData() ([]byte, error) {
-	return nil, nil
+func (et *Bsc2TopRelayer) GetInitData() ([]byte, error) {
+	destHeight, err := et.callerSession.GetHeight()
+	if err != nil {
+		logger.Error("Bsc2TopRelayer get height error:", err)
+		return nil, err
+	}
+	height := (destHeight - 11) / 200 * 200
+	logger.Error("heco init with height: %v - %v", height, height+11)
+	var batch []byte
+	for i := height; i <= height+11; i++ {
+		header, err := et.ethsdk.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(i))
+		if err != nil {
+			logger.Error("Bsc2TopRelayer HeaderByNumber error:", err)
+			return nil, err
+		}
+		rlp_bytes, err := rlp.EncodeToBytes(header)
+		if err != nil {
+			logger.Error("Bsc2TopRelayer EncodeToBytes error:", err)
+			return nil, err
+		}
+		batch = append(batch, rlp_bytes...)
+	}
+
+	return batch, nil
 }

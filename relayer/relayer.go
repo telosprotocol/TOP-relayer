@@ -15,9 +15,10 @@ import (
 
 var (
 	topRelayers = map[string]IChainRelayer{
-		config.ETH_CHAIN:  new(toprelayer.Eth2TopRelayerV2),
-		config.BSC_CHAIN:  new(toprelayer.Bsc2TopRelayer),
-		config.HECO_CHAIN: new(toprelayer.Heco2TopRelayer)}
+		config.ETH_CHAIN:     new(toprelayer.Eth2TopRelayerV2),
+		config.BSC_CHAIN:     new(toprelayer.Bsc2TopRelayer),
+		config.HECO_CHAIN:    new(toprelayer.Heco2TopRelayer),
+		config.OPEN_ALLIANCE: new(toprelayer.OpenAlliance2TopRelayer)}
 
 	crossChainRelayer = new(crosschainrelayer.CrossChainRelayer)
 )
@@ -92,7 +93,7 @@ func StartRelayer(cfg *config.Config, pass string, wg *sync.WaitGroup) error {
 			if name == config.TOP_CHAIN {
 				continue
 			}
-			if name != config.ETH_CHAIN && name != config.BSC_CHAIN && name != config.HECO_CHAIN {
+			if name != config.ETH_CHAIN && name != config.BSC_CHAIN && name != config.HECO_CHAIN && name != config.OPEN_ALLIANCE {
 				logger.Warn("TopRelayer not support:", name)
 				continue
 			}
@@ -124,7 +125,7 @@ func GetInitData(cfg *config.Config, pass, chainName string) ([]byte, error) {
 		logger.Error(err)
 		return nil, err
 	}
-	if chainName != config.ETH_CHAIN {
+	if chainName != config.ETH_CHAIN && chainName != config.BSC_CHAIN && chainName != config.HECO_CHAIN {
 		err := errors.New("chain not support init data")
 		logger.Error(err)
 		return nil, err

@@ -12,9 +12,9 @@ import (
 	"time"
 	"toprelayer/config"
 	eth2bridge "toprelayer/contract/top/eth2client"
-	"toprelayer/relayer/toprelayer/beaconrpc"
 	"toprelayer/relayer/toprelayer/ethashapp"
 	"toprelayer/relayer/toprelayer/ethtypes"
+	beaconrpc "toprelayer/rpc/ethbeacon_rpc"
 	"toprelayer/wallet"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"

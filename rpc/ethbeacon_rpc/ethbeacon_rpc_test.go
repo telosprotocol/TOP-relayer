@@ -1,4 +1,4 @@
-package beaconrpc
+package ethbeacon_rpc
 
 import (
 	"context"

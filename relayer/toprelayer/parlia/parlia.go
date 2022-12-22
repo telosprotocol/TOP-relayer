@@ -141,18 +141,26 @@ func (c *Parlia) Init(height uint64) error {
 	logger.Info("initing congress snapshot from %v to %v", baseHeight, height)
 	// init baseheight
 	{
+		lastcp, err := c.client.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(baseHeight-200))
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
 		header, err := c.client.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(baseHeight))
 		if err != nil {
 			logger.Error(err)
 			return err
 		}
 		hash := header.Hash()
-
+		lastValidators := make([]common.Address, (len(lastcp.Extra)-extraVanity-extraSeal)/common.AddressLength)
+		for i := 0; i < len(lastValidators); i++ {
+			copy(lastValidators[i][:], lastcp.Extra[extraVanity+i*common.AddressLength:])
+		}
 		validators := make([]common.Address, (len(header.Extra)-extraVanity-extraSeal)/common.AddressLength)
 		for i := 0; i < len(validators); i++ {
 			copy(validators[i][:], header.Extra[extraVanity+i*common.AddressLength:])
 		}
-		snap := newSnapshot(c.signatures, baseHeight, hash, validators)
+		snap := newSnapshot(c.signatures, baseHeight, hash, lastValidators, validators)
 		c.recentSnaps.Add(snap.Hash, snap)
 	}
 
@@ -192,6 +200,15 @@ func (c *Parlia) GetLastSnap(number uint64, hash common.Hash) (*Snapshot, error)
 		if number%checkpointInterval == 0 {
 		}
 		if number == 0 || (number%Epoch == 0 && len(headers) >= int(maxValidators)) {
+			lastCheckpoint, err := c.client.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(number-200))
+			if err != nil {
+				logger.Error(err)
+				return nil, err
+			}
+			if lastCheckpoint == nil {
+				logger.Error(err)
+				return nil, fmt.Errorf("header is nil")
+			}
 			checkpoint, err := c.client.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(number))
 			if err != nil {
 				logger.Error(err)
@@ -202,11 +219,15 @@ func (c *Parlia) GetLastSnap(number uint64, hash common.Hash) (*Snapshot, error)
 				return nil, fmt.Errorf("header is nil")
 			}
 			hash := checkpoint.Hash()
+			lastValidators := make([]common.Address, (len(lastCheckpoint.Extra)-extraVanity-extraSeal)/common.AddressLength)
+			for i := 0; i < len(lastValidators); i++ {
+				copy(lastValidators[i][:], lastCheckpoint.Extra[extraVanity+i*common.AddressLength:])
+			}
 			validators := make([]common.Address, (len(checkpoint.Extra)-extraVanity-extraSeal)/common.AddressLength)
 			for i := 0; i < len(validators); i++ {
 				copy(validators[i][:], checkpoint.Extra[extraVanity+i*common.AddressLength:])
 			}
-			snap = newSnapshot(c.signatures, number, hash, validators)
+			snap = newSnapshot(c.signatures, number, hash, lastValidators, validators)
 			// TODO:db
 			break
 		}
