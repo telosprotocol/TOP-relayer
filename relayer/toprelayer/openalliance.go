@@ -3,6 +3,7 @@ package toprelayer
 import (
 	"context"
 	"math/big"
+	"strconv"
 	"sync"
 	"time"
 	"toprelayer/config"
@@ -20,10 +21,17 @@ import (
 
 const (
 	openAllianceBatchNum = 10
+
+	ELECTION_BLOCK    = "election"
+	AGGREGATE_BLOCK   = "aggregate"
+	TRANSACTION_BLOCK = "transactions"
+
+	// TODO
+	sendFlag = 0x1
 )
 
 var (
-	openAllianceClientSystemContract = common.HexToAddress("0x0a0EAA229b2fB2a199EA5c27596f0310657B5479")
+	openAllianceClientSystemContract = common.HexToAddress("0x2769D9a843ba3830DEcCb15222d09559B441709C")
 )
 
 type OpenAlliance2TopRelayer struct {
@@ -74,7 +82,10 @@ func (relayer *OpenAlliance2TopRelayer) Init(cfg *config.Relayer, listenUrl []st
 	return nil
 }
 
-func (relayer *OpenAlliance2TopRelayer) signAndSendTransactions(lo, hi uint64) error {
+func (relayer *OpenAlliance2TopRelayer) signAndSendTransactions(lo, hi uint64) (uint64, uint64, error) {
+	var lastSubHeight uint64 = 0
+	var lastUnsubHeight uint64 = 0
+
 	var batchHeaders [][]byte
 	for h := lo; h <= hi; h++ {
 		header, err := relayer.openAllianceRpc.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(h))
@@ -82,21 +93,41 @@ func (relayer *OpenAlliance2TopRelayer) signAndSendTransactions(lo, hi uint64) e
 			logger.Error("OpenAlliance2TopRelayer HeaderByNumber error:", err)
 			break
 		}
-		batchHeaders = append(batchHeaders, common.Hex2Bytes(header.Header[2:]))
+		logger.Debug("Top block, height: %v, type: %v, chainbits: %v", header.Number, header.BlockType, header.ChainBits)
+		verify := false
+		if header.BlockType == ELECTION_BLOCK {
+			verify = true
+		} else if header.BlockType == AGGREGATE_BLOCK {
+			blockFlag, err := strconv.ParseInt(header.ChainBits, 0, 64)
+			if err != nil {
+				logger.Error("ParseInt error:", err)
+				break
+			}
+			if int64(sendFlag)&blockFlag > 0 {
+				verify = true
+			}
+		}
+		if verify {
+			logger.Debug(">>>>> send header")
+			lastSubHeight = h
+			batchHeaders = append(batchHeaders, common.Hex2Bytes(header.Header[2:]))
+		} else {
+			lastUnsubHeight = h
+		}
 	}
 	if len(batchHeaders) > 0 {
 		data, err := rlp.EncodeToBytes(batchHeaders)
 		if err != nil {
 			logger.Error("OpenAlliance2TopRelayer EncodeHeaders failed:", err)
-			return err
+			return 0, 0, err
 		}
 		err = relayer.submitEthHeader(data)
 		if err != nil {
 			logger.Error("OpenAlliance2TopRelayer submitHeaders failed:", err)
-			return err
+			return 0, 0, err
 		}
 	}
-	return nil
+	return lastSubHeight, lastUnsubHeight, nil
 }
 
 func (relayer *OpenAlliance2TopRelayer) submitEthHeader(header []byte) error {
@@ -159,6 +190,9 @@ func (relayer *OpenAlliance2TopRelayer) StartRelayer(wg *sync.WaitGroup) error {
 		logger.Debug("OpenAlliance2TopRelayer set timeout: %v hours", FATALTIMEOUT)
 		var delay time.Duration = time.Duration(1)
 
+		var lastSubHeight uint64 = 0
+		var lastUnsubHeight uint64 = 0
+
 		for {
 			time.Sleep(time.Second * delay)
 			select {
@@ -201,7 +235,9 @@ func (relayer *OpenAlliance2TopRelayer) StartRelayer(wg *sync.WaitGroup) error {
 					break
 				}
 				logger.Info("OpenAlliance2TopRelayer check src open alliance Height:", srcHeight)
-
+				if lastSubHeight <= destHeight && destHeight < lastUnsubHeight {
+					destHeight = lastUnsubHeight
+				}
 				if destHeight+1 > srcHeight {
 					if set := timeout.Reset(timeoutDuration); !set {
 						logger.Error("OpenAlliance2TopRelayer reset timeout falied!")
@@ -218,15 +254,22 @@ func (relayer *OpenAlliance2TopRelayer) StartRelayer(wg *sync.WaitGroup) error {
 				if syncNum > openAllianceBatchNum {
 					syncNum = openAllianceBatchNum
 				}
-				syncEndHeight := syncStartHeight
-				//  + syncNum - 1
+				syncEndHeight := syncStartHeight + syncNum - 1
 				logger.Info("OpenAlliance2TopRelayer sync from %v to %v", syncStartHeight, syncEndHeight)
 
-				err = relayer.signAndSendTransactions(syncStartHeight, syncEndHeight)
+				subHeight, unsubHeight, err := relayer.signAndSendTransactions(syncStartHeight, syncEndHeight)
 				if err != nil {
 					logger.Error("OpenAlliance2TopRelayer signAndSendTransactions failed:", err)
 					delay = time.Duration(ERRDELAY)
 					break
+				}
+				if subHeight > lastSubHeight {
+					logger.Info("OpenAlliance2TopRelayer lastSubHeight: %v=>%v", lastSubHeight, subHeight)
+					lastSubHeight = subHeight
+				}
+				if unsubHeight > lastUnsubHeight {
+					logger.Info("OpenAlliance2TopRelayer lastUnsubHeight: %v=>%v", lastUnsubHeight, unsubHeight)
+					lastUnsubHeight = unsubHeight
 				}
 				if set := timeout.Reset(timeoutDuration); !set {
 					logger.Error("OpenAlliance2TopRelayer reset timeout falied!")
