@@ -3,7 +3,6 @@ package toprelayer
 import (
 	"context"
 	"math/big"
-	"strconv"
 	"sync"
 	"time"
 	"toprelayer/config"
@@ -98,14 +97,7 @@ func (relayer *OpenAlliance2TopRelayer) signAndSendTransactions(lo, hi uint64) (
 		if header.BlockType == ELECTION_BLOCK {
 			verify = true
 		} else if header.BlockType == AGGREGATE_BLOCK {
-			blockFlag, err := strconv.ParseInt(header.ChainBits, 0, 64)
-			if err != nil {
-				logger.Error("ParseInt error:", err)
-				break
-			}
-			if int64(sendFlag)&blockFlag > 0 {
-				verify = true
-			}
+			verify = true
 		}
 		if verify {
 			logger.Debug(">>>>> send header")
