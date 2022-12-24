@@ -246,6 +246,8 @@ type SnapshotOut struct {
 	Header        []byte
 	ValidatorsNum uint64
 	Validators    [][]byte
+	LastValidatorsNum uint64
+	LastValidators    [][]byte
 	RecentsNum    uint64
 	Recents       [][]byte
 }
@@ -262,6 +264,10 @@ func encodeSnapshot(header *types.Header, snap *Snapshot) ([]byte, error) {
 	out.ValidatorsNum = uint64(len(snap.Validators))
 	for k := range snap.Validators {
 		out.Validators = append(out.Validators, k.Bytes())
+	}
+	out.LastValidatorsNum = uint64(len(snap.LastValidators))
+	for k := range snap.LastValidators {
+		out.LastValidators = append(out.LastValidators, k.Bytes())
 	}
 	out.RecentsNum = uint64(len(snap.Recents))
 	for k, v := range snap.Recents {
