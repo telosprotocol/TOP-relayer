@@ -179,7 +179,7 @@ func (c *BeaconGrpcClient) GetLightClientUpdate(period uint64) (*LightClientUpda
 	}
 	defer resp.Body.Close()
 
-	var result LightClientUpdateMsg
+	var result []LightClientUpdateMsg
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		logger.Error("outil.ReadAll error:", err)
@@ -189,12 +189,17 @@ func (c *BeaconGrpcClient) GetLightClientUpdate(period uint64) (*LightClientUpda
 		logger.Error("body empty")
 		return nil, errors.New("http body empty")
 	}
-	err = json.Unmarshal(body, &result)
-	if err != nil {
+	if err = json.Unmarshal(body, &result); err != nil {
+		fmt.Println(err.Error())
 		logger.Error("Unmarshal error:", err)
 		return nil, err
 	}
-	return c.LightClientUpdateConvert(&result.Data[0])
+	if len(result) == 0 {
+		err = fmt.Errorf("LightClientUpdateMsg is nil")
+		logger.Error("Unmarshal error:", err)
+		return nil, err
+	}
+	return c.LightClientUpdateConvert(&result[0].Data)
 }
 
 func (c *BeaconGrpcClient) GetNextSyncCommitteeUpdate(period uint64) (*SyncCommitteeUpdate, error) {
@@ -206,7 +211,7 @@ func (c *BeaconGrpcClient) GetNextSyncCommitteeUpdate(period uint64) (*SyncCommi
 	}
 	defer resp.Body.Close()
 
-	var result LightClientUpdateMsg
+	var result []LightClientUpdateMsg
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		logger.Error("outil.ReadAll error:", err)
@@ -216,12 +221,16 @@ func (c *BeaconGrpcClient) GetNextSyncCommitteeUpdate(period uint64) (*SyncCommi
 		logger.Error("body empty")
 		return nil, errors.New("http body empty")
 	}
-	err = json.Unmarshal(body, &result)
-	if err != nil {
+	if err = json.Unmarshal(body, &result); err != nil {
 		logger.Error("Unmarshal error:", err)
 		return nil, err
 	}
-	committeeUpdate, err := c.CommitteeConvert(result.Data[0].NextSyncCommittee, result.Data[0].NextSyncCommitteeBranch)
+	if len(result) == 0 {
+		err = fmt.Errorf("LightClientUpdateMsg is nil")
+		logger.Error("Unmarshal error:", err)
+		return nil, err
+	}
+	committeeUpdate, err := c.CommitteeConvert(result[0].Data.NextSyncCommittee, result[0].Data.NextSyncCommitteeBranch)
 	if err != nil {
 		logger.Error("CommitteeConvert error:", err)
 		return nil, err
@@ -293,7 +302,7 @@ type LightClientUpdateNoCommitteeMsg struct {
 }
 
 type LightClientUpdateMsg struct {
-	Data []LightClientUpdateData `json:"data"`
+	Data LightClientUpdateData `json:"data"`
 }
 
 type BeaconBlockHeader struct {

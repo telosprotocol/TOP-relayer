@@ -57,8 +57,8 @@ func ReadPassword(cfg *config.Config) (string, error) {
 	fmt.Print(">>> Please Enter " + cfg.RelayerToRun + " pasword:\n>>> ")
 
 	var passwd string
-	if terminal.IsTerminal(syscall.Stdin) {
-		pass, err := terminal.ReadPassword(syscall.Stdin)
+	if terminal.IsTerminal(int(syscall.Stdin)) {
+		pass, err := terminal.ReadPassword(int(syscall.Stdin))
 		if err != nil {
 			return string(pass), err
 		}
