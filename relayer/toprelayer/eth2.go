@@ -453,9 +453,10 @@ func (relayer *Eth2TopRelayerV2) StartRelayer(wg *sync.WaitGroup) error {
 							break
 						}
 						if prevPeriod == 0 {
-							prevPeriod, err = relayer.getLastFinalizedSlotOnTop()
-							if err != nil {
+							if topLastSlot, err := relayer.getLastFinalizedSlotOnTop(); err != nil {
 								logger.Error("Eth2TopRelayerV2 getLastFinalizedSlotOnTop error:", err)
+							} else {
+								prevPeriod = beaconrpc.GetPeriodForSlot(topLastSlot)
 							}
 						}
 						curPeriod = beaconrpc.GetPeriodForSlot(curSlot)
