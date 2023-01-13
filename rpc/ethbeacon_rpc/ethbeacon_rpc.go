@@ -194,8 +194,8 @@ func (c *BeaconGrpcClient) GetLightClientUpdate(period uint64) (*LightClientUpda
 		logger.Error("Unmarshal error:", err)
 		return nil, err
 	}
-	if len(result) == 0 {
-		err = fmt.Errorf("LightClientUpdateMsg is nil")
+	if len(result) != 1 {
+		err = fmt.Errorf("LightClientUpdateMsg size is not equal to 1")
 		logger.Error("Unmarshal error:", err)
 		return nil, err
 	}
@@ -225,8 +225,8 @@ func (c *BeaconGrpcClient) GetNextSyncCommitteeUpdate(period uint64) (*SyncCommi
 		logger.Error("Unmarshal error:", err)
 		return nil, err
 	}
-	if len(result) == 0 {
-		err = fmt.Errorf("LightClientUpdateMsg is nil")
+	if len(result) != 1 {
+		err = fmt.Errorf("LightClientUpdateMsg size is not equal to 1")
 		logger.Error("Unmarshal error:", err)
 		return nil, err
 	}
