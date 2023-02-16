@@ -190,8 +190,8 @@ func (c *BeaconGrpcClient) GetLightClientUpdate(period uint64) (*LightClientUpda
 		return nil, errors.New("http body empty")
 	}
 	if err = json.Unmarshal(body, &result); err != nil {
-		fmt.Println(err.Error())
-		logger.Error("Unmarshal error:", err)
+		err = fmt.Errorf("unmarshal error:%s body: %s", err.Error(), string(body))
+		logger.Error(err)
 		return nil, err
 	}
 	if len(result) != 1 {
@@ -222,7 +222,8 @@ func (c *BeaconGrpcClient) GetNextSyncCommitteeUpdate(period uint64) (*SyncCommi
 		return nil, errors.New("http body empty")
 	}
 	if err = json.Unmarshal(body, &result); err != nil {
-		logger.Error("Unmarshal error:", err)
+		err = fmt.Errorf("unmarshal error:%s body: %s", err.Error(), string(body))
+		logger.Error(err.Error())
 		return nil, err
 	}
 	if len(result) != 1 {
@@ -255,18 +256,20 @@ func (c *BeaconGrpcClient) GetFinalizedLightClientUpdate() (*LightClientUpdate, 
 	}
 	err = json.Unmarshal(body, &result)
 	if err != nil {
-		logger.Error("Unmarshal error:", err)
+		err = fmt.Errorf("unmarshal error:%s body: %s", err.Error(), string(body))
 		return nil, err
 	}
 	return c.LightClientUpdateConvertNoCommitteeConvert(&result.Data)
 }
 
 type BeaconBlockHeaderData struct {
-	Slot          string `json:"slot"`
-	ProposerIndex string `json:"proposer_index"`
-	ParentRoot    string `json:"parent_root"`
-	StateRoot     string `json:"state_root"`
-	BodyRoot      string `json:"body_root"`
+	Beacon struct {
+		Slot          string `json:"slot"`
+		ProposerIndex string `json:"proposer_index"`
+		ParentRoot    string `json:"parent_root"`
+		StateRoot     string `json:"state_root"`
+		BodyRoot      string `json:"body_root"`
+	} `json:"beacon"`
 }
 
 type SyncAggregateData struct {
@@ -493,12 +496,12 @@ func (h *LightClientUpdate) Encode() ([]byte, error) {
 }
 
 func (c *BeaconGrpcClient) BeaconHeaderconvert(data *BeaconBlockHeaderData) (*BeaconBlockHeader, error) {
-	slot, err := strconv.ParseUint(data.Slot, 0, 64)
+	slot, err := strconv.ParseUint(data.Beacon.Slot, 0, 64)
 	if err != nil {
 		logger.Error("ParseInt error:", err)
 		return nil, err
 	}
-	index, err := strconv.ParseUint(data.ProposerIndex, 0, 64)
+	index, err := strconv.ParseUint(data.Beacon.ProposerIndex, 0, 64)
 	if err != nil {
 		logger.Error("ParseInt error:", err)
 		return nil, err
@@ -506,9 +509,9 @@ func (c *BeaconGrpcClient) BeaconHeaderconvert(data *BeaconBlockHeaderData) (*Be
 	h := new(BeaconBlockHeader)
 	h.Slot = slot
 	h.ProposerIndex = index
-	h.BodyRoot = common.Hex2Bytes(data.BodyRoot[2:])
-	h.ParentRoot = common.Hex2Bytes(data.ParentRoot[2:])
-	h.StateRoot = common.Hex2Bytes(data.StateRoot[2:])
+	h.BodyRoot = common.Hex2Bytes(data.Beacon.BodyRoot[2:])
+	h.ParentRoot = common.Hex2Bytes(data.Beacon.ParentRoot[2:])
+	h.StateRoot = common.Hex2Bytes(data.Beacon.StateRoot[2:])
 	return h, nil
 }
 
