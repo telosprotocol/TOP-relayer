@@ -338,7 +338,7 @@ func (relayer *Eth2TopRelayerV2) submitEthHeader(headers []byte) error {
 		logger.Error("Eth2TopRelayerV2 txOption error:", err)
 		return err
 	}
-	logger.Info("Eth2TopRelayer submitEthHeader data:", common.Bytes2Hex(headers))
+	logger.Debug("Eth2TopRelayer submitEthHeader data:", common.Bytes2Hex(headers))
 	sigTx, err := relayer.transactor.SubmitExecutionHeader(ops, headers)
 	if err != nil {
 		logger.Error("Eth2TopRelayer sync error:", err)
