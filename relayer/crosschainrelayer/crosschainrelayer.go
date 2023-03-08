@@ -195,7 +195,7 @@ func (te *CrossChainRelayer) queryBlocks(lo, hi uint64) (uint64, uint64, error) 
 				logger.Error("ParseInt error:", err)
 				break
 			}
-			if int64(flag)&blockFlag > 0 {
+			if blockFlag == 0 || int64(flag)&blockFlag > 0 {
 				submit = true
 			}
 		}
