@@ -1,16 +1,9 @@
 {
     "relayer_config": {
         "TOP": {
-            "url": [
-                ""
-            ],
             "keypath": ".relayer/wallet/top"
         },
         "ETH": {
-            "url": [
-                "https://eth-mainnet.token.im"
-            ],
-            "contract": "",
             "keypath": ".relayer/wallet/eth"
         }
     },

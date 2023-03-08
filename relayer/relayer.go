@@ -72,12 +72,10 @@ func startCrossChainRelayer(relayer ICrossChainRelayer, chainName string, cfg *c
 
 func StartRelayer(cfg *config.Config, pass string, wg *sync.WaitGroup) error {
 	// start monitor
-	err := monitor.MonitorMsgInit(cfg.RelayerToRun)
-	if err != nil {
+	if err := monitor.MonitorMsgInit(cfg.RelayerToRun); err != nil {
 		logger.Error("MonitorMsgInit fail:", err)
 		return err
 	}
-
 	// start relayer
 	topConfig, exist := cfg.RelayerConfig[config.TOP_CHAIN]
 	if !exist {
@@ -87,7 +85,8 @@ func StartRelayer(cfg *config.Config, pass string, wg *sync.WaitGroup) error {
 	if !exist {
 		return fmt.Errorf("not found config of RelayerToRun")
 	}
-	if cfg.RelayerToRun == config.TOP_CHAIN {
+	switch cfg.RelayerToRun {
+	case config.TOP_CHAIN:
 		for name, c := range cfg.RelayerConfig {
 			logger.Info("name: ", name)
 			if name == config.TOP_CHAIN {
@@ -102,20 +101,21 @@ func StartRelayer(cfg *config.Config, pass string, wg *sync.WaitGroup) error {
 				logger.Warn("unknown chain config:", name)
 				continue
 			}
-			err := startTopRelayer(topRelayer, topConfig, c.Url, pass, wg)
-			if err != nil {
+			if err := startTopRelayer(topRelayer, topConfig, c.Url, pass, wg); err != nil {
 				logger.Error("StartRelayer %v error: %v", name, err)
 				continue
 			}
 		}
-	} else {
+	case config.HECO_CHAIN, config.BSC_CHAIN, config.ETH_CHAIN, config.OPEN_ALLIANCE:
 		err := startCrossChainRelayer(crossChainRelayer, cfg.RelayerToRun, RelayerConfig, topConfig.Url[0], pass, wg)
 		if err != nil {
 			logger.Error("StartRelayer error:", err)
 			return err
 		}
+	default:
+		err := fmt.Errorf("Invalid RelayerToRun(%s)", cfg.RelayerToRun)
+		return err
 	}
-
 	return nil
 }
 

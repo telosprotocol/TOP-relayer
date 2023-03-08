@@ -2,6 +2,7 @@ package util
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"strconv"
 
@@ -119,7 +120,7 @@ func getEthInitData(eth1, prysm, lodestar string) ([]byte, error) {
 	}
 	prevUpdate, err := beaconrpcclient.GetNextSyncCommitteeUpdate(lastPeriod - 1)
 	if err != nil {
-		logger.Error("getEthInitData GetNextSyncCommitteeUpdate error:", err)
+		logger.Error(fmt.Sprintf("getEthInitData GetNextSyncCommitteeUpdate lastSlot:%d ，err：%s", lastSlot, err.Error()))
 		return nil, err
 	}
 

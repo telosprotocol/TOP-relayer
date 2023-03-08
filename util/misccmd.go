@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"strconv"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/urfave/cli/v2"
@@ -26,39 +27,52 @@ func versionPrint(ctx *cli.Context) error {
 
 func getInitData(ctx *cli.Context) error {
 	argsNum := ctx.Args().Len()
-	if argsNum <= 1 {
+	if argsNum < 1 {
 		return errors.New("invalid args")
 	}
 	chainName := ctx.Args().First()
 
 	var bytes []byte
 	var err error
-	if chainName == config.ETH_CHAIN {
-		if argsNum == 4 {
-			bytes, err = getEthInitData(ctx.Args().Get(1), ctx.Args().Get(2), ctx.Args().Get(3))
-		} else if argsNum == 5 {
-			bytes, err = getEthInitDataWithHeight(ctx.Args().Get(1), ctx.Args().Get(2), ctx.Args().Get(3), ctx.Args().Get(4))
-		} else {
+	switch chainName {
+	case config.ETH_CHAIN:
+		switch argsNum {
+		case 1: // get_init_data ETH
+			bytes, err = getEthInitData(config.ETHAddr, config.ETHPrysm, config.ETHLodestar)
+		case 2: // get_init_data ETH  123
+			if false == isNumber(ctx.Args().Get(1)) {
+				return errors.New("the height needs to be a number")
+			}
+			bytes, err = getEthInitDataWithHeight(config.ETHAddr, config.ETHPrysm, config.ETHLodestar, ctx.Args().Get(1))
+		default:
 			return errors.New("invalid arg nums")
 		}
-	} else if chainName == config.BSC_CHAIN {
-		if argsNum == 2 {
-			bytes, err = getBscInitData(ctx.Args().Get(1))
-		} else if argsNum == 3 {
-			bytes, err = getBscInitDataWithHeight(ctx.Args().Get(1), ctx.Args().Get(2))
-		} else {
+	case config.BSC_CHAIN:
+		switch argsNum {
+		case 1: // get_init_data BSC
+			bytes, err = getBscInitData(config.BSCAddr)
+		case 2: // get_init_data BSC 123
+			if false == isNumber(ctx.Args().Get(1)) {
+				return errors.New("the height needs to be a number")
+			}
+			bytes, err = getBscInitDataWithHeight(config.BSCAddr, ctx.Args().Get(1))
+		default:
 			return errors.New("invalid arg nums")
 		}
-	} else if chainName == config.HECO_CHAIN {
-		if argsNum == 2 {
-			bytes, err = getHecoInitData(ctx.Args().Get(1))
-		} else if argsNum == 3 {
-			bytes, err = getHecoInitDataWithHeight(ctx.Args().Get(1), ctx.Args().Get(2))
-		} else {
+	case config.HECO_CHAIN:
+		switch argsNum {
+		case 1: // get_init_data HECO
+			bytes, err = getHecoInitData(config.HECOAddr)
+		case 2: // get_init_data HECO 123
+			if false == isNumber(ctx.Args().Get(1)) {
+				return errors.New("the height needs to be a number")
+			}
+			bytes, err = getHecoInitDataWithHeight(config.HECOAddr, ctx.Args().Get(1))
+		default:
 			return errors.New("invalid arg nums")
 		}
-	} else {
-		return errors.New("invalid chain_name")
+	default:
+		return fmt.Errorf("the %s chain is not supported", chainName)
 	}
 	if err != nil {
 		return err
@@ -89,3 +103,8 @@ The output of this command is hex data.
 `,
 	}
 )
+
+func isNumber(str string) bool {
+	_, err := strconv.Atoi(str)
+	return err == nil
+}
