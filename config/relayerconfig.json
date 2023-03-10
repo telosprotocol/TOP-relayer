@@ -14,9 +14,5 @@
             "keypath": ".relayer/wallet/eth"
         }
     },
-    "relayer_to_run": "TOP",
-    "server": {
-        "url": "",
-        "enable": "false"
-    }
+    "relayer_to_run": "TOP"
 }

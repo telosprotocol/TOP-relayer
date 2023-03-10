@@ -30,7 +30,7 @@ type IChainRelayer interface {
 }
 
 type ICrossChainRelayer interface {
-	Init(chainName string, cfg *config.Relayer, listenUrl []string, pass string, server config.Server) error
+	Init(chainName string, cfg *config.Relayer, listenUrl string, pass string) error
 	StartRelayer(*sync.WaitGroup) error
 }
 
@@ -52,8 +52,8 @@ func startTopRelayer(relayer IChainRelayer, cfg *config.Relayer, listenUrl []str
 	return nil
 }
 
-func startCrossChainRelayer(relayer ICrossChainRelayer, chainName string, cfg *config.Relayer, listenUrl []string, pass string, server config.Server, wg *sync.WaitGroup) error {
-	err := relayer.Init(chainName, cfg, listenUrl, pass, server)
+func startCrossChainRelayer(relayer ICrossChainRelayer, chainName string, cfg *config.Relayer, listenUrl string, pass string, wg *sync.WaitGroup) error {
+	err := relayer.Init(chainName, cfg, listenUrl, pass)
 	if err != nil {
 		logger.Error("startCrossChainRelayer error:", err)
 		return err
@@ -109,7 +109,7 @@ func StartRelayer(cfg *config.Config, pass string, wg *sync.WaitGroup) error {
 			}
 		}
 	} else {
-		err := startCrossChainRelayer(crossChainRelayer, cfg.RelayerToRun, RelayerConfig, topConfig.Url, pass, cfg.ServerConfig, wg)
+		err := startCrossChainRelayer(crossChainRelayer, cfg.RelayerToRun, RelayerConfig, topConfig.Url[0], pass, wg)
 		if err != nil {
 			logger.Error("StartRelayer error:", err)
 			return err

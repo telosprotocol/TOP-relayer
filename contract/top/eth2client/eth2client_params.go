@@ -47,3 +47,15 @@ func PackSubmitBeaconChainLightClientUpdateParam(data []byte) ([]byte, error) {
 	}
 	return pack, nil
 }
+
+func UnpackSubmitBeaconChainLightClientUpdateParam(data []byte) ([]interface{}, error) {
+	abi, err := Eth2ClientMetaData.GetAbi()
+	if err != nil {
+		return nil, err
+	}
+	pack, err := abi.Unpack("submit_beacon_chain_light_client_update", data)
+	if err != nil {
+		return nil, err
+	}
+	return pack, nil
+}

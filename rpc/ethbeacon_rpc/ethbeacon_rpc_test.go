@@ -2,14 +2,14 @@ package ethbeacon_rpc
 
 import (
 	"context"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rlp"
+	eth "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
 	"math/big"
 	"strconv"
 	"testing"
 	"time"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/rlp"
 )
 
 const LOCAL_GRPC_URL = "localhost:4000"
@@ -153,4 +153,73 @@ func TestGetFinalizedLightClientUpdateData(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log(common.Bytes2Hex(bytes))
+}
+
+func TestRLP4BeaconBlockHeader(t *testing.T) {
+	data := &LightClientUpdate{
+		AttestedBeaconHeader: &BeaconBlockHeader{
+			Slot:          1,
+			ProposerIndex: 2,
+			ParentRoot:    []byte("ParentRoot"),
+			StateRoot:     []byte("StateRoot"),
+			BodyRoot:      []byte("BodyRoot"),
+		},
+		SyncAggregate: &SyncAggregate{
+			SyncCommitteeBits:      "1111111111000000011111",
+			SyncCommitteeSignature: []byte("SyncCommitteeSignature"),
+		},
+		SignatureSlot: 0,
+		FinalizedUpdate: &FinalizedHeaderUpdate{
+			HeaderUpdate: &HeaderUpdate{
+				BeaconHeader: &BeaconBlockHeader{
+					Slot:          1,
+					ProposerIndex: 2,
+					ParentRoot:    []byte("ParentRoot"),
+					StateRoot:     []byte("StateRoot"),
+					BodyRoot:      []byte("BodyRoot"),
+				},
+				ExecutionBlockHash: []byte("ExecutionBlockHash"),
+			},
+			FinalityBranch: [][]byte{
+				[]byte("aaa"),
+				[]byte("bbb"),
+				[]byte("ccc"),
+			},
+		},
+		NextSyncCommitteeUpdate: &SyncCommitteeUpdate{
+			NextSyncCommittee: &eth.SyncCommittee{
+				Pubkeys:         nil,
+				AggregatePubkey: nil,
+			},
+			NextSyncCommitteeBranch: nil,
+		},
+	}
+	
+	ret, err := rlp.EncodeToBytes(data)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	t.Logf("ret:%+v", ret)
+
+	//abiData, err := eth2bridge.PackSubmitBeaconChainLightClientUpdateParam(ret)
+	//if err != nil {
+	//	t.Fatal(err.Error())
+	//}
+	//t.Logf("abiData:%+x", abiData)
+	//if len(abiData)%32 != 0 {
+	//	t.Fatal(len(abiData))
+	//}
+	//abi, err := eth2bridge.Eth2ClientMetaData.GetAbi()
+	//if err != nil {
+	//	t.Fatal(err.Error())
+	//}
+	//
+	//var lightClientUpdate LightClientUpdate
+	//err = abi.UnpackIntoInterface(&lightClientUpdate, "submit_beacon_chain_light_client_update", abiData)
+	//if err != nil {
+	//	t.Fatal(err)
+	//}
+	//
+	//t.Logf("lightClientUpdate:%v", lightClientUpdate)
+
 }

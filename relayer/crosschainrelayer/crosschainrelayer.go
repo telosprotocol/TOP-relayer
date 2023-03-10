@@ -1,14 +1,10 @@
 package crosschainrelayer
 
 import (
-	"bytes"
 	"container/list"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math/big"
-	"net/http"
 	"strconv"
 	"strings"
 	"sync"
@@ -61,18 +57,16 @@ type VerifyResp struct {
 }
 
 type CrossChainRelayer struct {
-	name         string
-	contract     common.Address
-	wallet       *wallet.Wallet
-	transactor   *topclient.TopClientTransactor
-	caller       *topclient.TopClientCaller
-	monitor      *monitor.Monitor
-	serverUrl    string
-	serverEnable bool
-	verifyList   *list.List
+	name       string
+	contract   common.Address
+	wallet     *wallet.Wallet
+	transactor *topclient.TopClientTransactor
+	caller     *topclient.TopClientCaller
+	monitor    *monitor.Monitor
+	blockList  *list.List
 }
 
-func (te *CrossChainRelayer) Init(chainName string, cfg *config.Relayer, listenUrl []string, pass string, server config.Server) error {
+func (te *CrossChainRelayer) Init(chainName string, cfg *config.Relayer, listenUrl string, pass string) error {
 	te.name = chainName
 
 	if cfg.Contract == "" {
@@ -81,7 +75,7 @@ func (te *CrossChainRelayer) Init(chainName string, cfg *config.Relayer, listenU
 	}
 	te.contract = common.HexToAddress(cfg.Contract)
 
-	w, err := wallet.NewEthWallet(cfg.Url[0], listenUrl[0], cfg.KeyPath, pass)
+	w, err := wallet.NewEthWallet(cfg.Url[0], listenUrl, cfg.KeyPath, pass)
 	if err != nil {
 		logger.Error("CrossChainRelayer", te.name, "NewWallet error:", err)
 		return err
@@ -107,11 +101,8 @@ func (te *CrossChainRelayer) Init(chainName string, cfg *config.Relayer, listenU
 		logger.Error("TopRelayer from", te.name, "New monitor error:", err)
 		return err
 	}
-	te.serverUrl = server.Url
-	if server.Url != "" && server.Enable == "true" {
-		te.serverEnable = true
-	}
-	te.verifyList = list.New()
+
+	te.blockList = list.New()
 
 	logger.Info(te)
 	return nil
@@ -195,9 +186,9 @@ func (te *CrossChainRelayer) queryBlocks(lo, hi uint64) (uint64, uint64, error) 
 			break
 		}
 		logger.Debug("Top block, height: %v, type: %v, chainbits: %v", block.Number, block.BlockType, block.ChainBits)
-		verify := false
+		submit := false
 		if block.BlockType == ELECTION_BLOCK {
-			verify = true
+			submit = true
 		} else if block.BlockType == AGGREGATE_BLOCK {
 			blockFlag, err := strconv.ParseInt(block.ChainBits, 0, 64)
 			if err != nil {
@@ -205,21 +196,13 @@ func (te *CrossChainRelayer) queryBlocks(lo, hi uint64) (uint64, uint64, error) 
 				break
 			}
 			if blockFlag == 0 || int64(flag)&blockFlag > 0 {
-				verify = true
+				submit = true
 			}
 		}
-		if verify {
-			logger.Debug(">>>>> verify header")
+		if submit {
+			logger.Debug(">>>>> submit header")
 			lastSubHeight = h
-
-			var list []string
-			for _, v := range block.RelatedList {
-				if v.Hash == block.Hash {
-					continue
-				}
-				list = append(list, v.Hash)
-			}
-			te.verifyList.PushBack(VerifyInfo{Block: block, VerifyList: list})
+			te.blockList.PushBack(*block)
 			break
 		} else {
 			lastUnsubHeight = h
@@ -229,79 +212,41 @@ func (te *CrossChainRelayer) queryBlocks(lo, hi uint64) (uint64, uint64, error) 
 	return lastSubHeight, lastUnsubHeight, nil
 }
 
-func (te *CrossChainRelayer) serverVerify(info []string) bool {
-	data := make(map[string]interface{})
-	data["relayBlockHashs"] = info
-	logger.Info("verify data:", data)
-	jsonData, _ := json.Marshal(data)
-	resp, err := http.Post(te.serverUrl, "application/json", bytes.NewReader(jsonData))
-	if err != nil {
-		logger.Error("post verify server error:", err)
-		return false
-	}
-	resData, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		logger.Error("read resp error:", err)
-		return false
-	}
-	result := &VerifyResp{}
-	err = json.Unmarshal(resData, result)
-	if err != nil {
-		logger.Error("Unmarshal config resData failed:", string(resData))
-		return false
-	}
-	logger.Info("verify result:", result)
-
-	return result.Result
-}
-
-func (te *CrossChainRelayer) verifyAndSendTransaction(height uint64) {
-	if te.verifyList.Len() == 0 {
+func (te *CrossChainRelayer) verifyAndSendTransaction() {
+	if te.blockList.Len() == 0 {
 		return
 	}
-	element := te.verifyList.Front()
+	element := te.blockList.Front()
 	if element == nil {
 		logger.Error("txList get front nil")
 		return
 	}
-	info, ok := element.Value.(VerifyInfo)
+	header, ok := element.Value.(top.TopHeader)
 	if !ok {
 		logger.Error("txList get front error")
 		return
 	}
-	blockHeight, err := strconv.ParseUint(info.Block.Number, 0, 64)
-	if err != nil {
-		logger.Error("ParseInt error:", err)
+	if res := doWithHeader(header); res == false {
+		logger.Info("do with header not ok:", header.Hash)
 		return
 	}
-	if blockHeight <= height {
-		logger.Warn("height: %v, info height: %v, abandon", height, blockHeight)
-	} else {
-		if te.serverEnable {
-			if !te.serverVerify(info.VerifyList) {
-				logger.Info("%v verify not pass", info.Block.Hash)
-				return
-			}
-			logger.Info("%v verify pass", info.Block.Hash)
-		}
-		// send transaction
-		var batchHeaders [][]byte
-		batchHeaders = append(batchHeaders, common.Hex2Bytes(info.Block.Header[2:]))
-		data, err := rlp.EncodeToBytes(batchHeaders)
-		if err != nil {
-			logger.Error("CrossChainRelayer", te.name, "EncodeHeaders failed:", err)
-			return
-		}
+	logger.Info("do with header ok:", header.Hash)
 
-		err = te.submitTopHeader(data)
-		if err != nil {
-			logger.Error("CrossChainRelayer", te.name, "submitHeaders failed:", err)
-			return
-		}
+	var batchHeaders [][]byte
+	batchHeaders = append(batchHeaders, common.Hex2Bytes(header.Header[2:]))
+	data, err := rlp.EncodeToBytes(batchHeaders)
+	if err != nil {
+		logger.Error("CrossChainRelayer", te.name, "EncodeHeaders failed:", err)
+		return
+	}
+	err = te.submitTopHeader(data)
+	if err != nil {
+		logger.Error("CrossChainRelayer", te.name, "submitHeaders failed:", err)
+		return
 	}
 
 	// clear list
-	te.verifyList.Remove(element)
+	te.blockList.Remove(element)
 }
 
 func (te *CrossChainRelayer) StartRelayer(wg *sync.WaitGroup) error {
@@ -341,9 +286,9 @@ func (te *CrossChainRelayer) StartRelayer(wg *sync.WaitGroup) error {
 					break
 				}
 				logger.Info("CrossChainRelayer", te.name, "dest eth Height:", toHeight)
-				if te.verifyList.Len() > 0 {
+				if te.blockList.Len() > 0 {
 					logger.Debug("CrossChainRelayer", te.name, "find block to verify")
-					te.verifyAndSendTransaction(toHeight)
+					te.verifyAndSendTransaction()
 					delay = time.Duration(WAITDELAY)
 					break
 				}
