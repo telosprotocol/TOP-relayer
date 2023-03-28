@@ -2,10 +2,37 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 
 	"github.com/wonderivan/logger"
+)
+
+const (
+	TOPAddr = ""
+)
+
+const (
+	ETHAddr     = ""
+	ETHPrysm    = ""
+	ETHLodestar = ""
+	ETHContract = ""
+)
+
+const (
+	BSCAddr     = "https://bsc-dataseed4.binance.org"
+	BSCContract = ""
+)
+
+const (
+	HECOAddr     = "https://http-mainnet.hecochain.com"
+	HECOContract = ""
+)
+
+const (
+	OAAddr     = ""
+	OAContract = ""
 )
 
 const (
@@ -37,9 +64,9 @@ const (
 
 type Relayer struct {
 	//submit config
-	Url      []string `json:"url"`
-	Contract string   `json:"contract"`
-	KeyPath  string   `json:"keypath"`
+	Url      []string
+	Contract string
+	KeyPath  string `json:"keypath"`
 }
 
 type Config struct {
@@ -54,12 +81,74 @@ func LoadRelayerConfig(path string) (*Config, error) {
 		return nil, err
 	}
 	config := &Config{}
-	err = json.Unmarshal(data, config)
-	if err != nil {
+	if err = json.Unmarshal(data, config); err != nil {
 		log.Fatal("Unmarshal config file failed:", err)
 		return nil, err
 	}
-	return config, nil
+	err = fullConfigInfo(config)
+	return config, err
+}
+
+func fullConfigInfo(cfg *Config) error {
+	// reset to
+	if len(cfg.RelayerConfig) < 2 {
+		return fmt.Errorf("config information error")
+	}
+	v, ok := cfg.RelayerConfig[cfg.RelayerToRun]
+	if !ok {
+		return fmt.Errorf("config infomation of relayerToRun(%s) is not found", cfg.RelayerToRun)
+	}
+	switch cfg.RelayerToRun {
+	case TOP_CHAIN:
+		v.Url = make([]string, 1)
+		v.Url[0] = TOPAddr
+	case ETH_CHAIN:
+		v.Url = make([]string, 1)
+		v.Url[0] = ETHAddr
+		v.Contract = ETHContract
+	case BSC_CHAIN:
+		v.Url = make([]string, 1)
+		v.Url[0] = BSCAddr
+		v.Contract = BSCContract
+	case HECO_CHAIN:
+		v.Url = make([]string, 1)
+		v.Url[0] = HECOAddr
+		v.Contract = HECOContract
+	case OPEN_ALLIANCE:
+		v.Url = make([]string, 1)
+		v.Url[0] = OAAddr
+		v.Contract = OAContract
+	default:
+		return fmt.Errorf("invalid RelayerToRun(%s)", cfg.RelayerToRun)
+	}
+	// 2. reset from
+	for chinaName, v := range cfg.RelayerConfig {
+		if chinaName == cfg.RelayerToRun {
+			continue
+		}
+		switch chinaName {
+		case TOP_CHAIN:
+			v.Url = make([]string, 1)
+			v.Url[0] = TOPAddr
+		case ETH_CHAIN:
+			v.Url = make([]string, 3)
+			v.Url[0] = ETHAddr
+			v.Url[1] = ETHPrysm
+			v.Url[2] = ETHLodestar
+		case BSC_CHAIN:
+			v.Url = make([]string, 1)
+			v.Url[0] = BSCAddr
+		case HECO_CHAIN:
+			v.Url = make([]string, 1)
+			v.Url[0] = HECOAddr
+		case OPEN_ALLIANCE:
+			v.Url = make([]string, 1)
+			v.Url[0] = OAAddr
+		default:
+			return fmt.Errorf("invalid RelayerToRun(%s)", cfg.RelayerToRun)
+		}
+	}
+	return nil
 }
 
 func InitLogConfig() error {
