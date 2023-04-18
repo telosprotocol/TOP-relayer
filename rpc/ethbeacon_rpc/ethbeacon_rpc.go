@@ -10,9 +10,9 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rlp"
 	pb "github.com/prysmaticlabs/prysm/v3/proto/eth/service"
 	v1 "github.com/prysmaticlabs/prysm/v3/proto/eth/v1"
 	v2 "github.com/prysmaticlabs/prysm/v3/proto/eth/v2"
@@ -22,42 +22,27 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-const (
-	SLOTS_PER_EPOCH   = 32
-	EPOCHS_PER_PERIOD = 256
-
-	ERROR_NO_BLOCK_FOR_SLOT = "not find requested block"
-)
-
-type BeaconGrpcClient struct {
-	client      pb.BeaconChainClient
-	debugclient pb.BeaconDebugClient
-
-	httpclient *http.Client
-	httpurl    string
-}
-
 func NewBeaconGrpcClient(grpcUrl, httpUrl string) (*BeaconGrpcClient, error) {
-	grpc, err := grpc.Dial(grpcUrl, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	grpcDefault, err := grpc.Dial(grpcUrl, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		logger.Error("grpc.Dial error:", err)
+		logger.Error("create grpcDefault error:", err)
 		return nil, err
 	}
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
 
+	grpcBigData, err := grpc.Dial(grpcUrl, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(104857600)))
+	if err != nil {
+		logger.Error("create grpcBigData error:", err)
+		return nil, err
+	}
 	c := &BeaconGrpcClient{
-		client:      pb.NewBeaconChainClient(grpc),
-		debugclient: pb.NewBeaconDebugClient(grpc),
-		httpclient:  &http.Client{Transport: tr},
-		httpurl:     httpUrl,
+		client:      pb.NewBeaconChainClient(grpcDefault),
+		debugclient: pb.NewBeaconDebugClient(grpcBigData),
+		httpclient: &http.Client{Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}},
+		httpurl: httpUrl,
 	}
 	return c, nil
-}
-
-func IsErrorNoBlockForSlot(err error) bool {
-	return strings.Contains(err.Error(), ERROR_NO_BLOCK_FOR_SLOT)
 }
 
 func (c *BeaconGrpcClient) GetBeaconBlockBodyForBlockId(id string) (*v2.BeaconBlockBodyBellatrix, error) {
@@ -129,14 +114,34 @@ func GetPeriodForSlot(slot uint64) uint64 {
 }
 
 func (c *BeaconGrpcClient) GetBeaconState(id string) (*eth.BeaconStateBellatrix, error) {
-	resp, err := c.debugclient.GetBeaconStateSSZV2(context.Background(), &v2.BeaconStateRequestV2{StateId: []byte(id)})
+	start := time.Now()
+	defer func() {
+		// 2m45.5945271s
+		logger.Info("Slot:%s,GetBeaconState time:%v", id, time.Since(start))
+	}()
+	slot, err := strconv.ParseUint(id, 10, 64)
 	if err != nil {
-		logger.Error("GetBeaconStateV2 error:", err)
 		return nil, err
 	}
+
+	period := GetPeriodForSlot(slot)
+	currPeriodSlot := slot - (period * 32 * 256)
+	currPeriodEpochSlot := currPeriodSlot - (currPeriodSlot/32)*32
+	fileName := fmt.Sprintf("./state_%d_%d_%d_%d.ssz", period, currPeriodSlot/32, currPeriodEpochSlot%32, slot)
+	var data []byte
+	if data, err = ioutil.ReadFile(fileName); err != nil {
+		resp, err := c.debugclient.GetBeaconStateSSZV2(context.Background(), &v2.BeaconStateRequestV2{StateId: []byte(id)})
+		if err != nil {
+			logger.Error("GetBeaconStateV2 error:", err)
+			return nil, err
+		}
+		if err := ioutil.WriteFile(fileName, resp.Data, 0644); err != nil {
+			logger.Error("WriteFile error:", err)
+		}
+		data = resp.Data
+	}
 	var state eth.BeaconStateBellatrix
-	err = state.UnmarshalSSZ(resp.Data)
-	if err != nil {
+	if err = state.UnmarshalSSZ(data); err != nil {
 		logger.Error("UnmarshalSSZ error:", err)
 		return nil, err
 	}
@@ -159,13 +164,36 @@ func (c *BeaconGrpcClient) GetNonEmptyBeaconBlockHeader(startSlot uint64) (*eth.
 		logger.Error("GetLastFinalizedSlotNumber error:", err)
 		return nil, err
 	}
-	for slot := startSlot; slot < finalizedSlot; slot += 1 {
-		h, err := c.GetBeaconBlockHeaderForBlockId(strconv.FormatUint(slot, 10))
-		if err != nil {
-			logger.Error("GetBeaconBlockBodyForBlockId error:", err)
-			return nil, err
+
+	for slot := startSlot; slot < finalizedSlot; slot++ {
+		if h, err := c.GetBeaconBlockHeaderForBlockId(strconv.FormatUint(slot, 10)); err != nil {
+			if strings.Contains(err.Error(), "NotFound") {
+				logger.Error("GetBeaconBlockHeaderForBlockId slot(%d) error:", slot, err)
+				continue
+			} else {
+				logger.Error("GetBeaconBlockBodyForBlockId error:", err)
+				return nil, err
+			}
+		} else {
+			return h, nil
 		}
-		return h, nil
+	}
+	return nil, fmt.Errorf("unable to get non empty beacon block in range [%d, %d)", startSlot, finalizedSlot)
+}
+
+func (c *BeaconGrpcClient) GetNonEmptyBeaconBlockHeaderLimitRange(startSlot, finalizedSlot uint64) (*eth.BeaconBlockHeader, error) {
+	for slot := startSlot; slot < finalizedSlot; slot++ {
+		if h, err := c.GetBeaconBlockHeaderForBlockId(strconv.FormatUint(slot, 10)); err != nil {
+			if strings.Contains(err.Error(), "NotFound") {
+				logger.Error("GetBeaconBlockHeaderForBlockId slot(%d) error:", slot, err)
+				continue
+			} else {
+				logger.Error("GetBeaconBlockBodyForBlockId error:", err)
+				return nil, err
+			}
+		} else {
+			return h, nil
+		}
 	}
 	return nil, fmt.Errorf("unable to get non empty beacon block in range [%d, %d)", startSlot, finalizedSlot)
 }
@@ -260,239 +288,6 @@ func (c *BeaconGrpcClient) GetFinalizedLightClientUpdate() (*LightClientUpdate, 
 		return nil, err
 	}
 	return c.LightClientUpdateConvertNoCommitteeConvert(&result.Data)
-}
-
-type BeaconBlockHeaderData struct {
-	Beacon struct {
-		Slot          string `json:"slot"`
-		ProposerIndex string `json:"proposer_index"`
-		ParentRoot    string `json:"parent_root"`
-		StateRoot     string `json:"state_root"`
-		BodyRoot      string `json:"body_root"`
-	} `json:"beacon"`
-}
-
-type SyncAggregateData struct {
-	SyncCommitteeBits      string `json:"sync_committee_bits"`
-	SyncCommitteeSignature string `json:"sync_committee_signature"`
-}
-
-type SyncCommitteeData struct {
-	Pubkeys         []string `json:"pubkeys"`
-	AggregatePubkey string   `json:"aggregate_pubkey"`
-}
-
-type LightClientUpdateDataNoCommittee struct {
-	AttestedHeader  *BeaconBlockHeaderData `json:"attested_header"`
-	FinalizedHeader *BeaconBlockHeaderData `json:"finalized_header"`
-	FinalityBranch  []string               `json:"finality_branch"`
-	SyncAggregate   *SyncAggregateData     `json:"sync_aggregate"`
-	SignatureSlot   string                 `json:"signature_slot"`
-}
-
-type LightClientUpdateData struct {
-	AttestedHeader          *BeaconBlockHeaderData `json:"attested_header"`
-	FinalizedHeader         *BeaconBlockHeaderData `json:"finalized_header"`
-	FinalityBranch          []string               `json:"finality_branch"`
-	SyncAggregate           *SyncAggregateData     `json:"sync_aggregate"`
-	NextSyncCommittee       *SyncCommitteeData     `json:"next_sync_committee"`
-	NextSyncCommitteeBranch []string               `json:"next_sync_committee_branch"`
-	SignatureSlot           string                 `json:"signature_slot"`
-}
-
-type LightClientUpdateNoCommitteeMsg struct {
-	Data LightClientUpdateDataNoCommittee `json:"data"`
-}
-
-type LightClientUpdateMsg struct {
-	Data LightClientUpdateData `json:"data"`
-}
-
-type BeaconBlockHeader struct {
-	Slot          uint64
-	ProposerIndex uint64
-	ParentRoot    []byte
-	StateRoot     []byte
-	BodyRoot      []byte
-}
-
-func (h *BeaconBlockHeader) Encode() ([]byte, error) {
-	b1, err := rlp.EncodeToBytes(h.Slot)
-	if err != nil {
-		return nil, err
-	}
-	b2, err := rlp.EncodeToBytes(h.ProposerIndex)
-	if err != nil {
-		return nil, err
-	}
-	b3, err := rlp.EncodeToBytes(h.ParentRoot)
-	if err != nil {
-		return nil, err
-	}
-	b4, err := rlp.EncodeToBytes(h.StateRoot)
-	if err != nil {
-		return nil, err
-	}
-	b5, err := rlp.EncodeToBytes(h.BodyRoot)
-	if err != nil {
-		return nil, err
-	}
-	var rlpBytes []byte
-	rlpBytes = append(rlpBytes, b1...)
-	rlpBytes = append(rlpBytes, b2...)
-	rlpBytes = append(rlpBytes, b3...)
-	rlpBytes = append(rlpBytes, b4...)
-	rlpBytes = append(rlpBytes, b5...)
-	return rlpBytes, nil
-}
-
-type SyncAggregate struct {
-	SyncCommitteeBits      string
-	SyncCommitteeSignature []byte
-}
-
-func (s *SyncAggregate) Encode() ([]byte, error) {
-	b1, err := rlp.EncodeToBytes(s.SyncCommitteeBits)
-	if err != nil {
-		return nil, err
-	}
-	b2, err := rlp.EncodeToBytes(s.SyncCommitteeSignature)
-	if err != nil {
-		return nil, err
-	}
-	var rlpBytes []byte
-	rlpBytes = append(rlpBytes, b1...)
-	rlpBytes = append(rlpBytes, b2...)
-	return rlpBytes, nil
-}
-
-type HeaderUpdate struct {
-	BeaconHeader       *BeaconBlockHeader
-	ExecutionBlockHash []byte
-}
-
-func (update *HeaderUpdate) Encode() ([]byte, error) {
-	h, err := update.BeaconHeader.Encode()
-	if err != nil {
-		return nil, err
-	}
-	b1, err := rlp.EncodeToBytes(h)
-	if err != nil {
-		return nil, err
-	}
-	b2, err := rlp.EncodeToBytes(update.ExecutionBlockHash)
-	if err != nil {
-		return nil, err
-	}
-	var rlpBytes []byte
-	rlpBytes = append(rlpBytes, b1...)
-	rlpBytes = append(rlpBytes, b2...)
-	return rlpBytes, nil
-}
-
-type FinalizedHeaderUpdate struct {
-	HeaderUpdate   *HeaderUpdate
-	FinalityBranch [][]byte
-}
-
-func (update *FinalizedHeaderUpdate) Encode() ([]byte, error) {
-	headerUpdate, err := update.HeaderUpdate.Encode()
-	if err != nil {
-		return nil, err
-	}
-	b1, err := rlp.EncodeToBytes(headerUpdate)
-	if err != nil {
-		return nil, err
-	}
-	b2, err := rlp.EncodeToBytes(update.FinalityBranch)
-	if err != nil {
-		return nil, err
-	}
-	var rlpBytes []byte
-	rlpBytes = append(rlpBytes, b1...)
-	rlpBytes = append(rlpBytes, b2...)
-	return rlpBytes, nil
-}
-
-type SyncCommitteeUpdate struct {
-	NextSyncCommittee       *eth.SyncCommittee
-	NextSyncCommitteeBranch [][]byte
-}
-
-func (update *SyncCommitteeUpdate) Encode() ([]byte, error) {
-	committee, err := rlp.EncodeToBytes(update.NextSyncCommittee)
-	if err != nil {
-		return nil, err
-	}
-	b1, err := rlp.EncodeToBytes(committee)
-	if err != nil {
-		return nil, err
-	}
-	b2, err := rlp.EncodeToBytes(update.NextSyncCommitteeBranch)
-	if err != nil {
-		return nil, err
-	}
-	var rlpBytes []byte
-	rlpBytes = append(rlpBytes, b1...)
-	rlpBytes = append(rlpBytes, b2...)
-	return rlpBytes, nil
-}
-
-type LightClientUpdate struct {
-	AttestedBeaconHeader    *BeaconBlockHeader
-	SyncAggregate           *SyncAggregate
-	SignatureSlot           uint64
-	FinalizedUpdate         *FinalizedHeaderUpdate
-	NextSyncCommitteeUpdate *SyncCommitteeUpdate
-}
-
-func (h *LightClientUpdate) Encode() ([]byte, error) {
-	attestedHeader, err := h.AttestedBeaconHeader.Encode()
-	if err != nil {
-		return nil, err
-	}
-	b1, err := rlp.EncodeToBytes(attestedHeader)
-	if err != nil {
-		return nil, err
-	}
-	sig, err := h.SyncAggregate.Encode()
-	if err != nil {
-		return nil, err
-	}
-	b2, err := rlp.EncodeToBytes(sig)
-	if err != nil {
-		return nil, err
-	}
-	b3, err := rlp.EncodeToBytes(h.SignatureSlot)
-	if err != nil {
-		return nil, err
-	}
-	finalizedHeader, err := h.FinalizedUpdate.Encode()
-	if err != nil {
-		return nil, err
-	}
-	b4, err := rlp.EncodeToBytes(finalizedHeader)
-	if err != nil {
-		return nil, err
-	}
-	var b5 []byte
-	if h.NextSyncCommitteeUpdate != nil {
-		committee, err := h.NextSyncCommitteeUpdate.Encode()
-		if err != nil {
-			return nil, err
-		}
-		b5, err = rlp.EncodeToBytes(committee)
-		if err != nil {
-			return nil, err
-		}
-	}
-	var rlpBytes []byte
-	rlpBytes = append(rlpBytes, b1...)
-	rlpBytes = append(rlpBytes, b2...)
-	rlpBytes = append(rlpBytes, b3...)
-	rlpBytes = append(rlpBytes, b4...)
-	rlpBytes = append(rlpBytes, b5...)
-	return rlpBytes, nil
 }
 
 func (c *BeaconGrpcClient) BeaconHeaderconvert(data *BeaconBlockHeaderData) (*BeaconBlockHeader, error) {

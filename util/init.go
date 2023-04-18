@@ -113,12 +113,12 @@ func getEthInitData(eth1, prysm, lodestar string) ([]byte, error) {
 		return nil, err
 	}
 	lastPeriod := beaconrpc.GetPeriodForSlot(lastSlot)
-	lastUpdate, err := beaconrpcclient.GetLightClientUpdate(lastPeriod)
+	lastUpdate, err := beaconrpcclient.GetLightClientUpdateV2(lastPeriod)
 	if err != nil {
 		logger.Error("getEthInitData GetLightClientUpdate error:", err)
 		return nil, err
 	}
-	prevUpdate, err := beaconrpcclient.GetNextSyncCommitteeUpdate(lastPeriod - 1)
+	prevUpdate, err := beaconrpcclient.GetNextSyncCommitteeUpdateV2(lastPeriod - 1)
 	if err != nil {
 		logger.Error(fmt.Sprintf("getEthInitData GetNextSyncCommitteeUpdate lastSlot:%d ，err：%s", lastSlot, err.Error()))
 		return nil, err
@@ -185,12 +185,12 @@ func getEthInitDataWithHeight(eth1, prysm, lodestar, slot string) ([]byte, error
 		return nil, err
 	}
 	lastPeriod := beaconrpc.GetPeriodForSlot(lastSlot)
-	lastUpdate, err := beaconrpcclient.GetLightClientUpdate(lastPeriod)
+	lastUpdate, err := beaconrpcclient.GetLightClientUpdateV2(lastPeriod)
 	if err != nil {
 		logger.Error("getEthInitData GetLightClientUpdate error:", err)
 		return nil, err
 	}
-	prevUpdate, err := beaconrpcclient.GetNextSyncCommitteeUpdate(lastPeriod - 1)
+	prevUpdate, err := beaconrpcclient.GetNextSyncCommitteeUpdateV2(lastPeriod - 1)
 	if err != nil {
 		logger.Error("getEthInitData GetNextSyncCommitteeUpdate error:", err)
 		return nil, err

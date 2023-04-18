@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -24,16 +23,10 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/prysmaticlabs/prysm/v3/beacon-chain/core/signing"
 	p2pType "github.com/prysmaticlabs/prysm/v3/beacon-chain/p2p/types"
-	state_native "github.com/prysmaticlabs/prysm/v3/beacon-chain/state/state-native"
 	primitives "github.com/prysmaticlabs/prysm/v3/consensus-types/primitives"
 	"github.com/prysmaticlabs/prysm/v3/crypto/bls"
 	eth "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
 	"github.com/wonderivan/logger"
-)
-
-const (
-	ONE_EPOCH_IN_SLOTS = 32
-	HEADER_BATCH_SIZE  = 128
 )
 
 var (
@@ -47,6 +40,17 @@ type Eth2TopRelayerV2 struct {
 	transactor      *eth2bridge.Eth2ClientTransactor
 	callerSession   *eth2bridge.Eth2ClientCallerSession
 	lastSlot        uint64
+}
+
+func NewRelayerByRpcClient(prysm string) *Eth2TopRelayerV2 {
+	b, err := beaconrpc.NewBeaconGrpcClient(prysm, "")
+	if err != nil {
+		logger.Error("NewRelayerByRpcClient NewBeaconGrpcClient error:", err)
+		return nil
+	}
+	return &Eth2TopRelayerV2{
+		beaconrpcclient: b,
+	}
 }
 
 func (relayer *Eth2TopRelayerV2) Init(cfg *config.Relayer, listenUrl []string, pass string) error {
@@ -499,7 +503,7 @@ func (relayer *Eth2TopRelayerV2) getExecutionBlocksBetween(start, end uint64) ([
 	curSlot := start
 	headersCnt := 0
 	var batchHeaders []byte
-	for (headersCnt < HEADER_BATCH_SIZE) && (curSlot <= end) {
+	for (headersCnt < beaconrpc.HEADER_BATCH_SIZE) && (curSlot <= end) {
 		header, err := relayer.getExecutionBlockBySlot(curSlot)
 		if err != nil {
 			if beaconrpc.IsErrorNoBlockForSlot(err) {
@@ -546,7 +550,7 @@ func (relayer *Eth2TopRelayerV2) isEnoughBlocksForLightClientUpdate(lastSubmitte
 	if lastSubmittedSlot < lastFinalizedTopSlot {
 		return false
 	}
-	if (lastSubmittedSlot - lastFinalizedTopSlot) < ONE_EPOCH_IN_SLOTS {
+	if (lastSubmittedSlot - lastFinalizedTopSlot) < beaconrpc.ONE_EPOCH_IN_SLOTS {
 		return false
 	}
 	if lastFinalizedEthSlot <= lastFinalizedTopSlot {
@@ -555,178 +559,8 @@ func (relayer *Eth2TopRelayerV2) isEnoughBlocksForLightClientUpdate(lastSubmitte
 	return true
 }
 
-func (relayer *Eth2TopRelayerV2) getAttestedSlot(lastFinalizedSlotOnNear uint64) (uint64, error) {
-	nextFinalizedSlot := lastFinalizedSlotOnNear + ONE_EPOCH_IN_SLOTS
-	attestedSlot := nextFinalizedSlot + 2*ONE_EPOCH_IN_SLOTS
-	header, err := relayer.beaconrpcclient.GetNonEmptyBeaconBlockHeader(attestedSlot)
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 GetNonEmptyBeaconBlockHeader error:", err)
-		return 0, err
-	}
-	return uint64(header.Slot), nil
-}
-
-func (relayer *Eth2TopRelayerV2) getAttestedSlotWithEnoughSyncCommitteeBitsSum(attestedSlot uint64) (uint64, uint64, error) {
-	currentAttestedSlot := attestedSlot
-	for {
-		h, err := relayer.beaconrpcclient.GetNonEmptyBeaconBlockHeader(currentAttestedSlot + 1)
-		if err != nil {
-			logger.Error("Eth2TopRelayerV2 GetNonEmptyBeaconBlockHeader error:", err)
-			return 0, 0, err
-		}
-		signatureSlot := uint64(h.Slot)
-		body, err := relayer.beaconrpcclient.GetBeaconBlockBodyForBlockId(strconv.FormatUint(signatureSlot, 10))
-		if err != nil {
-			logger.Error("Eth2TopRelayerV2 GetNonEmptyBeaconBlockHeader error:", err)
-			return 0, 0, err
-		}
-		syncCommitteeBitsSum := body.SyncAggregate.SyncCommitteeBits.Count()
-		if syncCommitteeBitsSum*3 < (64 * 8 * 2) {
-			currentAttestedSlot = signatureSlot
-			continue
-		}
-		if len(body.Attestations) == 0 {
-			currentAttestedSlot = signatureSlot
-			continue
-		}
-		var attestedSlots []uint64
-		for _, attestation := range body.Attestations {
-			attestedSlots = append(attestedSlots, uint64(attestation.GetData().Slot))
-		}
-		sort.Slice(attestedSlots, func(i, j int) bool { return attestedSlots[i] > attestedSlots[j] })
-		for i, v := range attestedSlots {
-			if (i == 0 || v != attestedSlots[i-1]) && v >= attestedSlot {
-				currentAttestedSlot = v
-				_, err = relayer.beaconrpcclient.GetBeaconBlockHeaderForBlockId(strconv.FormatUint(currentAttestedSlot, 10))
-				if err != nil {
-					continue
-				}
-				return currentAttestedSlot, signatureSlot, nil
-			}
-		}
-		currentAttestedSlot = signatureSlot
-	}
-}
-
-func (relayer *Eth2TopRelayerV2) getNextSyncCommittee(beaconState *eth.BeaconStateBellatrix) (*ethtypes.SyncCommitteeUpdate, error) {
-	if beaconState.NextSyncCommittee == nil {
-		logger.Error("Eth2TopRelayerV2 NextSyncCommittee nil")
-		return nil, errors.New("NextSyncCommittee nil")
-	}
-	var state, err = state_native.InitializeFromProtoUnsafeBellatrix(beaconState)
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 InitializeFromProtoUnsafeBellatrix error:", err)
-		return nil, err
-	}
-	nscp, err := state.NextSyncCommitteeProof(context.Background())
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 NextSyncCommitteeProof error:", err)
-		return nil, err
-	}
-	update := &ethtypes.SyncCommitteeUpdate{
-		NextSyncCommittee:       beaconState.NextSyncCommittee,
-		NextSyncCommitteeBranch: nscp,
-	}
-	return update, nil
-}
-
-func (relayer *Eth2TopRelayerV2) getFinalityLightClientUpdateForState(attestedSlot, signatureSlot uint64, beaconState, finalityBeaconState *eth.BeaconStateBellatrix) (*ethtypes.LightClientUpdate, error) {
-	signatureBeaconBody, err := relayer.beaconrpcclient.GetBeaconBlockBodyForBlockId(strconv.FormatUint(uint64(signatureSlot), 10))
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 GetBeaconBlockBodyForBlockId error:", err)
-		return nil, err
-	}
-	if signatureBeaconBody.SyncAggregate == nil {
-		logger.Error("Eth2TopRelayerV2 syncAggregate nil")
-		return nil, errors.New("syncAggregate nil")
-	}
-	attestedHeader, err := relayer.beaconrpcclient.GetBeaconBlockHeaderForBlockId(strconv.FormatUint(uint64(attestedSlot), 10))
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 GetBeaconBlockHeaderForBlockId error:", err)
-		return nil, err
-	}
-	finalityHash := beaconState.FinalizedCheckpoint.Root
-	finalityHeader, err := relayer.beaconrpcclient.GetBeaconBlockHeaderForBlockId(string(finalityHash))
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 GetBeaconBlockHeaderForBlockId error:", err)
-		return nil, err
-	}
-	finalizedBlockBody, err := relayer.beaconrpcclient.GetBeaconBlockBodyForBlockId(string(finalityHash))
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 GetBeaconBlockBodyForBlockId error:", err)
-		return nil, err
-	}
-	finalizedBlockBodyHash, err := finalizedBlockBody.HashTreeRoot()
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 finalizedBlockBody hash error:", err)
-		return nil, err
-	}
-	state, err := state_native.InitializeFromProtoUnsafeBellatrix(beaconState)
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 InitializeFromProtoUnsafeBellatrix error:", err)
-		return nil, err
-	}
-	proof, err := state.FinalizedRootProof(context.Background())
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 FinalizedRootProof error:", err)
-		return nil, err
-	}
-	update := &ethtypes.LightClientUpdate{
-		AttestedBeaconHeader: attestedHeader,
-		SyncAggregate: &eth.SyncAggregate{
-			SyncCommitteeBits:      signatureBeaconBody.SyncAggregate.SyncCommitteeBits,
-			SyncCommitteeSignature: signatureBeaconBody.SyncAggregate.SyncCommitteeSignature,
-		},
-		Signatureslot: signatureSlot,
-	}
-	update.FinalityUpdate = &ethtypes.FinalizedHeaderUpdate{
-		HeaderUpdate: &ethtypes.HeaderUpdate{
-			BeaconHeader:       finalityHeader,
-			ExecutionBlockHash: finalizedBlockBodyHash,
-		},
-		FinalityBranch: proof,
-	}
-	if finalityBeaconState != nil {
-		update.SyncCommitteeUpdate, err = relayer.getNextSyncCommittee(finalityBeaconState)
-		if err != nil {
-			logger.Error("Eth2TopRelayerV2 getNextSyncCommittee error:", err)
-			return nil, err
-		}
-	}
-	return update, nil
-}
-
-func (relayer *Eth2TopRelayerV2) getFinalityLightClientUpdate(attestedSlot uint64, useNextSyncCommittee bool) (*ethtypes.LightClientUpdate, error) {
-	attestedSlot, signatureSlot, err := relayer.getAttestedSlotWithEnoughSyncCommitteeBitsSum(attestedSlot)
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 getAttestedSlotWithEnoughSyncCommitteeBitsSum error:", err)
-		return nil, err
-	}
-	beaconState, err := relayer.beaconrpcclient.GetBeaconState(strconv.FormatUint(attestedSlot, 10))
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 GetBeaconState error:", err)
-		return nil, err
-	}
-	finalityHash := beaconState.GetFinalizedCheckpoint().Root
-	finalityHeader, err := relayer.beaconrpcclient.GetBeaconBlockHeaderForBlockId(string(finalityHash))
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 GetBeaconBlockHeaderForBlockId error:", err)
-		return nil, err
-	}
-	finalitySlot := finalityHeader.Slot
-	var finalityBeaconState *eth.BeaconStateBellatrix = nil
-	if useNextSyncCommittee == true {
-		finalityBeaconState, err = relayer.beaconrpcclient.GetBeaconState(strconv.FormatUint(uint64(finalitySlot), 10))
-		if err != nil {
-			logger.Error("Eth2TopRelayerV2 GetBeaconState error:", err)
-			return nil, err
-		}
-	}
-	return relayer.getFinalityLightClientUpdateForState(attestedSlot, signatureSlot, beaconState, finalityBeaconState)
-}
-
 func (relayer *Eth2TopRelayerV2) sendLightClientUpdates(lastFinalizedTopSlot, lastFinalizedEthSlot uint64) error {
-	attestedSlot, err := relayer.getAttestedSlot(lastFinalizedTopSlot)
+	attestedSlot, err := relayer.beaconrpcclient.GetAttestedSlot(lastFinalizedTopSlot)
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 getAttestedSlot error:", err)
 		return err
@@ -735,14 +569,14 @@ func (relayer *Eth2TopRelayerV2) sendLightClientUpdates(lastFinalizedTopSlot, la
 	endPeriod := beaconrpc.GetPeriodForSlot(lastFinalizedEthSlot)
 	useNextSyncCommittee := lastTopPeriod == endPeriod
 	for {
-		update, err := relayer.getFinalityLightClientUpdate(attestedSlot, useNextSyncCommittee)
+		update, err := relayer.beaconrpcclient.GetFinalityLightClientUpdate(attestedSlot, useNextSyncCommittee)
 		if err != nil {
 			logger.Error("Eth2TopRelayerV2 getFinalityLightClientUpdate error:", err)
 			return err
 		}
-		finalityUpdateSlot := uint64(update.FinalityUpdate.HeaderUpdate.BeaconHeader.Slot)
+		finalityUpdateSlot := uint64(update.FinalizedUpdate.HeaderUpdate.BeaconHeader.Slot)
 		if finalityUpdateSlot <= lastFinalizedTopSlot {
-			attestedSlot, err = relayer.getAttestedSlot(lastFinalizedTopSlot + ONE_EPOCH_IN_SLOTS)
+			attestedSlot, err = relayer.beaconrpcclient.GetAttestedSlot(lastFinalizedTopSlot + beaconrpc.SLOTS_PER_EPOCH)
 			if err != nil {
 				logger.Error("Eth2TopRelayerV2 getAttestedSlot error:", err)
 				return err
@@ -753,82 +587,8 @@ func (relayer *Eth2TopRelayerV2) sendLightClientUpdates(lastFinalizedTopSlot, la
 	}
 }
 
-func FilterSyncCommitteeVotes(committeeKeys [][]byte, sync *eth.SyncAggregate) ([]bls.PublicKey, error) {
-	if sync.SyncCommitteeBits.Len() > uint64(len(committeeKeys)) {
-		return nil, errors.New("bits length exceeds committee length")
-	}
-	votedKeys := make([]bls.PublicKey, 0, len(committeeKeys))
-	for i := uint64(0); i < sync.SyncCommitteeBits.Len(); i++ {
-		if sync.SyncCommitteeBits.BitAt(i) {
-			pubKey, err := bls.PublicKeyFromBytes(committeeKeys[i])
-			if err != nil {
-				return nil, err
-			}
-			votedKeys = append(votedKeys, pubKey)
-		}
-	}
-	return votedKeys, nil
-}
-
-func (relayer *Eth2TopRelayerV2) isCorrectFinalityUpdate(update *ethtypes.LightClientUpdate, committee *eth.SyncCommittee) error {
-	syncKeys, err := FilterSyncCommitteeVotes(committee.Pubkeys, update.SyncAggregate)
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 FilterSyncCommitteeVotes error:", err)
-		return err
-	}
-	d, err := signing.ComputeDomain(ethtypes.DomainSyncCommittee, ethtypes.BellatrixForkVersion, ethtypes.GenesisValidatorsRoot[:])
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 ComputeDomain error:", err)
-		return err
-	}
-	pbr, err := update.AttestedBeaconHeader.HashTreeRoot()
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 HashTreeRoot error:", err)
-		return err
-	}
-	sszBytes := p2pType.SSZBytes(pbr[:])
-	r, err := signing.ComputeSigningRoot(&sszBytes, d)
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 ComputeSigningRoot error:", err)
-		return err
-	}
-	sig, err := bls.SignatureFromBytes(update.SyncAggregate.SyncCommitteeSignature)
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 SignatureFromBytes error:", err)
-		return err
-	}
-	if !sig.Eth2FastAggregateVerify(syncKeys, r) {
-		return errors.New("invalid sync committee signature")
-	}
-	return nil
-}
-
-func (relayer *Eth2TopRelayerV2) verify_bls_signature_for_finality_update(update *ethtypes.LightClientUpdate) error {
-	signatureSlotPeriod := beaconrpc.GetPeriodForSlot(update.Signatureslot)
-	topFinalizedBeaconBlockSlot, err := relayer.callerSession.FinalizedBeaconBlockSlot()
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 FinalizedBeaconBlockSlot error:", err)
-		return err
-	}
-	finalizedSlotPeriod := beaconrpc.GetPeriodForSlot(topFinalizedBeaconBlockSlot)
-	stateBytes, err := relayer.callerSession.GetLightClientState()
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 GetLightClientState error:", err)
-		return err
-	}
-	var state ethtypes.LightClientState
-	rlp.DecodeBytes(stateBytes, state)
-	var committee *eth.SyncCommittee
-	if signatureSlotPeriod == finalizedSlotPeriod {
-		committee = state.CurrentSyncCommittee
-	} else {
-		committee = state.NextSyncCommittee
-	}
-	return relayer.isCorrectFinalityUpdate(update, committee)
-}
-
 func (relayer *Eth2TopRelayerV2) sendSpecificLightClientUpdate(update *ethtypes.LightClientUpdate) error {
-	isKnown, err := relayer.callerSession.IsKnownExecutionHeader(update.FinalityUpdate.HeaderUpdate.ExecutionBlockHash)
+	isKnown, err := relayer.callerSession.IsKnownExecutionHeader(update.FinalizedUpdate.HeaderUpdate.ExecutionBlockHash)
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 IsKnownExecutionHeader error:", err)
 		return err
@@ -854,6 +614,82 @@ func (relayer *Eth2TopRelayerV2) sendSpecificLightClientUpdate(update *ethtypes.
 	}
 
 	return nil
+}
+
+func FilterSyncCommitteeVotes(committeeKeys [][]byte, sync *eth.SyncAggregate) ([]bls.PublicKey, error) {
+	if sync.SyncCommitteeBits.Len() > uint64(len(committeeKeys)) {
+		return nil, errors.New("bits length exceeds committee length")
+	}
+	votedKeys := make([]bls.PublicKey, 0, len(committeeKeys))
+	for i := uint64(0); i < sync.SyncCommitteeBits.Len(); i++ {
+		if sync.SyncCommitteeBits.BitAt(i) {
+			pubKey, err := bls.PublicKeyFromBytes(committeeKeys[i])
+			if err != nil {
+				return nil, err
+			}
+			votedKeys = append(votedKeys, pubKey)
+		}
+	}
+	return votedKeys, nil
+}
+
+func (relayer *Eth2TopRelayerV2) isCorrectFinalityUpdate(update *ethtypes.LightClientUpdate, committee *eth.SyncCommittee) error {
+	pubKeys, err := FilterSyncCommitteeVotes(committee.Pubkeys, update.SyncAggregate)
+	if err != nil {
+		logger.Error("Eth2TopRelayerV2 FilterSyncCommitteeVotes error:", err)
+		return err
+	}
+
+	domain, err := signing.ComputeDomain(ethtypes.DomainSyncCommittee, ethtypes.BellatrixForkVersion, ethtypes.GenesisValidatorsRoot[:])
+	if err != nil {
+		logger.Error("Eth2TopRelayerV2 ComputeDomain error:", err)
+		return err
+	}
+	pbr, err := update.AttestedBeaconHeader.HashTreeRoot()
+	if err != nil {
+		logger.Error("Eth2TopRelayerV2 HashTreeRoot error:", err)
+		return err
+	}
+	sszBytes := p2pType.SSZBytes(pbr[:])
+	signingRoot, err := signing.ComputeSigningRoot(&sszBytes, domain)
+	if err != nil {
+		logger.Error("Eth2TopRelayerV2 ComputeSigningRoot error:", err)
+		return err
+	}
+
+	aggregateSign, err := bls.SignatureFromBytes(update.SyncAggregate.SyncCommitteeSignature)
+	if err != nil {
+		logger.Error("Eth2TopRelayerV2 SignatureFromBytes error:", err)
+		return err
+	}
+	if !aggregateSign.Eth2FastAggregateVerify(pubKeys, signingRoot) {
+		return errors.New("invalid sync committee signature")
+	}
+	return nil
+}
+
+func (relayer *Eth2TopRelayerV2) verify_bls_signature_for_finality_update(update *ethtypes.LightClientUpdate) error {
+	signatureSlotPeriod := beaconrpc.GetPeriodForSlot(update.SignatureSlot)
+	topFinalizedBeaconBlockSlot, err := relayer.callerSession.FinalizedBeaconBlockSlot()
+	if err != nil {
+		logger.Error("Eth2TopRelayerV2 FinalizedBeaconBlockSlot error:", err)
+		return err
+	}
+	finalizedSlotPeriod := beaconrpc.GetPeriodForSlot(topFinalizedBeaconBlockSlot)
+	stateBytes, err := relayer.callerSession.GetLightClientState()
+	if err != nil {
+		logger.Error("Eth2TopRelayerV2 GetLightClientState error:", err)
+		return err
+	}
+	var state ethtypes.LightClientState
+	rlp.DecodeBytes(stateBytes, state)
+	var committee *eth.SyncCommittee
+	if signatureSlotPeriod == finalizedSlotPeriod {
+		committee = state.CurrentSyncCommittee
+	} else {
+		committee = state.NextSyncCommittee
+	}
+	return relayer.isCorrectFinalityUpdate(update, committee)
 }
 
 type ExtendedBeaconBlockHeader struct {

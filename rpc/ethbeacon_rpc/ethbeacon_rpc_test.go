@@ -194,7 +194,7 @@ func TestRLP4BeaconBlockHeader(t *testing.T) {
 			NextSyncCommitteeBranch: nil,
 		},
 	}
-	
+
 	ret, err := rlp.EncodeToBytes(data)
 	if err != nil {
 		t.Fatal(err.Error())

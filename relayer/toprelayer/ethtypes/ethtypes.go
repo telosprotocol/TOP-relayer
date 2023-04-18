@@ -46,11 +46,11 @@ type SyncCommitteeUpdate struct {
 }
 
 type LightClientUpdate struct {
-	AttestedBeaconHeader *eth.BeaconBlockHeader
-	SyncAggregate        *eth.SyncAggregate
-	Signatureslot        uint64
-	FinalityUpdate       *FinalizedHeaderUpdate
-	SyncCommitteeUpdate  *SyncCommitteeUpdate
+	AttestedBeaconHeader    *eth.BeaconBlockHeader
+	SyncAggregate           *eth.SyncAggregate
+	SignatureSlot           uint64
+	FinalizedUpdate         *FinalizedHeaderUpdate
+	NextSyncCommitteeUpdate *SyncCommitteeUpdate
 }
 
 type LightClientState struct {
