@@ -13,8 +13,8 @@ import (
 
 	beaconrpc "toprelayer/rpc/ethbeacon_rpc"
 
-	primitives "github.com/prysmaticlabs/prysm/v3/consensus-types/primitives"
-	eth "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
+	primitives "github.com/prysmaticlabs/prysm/v4/consensus-types/primitives"
+	eth "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
 )
 
 type ExtendedBeaconBlockHeader struct {

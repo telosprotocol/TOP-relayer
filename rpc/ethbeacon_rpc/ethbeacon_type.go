@@ -3,8 +3,8 @@ package ethbeacon_rpc
 import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
-	pb "github.com/prysmaticlabs/prysm/v3/proto/eth/service"
-	eth "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
+	pb "github.com/prysmaticlabs/prysm/v4/proto/eth/service"
+	eth "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
 	"net/http"
 	"strings"
 	"toprelayer/relayer/toprelayer/ethtypes"

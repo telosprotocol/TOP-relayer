@@ -8,15 +8,16 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	pb "github.com/prysmaticlabs/prysm/v3/proto/eth/service"
-	v1 "github.com/prysmaticlabs/prysm/v3/proto/eth/v1"
-	v2 "github.com/prysmaticlabs/prysm/v3/proto/eth/v2"
-	eth "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
+	pb "github.com/prysmaticlabs/prysm/v4/proto/eth/service"
+	v1 "github.com/prysmaticlabs/prysm/v4/proto/eth/v1"
+	v2 "github.com/prysmaticlabs/prysm/v4/proto/eth/v2"
+	eth "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
 	"github.com/wonderivan/logger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -45,17 +46,17 @@ func NewBeaconGrpcClient(grpcUrl, httpUrl string) (*BeaconGrpcClient, error) {
 	return c, nil
 }
 
-func (c *BeaconGrpcClient) GetBeaconBlockBodyForBlockId(id string) (*v2.BeaconBlockBodyBellatrix, error) {
+func (c *BeaconGrpcClient) GetBeaconBlockBodyForBlockId(id string) (*v2.BeaconBlockBodyCapella, error) {
 	resp, err := c.client.GetBlockV2(context.Background(), &v2.BlockRequestV2{BlockId: []byte(id)})
 	if err != nil {
 		logger.Error("GetBlockV2 id %v error %v", id, err)
 		return nil, err
 	}
-	signedBlock, ok := resp.Data.Message.(*v2.SignedBeaconBlockContainer_BellatrixBlock)
+	signedBlock, ok := resp.Data.Message.(*v2.SignedBeaconBlockContainer_CapellaBlock)
 	if !ok {
 		return nil, errors.New("resp.data.message error")
 	}
-	return signedBlock.BellatrixBlock.GetBody(), nil
+	return signedBlock.CapellaBlock.GetBody(), nil
 }
 
 func (c *BeaconGrpcClient) GetBeaconBlockHeaderForBlockId(id string) (*eth.BeaconBlockHeader, error) {
@@ -113,7 +114,7 @@ func GetPeriodForSlot(slot uint64) uint64 {
 	return (slot / (SLOTS_PER_EPOCH * EPOCHS_PER_PERIOD))
 }
 
-func (c *BeaconGrpcClient) GetBeaconState(id string) (*eth.BeaconStateBellatrix, error) {
+func (c *BeaconGrpcClient) GetBeaconState(id string) (*eth.BeaconStateCapella, error) {
 	start := time.Now()
 	defer func() {
 		// 2m45.5945271s
@@ -129,18 +130,18 @@ func (c *BeaconGrpcClient) GetBeaconState(id string) (*eth.BeaconStateBellatrix,
 	currPeriodEpochSlot := currPeriodSlot - (currPeriodSlot/32)*32
 	fileName := fmt.Sprintf("./state_%d_%d_%d_%d.ssz", period, currPeriodSlot/32, currPeriodEpochSlot%32, slot)
 	var data []byte
-	if data, err = ioutil.ReadFile(fileName); err != nil {
+	if data, err = os.ReadFile(fileName); err != nil {
 		resp, err := c.debugclient.GetBeaconStateSSZV2(context.Background(), &v2.BeaconStateRequestV2{StateId: []byte(id)})
 		if err != nil {
 			logger.Error("GetBeaconStateV2 error:", err)
 			return nil, err
 		}
-		if err := ioutil.WriteFile(fileName, resp.Data, 0644); err != nil {
+		if err := os.WriteFile(fileName, resp.Data, 0644); err != nil {
 			logger.Error("WriteFile error:", err)
 		}
 		data = resp.Data
 	}
-	var state eth.BeaconStateBellatrix
+	var state eth.BeaconStateCapella
 	if err = state.UnmarshalSSZ(data); err != nil {
 		logger.Error("UnmarshalSSZ error:", err)
 		return nil, err
@@ -168,7 +169,7 @@ func (c *BeaconGrpcClient) GetNonEmptyBeaconBlockHeader(startSlot uint64) (*eth.
 	for slot := startSlot; slot < finalizedSlot; slot++ {
 		if h, err := c.GetBeaconBlockHeaderForBlockId(strconv.FormatUint(slot, 10)); err != nil {
 			if strings.Contains(err.Error(), "NotFound") {
-				logger.Error("GetBeaconBlockHeaderForBlockId slot(%d) error:", slot, err)
+				logger.Warn("GetBeaconBlockHeaderForBlockId slot(%d) error:", slot, err)
 				continue
 			} else {
 				logger.Error("GetBeaconBlockBodyForBlockId error:", err)
