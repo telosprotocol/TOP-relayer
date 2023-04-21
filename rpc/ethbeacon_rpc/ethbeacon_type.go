@@ -1,10 +1,11 @@
 package ethbeacon_rpc
 
 import (
+	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
-	pb "github.com/prysmaticlabs/prysm/v3/proto/eth/service"
-	eth "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
+	pb "github.com/prysmaticlabs/prysm/v4/proto/eth/service"
+	eth "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
 	"net/http"
 	"strings"
 	"toprelayer/relayer/toprelayer/ethtypes"
@@ -257,11 +258,13 @@ func (h *LightClientUpdate) Encode() ([]byte, error) {
 		}
 	}
 	var rlpBytes []byte
+	var rlpBytes2 []byte
 	rlpBytes = append(rlpBytes, b1...)
 	rlpBytes = append(rlpBytes, b2...)
 	rlpBytes = append(rlpBytes, b3...)
 	rlpBytes = append(rlpBytes, b4...)
 	rlpBytes = append(rlpBytes, b5...)
+	fmt.Println("rlpBytes", len(rlpBytes2))
 	return rlpBytes, nil
 }
 
@@ -276,10 +279,11 @@ func beaconBlockHeaderConvert(header *eth.BeaconBlockHeader) *BeaconBlockHeader 
 }
 
 func ConvertEth2LightClientUpdate(lcu *ethtypes.LightClientUpdate) *LightClientUpdate {
+
 	ret := &LightClientUpdate{
 		AttestedBeaconHeader: beaconBlockHeaderConvert(lcu.AttestedBeaconHeader),
 		SyncAggregate: &SyncAggregate{
-			SyncCommitteeBits:      common.Bytes2Hex(lcu.SyncAggregate.SyncCommitteeBits),
+			SyncCommitteeBits:      addHexPrefix(common.Bytes2Hex(lcu.SyncAggregate.SyncCommitteeBits)),
 			SyncCommitteeSignature: lcu.SyncAggregate.SyncCommitteeSignature,
 		},
 		SignatureSlot: lcu.SignatureSlot,
@@ -298,4 +302,29 @@ func ConvertEth2LightClientUpdate(lcu *ethtypes.LightClientUpdate) *LightClientU
 		}
 	}
 	return ret
+}
+
+func SplitSlot(slot uint64) (period, epochInPeriod, slotInEpoch uint64) {
+	period = GetPeriodForSlot(slot)
+	currPeriodSlot := slot - (period * SLOTS_PER_EPOCH * EPOCHS_PER_PERIOD)
+	epochInPeriod = currPeriodSlot / SLOTS_PER_EPOCH
+	currPeriodEpochSlot := currPeriodSlot - epochInPeriod*SLOTS_PER_EPOCH
+	return period, epochInPeriod, currPeriodEpochSlot % SLOTS_PER_EPOCH
+}
+
+func epochInPeriodForPeriod(period uint64) uint64 {
+	batch := period * EPOCHS_PER_PERIOD / 154
+	return (batch+1)*154 - (period * EPOCHS_PER_PERIOD)
+}
+
+func GetFinalizedForPeriod(period uint64) uint64 {
+	epoch := epochInPeriodForPeriod(period)
+	return period*EPOCHS_PER_PERIOD*SLOTS_PER_EPOCH + epoch*ONE_EPOCH_IN_SLOTS
+}
+
+func addHexPrefix(hex string) string {
+	if strings.HasPrefix(hex, "0x") {
+		return hex
+	}
+	return "0x" + hex
 }

@@ -21,11 +21,11 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/core/signing"
-	p2pType "github.com/prysmaticlabs/prysm/v3/beacon-chain/p2p/types"
-	primitives "github.com/prysmaticlabs/prysm/v3/consensus-types/primitives"
-	"github.com/prysmaticlabs/prysm/v3/crypto/bls"
-	eth "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/core/signing"
+	p2pType "github.com/prysmaticlabs/prysm/v4/beacon-chain/p2p/types"
+	primitives "github.com/prysmaticlabs/prysm/v4/consensus-types/primitives"
+	"github.com/prysmaticlabs/prysm/v4/crypto/bls"
+	eth "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
 	"github.com/wonderivan/logger"
 )
 
@@ -110,9 +110,8 @@ func (relayer *Eth2TopRelayerV2) Init(cfg *config.Relayer, listenUrl []string, p
 
 func (relayer *Eth2TopRelayerV2) blockKnownOnTop(slot uint64) (bool, error) {
 	hash, err := relayer.beaconrpcclient.GetBlockHashForSlot(slot)
-	logger.Debug("blockKnownOnTop slot %v, hash %v, err: %v", slot, hash, err)
+	//logger.Debug("blockKnownOnTop slot %v, hash %v", slot, hash)
 	if err != nil {
-		logger.Error("Eth2TopRelayerV2 GetBlockHashForSlot %v error %v", slot, err)
 		return false, err
 	}
 	return relayer.callerSession.IsKnownExecutionHeader(hash)
@@ -148,6 +147,7 @@ func (relayer *Eth2TopRelayerV2) linearSearchForward(slot, maxSlot uint64) (uint
 		}
 		if known {
 			slot += 1
+			logger.Debug("curr top known slot: %v,maxSlot: %v", slot, maxSlot)
 		} else {
 			break
 		}
@@ -185,7 +185,7 @@ func (relayer *Eth2TopRelayerV2) linearSearchBackward(startSlot, lastSlot uint64
 
 func (relayer *Eth2TopRelayerV2) linerSlotSearch(slot, finalizedSlot, lastEthSlot uint64) (uint64, error) {
 	if slot == finalizedSlot {
-		logger.Debug("slot equal finalizedSlot %v go forward", slot)
+		logger.Info("slot equal finalizedSlot %v go forward,greater than lastEthSlot:%v", slot, lastEthSlot)
 		return relayer.linearSearchForward(slot, lastEthSlot)
 	}
 	known, err := relayer.blockKnownOnTop(slot)
@@ -258,13 +258,13 @@ func (relayer *Eth2TopRelayerV2) sendRegularLightClientUpdate(lastFinalizedTopSl
 	var data *beaconrpc.LightClientUpdate
 	var err error
 	if lastEth2PeriodOnTopChain == endPeriod {
-		data, err = relayer.beaconrpcclient.GetFinalizedLightClientUpdate()
+		data, err = relayer.beaconrpcclient.GetFinalizedLightClientUpdateV2()
 		if err != nil {
 			logger.Error("Eth2TopRelayerV2 GetLightClientUpdate error:", err)
 			return err
 		}
 	} else {
-		data, err = relayer.beaconrpcclient.GetLightClientUpdate(lastEth2PeriodOnTopChain + 1)
+		data, err = relayer.beaconrpcclient.GetLightClientUpdateV2(lastEth2PeriodOnTopChain + 1)
 		if err != nil {
 			logger.Error("Eth2TopRelayerV2 GetLightClientUpdate error:", err)
 			return err
@@ -279,7 +279,7 @@ func (relayer *Eth2TopRelayerV2) sendRegularLightClientUpdate(lastFinalizedTopSl
 }
 
 func (relayer *Eth2TopRelayerV2) sendLightClientUpdatesWithChecks(slot uint64) (bool, error) {
-	topSlot, err := relayer.getLastFinalizedSlotOnTop()
+	topFinalizedSlot, err := relayer.getLastFinalizedSlotOnTop()
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 getLastFinalizedSlotOnTop error:", err)
 		return false, err
@@ -289,8 +289,8 @@ func (relayer *Eth2TopRelayerV2) sendLightClientUpdatesWithChecks(slot uint64) (
 		logger.Error("Eth2TopRelayerV2 getLastFinalizedSlotOnEth error:", err)
 		return false, err
 	}
-	if relayer.isEnoughBlocksForLightClientUpdate(slot, topSlot, ethSlot) {
-		err = relayer.sendRegularLightClientUpdate(topSlot, ethSlot)
+	if relayer.isEnoughBlocksForLightClientUpdate(slot, topFinalizedSlot, ethSlot) {
+		err = relayer.sendRegularLightClientUpdate(topFinalizedSlot, ethSlot)
 		if err != nil {
 			logger.Error("Eth2TopRelayerV2 sendLightClientUpdates error:", err)
 			return false, err
@@ -315,7 +315,7 @@ func (relayer *Eth2TopRelayerV2) txOption(packData []byte) (*bind.TransactOpts, 
 	}
 	gaslimit, err := relayer.wallet.EstimateGas(context.Background(), &eth2ClientSystemContract, packData)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Eth2TopRelayer EstimateGas error:%s, data:%v", err, packData))
+		logger.Error(fmt.Sprintf("Eth2TopRelayer EstimateGas error:%s, data:%v", err, common.Bytes2Hex(packData)))
 		return nil, err
 	}
 	logger.Info("Eth2TopRelayer tx option info, account[%v] nonce:%v,capfee:%v", relayer.wallet.Address(), nonce, gaspric)
@@ -342,13 +342,12 @@ func (relayer *Eth2TopRelayerV2) submitEthHeader(headers []byte) error {
 		logger.Error("Eth2TopRelayerV2 txOption error:", err)
 		return err
 	}
-	logger.Debug("Eth2TopRelayer submitEthHeader data:", common.Bytes2Hex(headers))
 	sigTx, err := relayer.transactor.SubmitExecutionHeader(ops, headers)
 	if err != nil {
 		logger.Error("Eth2TopRelayer sync error:", err)
 		return err
 	}
-	logger.Info("Eth2TopRelayer submitEthHeader tx info, account[%v] hash:%v,size:%v", relayer.wallet.Address(), sigTx.Hash(), len(headers))
+	logger.Info("Eth2TopRelayer submitEthHeader tx info, account[%v] txHash:%v,size:%v", relayer.wallet.Address(), sigTx.Hash(), len(headers))
 	return nil
 }
 
@@ -450,11 +449,17 @@ func (relayer *Eth2TopRelayerV2) StartRelayer(wg *sync.WaitGroup) error {
 							delay = time.Duration(ERRDELAY)
 							break
 						}
-						err = relayer.submitExecutionBlocks(headers, curSlot)
-						if err != nil {
+						if curSlot+8 > eth2Slot {
+							logger.Info("Eth2TopRelayerV2 headers update not finish, continue update headers next round")
+							delay = time.Duration(SUCCESSDELAY)
+							break
+						}
+						if err = relayer.submitExecutionBlocks(headers, curSlot); err != nil {
 							logger.Error("Eth2TopRelayerV2 submitExecutionBlocks failed:", err)
 							delay = time.Duration(ERRDELAY)
 							break
+						} else {
+							topSlot = curSlot
 						}
 						if prevPeriod == 0 {
 							if topLastSlot, err := relayer.getLastFinalizedSlotOnTop(); err != nil {
@@ -464,24 +469,16 @@ func (relayer *Eth2TopRelayerV2) StartRelayer(wg *sync.WaitGroup) error {
 							}
 						}
 						curPeriod = beaconrpc.GetPeriodForSlot(curSlot)
-						logger.Info("Eth2TopRelayerV2 prev_period: %v, cur_period: %v", prevPeriod, curPeriod)
-						if curSlot+8 < eth2Slot {
-							logger.Info("Eth2TopRelayerV2 headers update not finish, continue update headers next round")
-							delay = time.Duration(SUCCESSDELAY)
-							break
-						} else {
-							topSlot = curSlot
-						}
+						logger.Info("Eth2TopRelayerV2 topFinalized(period:%v),topUnFinalized(period:%v,slot:%v)", prevPeriod, curPeriod, curSlot)
 					}
+
 					logger.Info("Eth2TopRelayerV2 headers update finish, update light client update for a while")
 					time.Sleep(time.Second * time.Duration(SUCCESSDELAY))
-					ret, err := relayer.sendLightClientUpdatesWithChecks(topSlot)
-					if err != nil {
+					if ret, err := relayer.sendLightClientUpdatesWithChecks(topSlot); err != nil {
 						logger.Error("Eth2TopRelayerV2 sendLightClientUpdatesWithChecks error:", err)
 					} else if ret == true {
 						prevPeriod = curPeriod
 					}
-
 					if set := timeout.Reset(timeoutDuration); !set {
 						logger.Error("Eth2TopRelayerV2 reset timeout falied!")
 						delay = time.Duration(ERRDELAY)
@@ -535,7 +532,6 @@ func (relayer *Eth2TopRelayerV2) getExecutionBlocksBetween(start, end uint64) ([
 func (relayer *Eth2TopRelayerV2) getExecutionBlockBySlot(slot uint64) (*types.Header, error) {
 	number, err := relayer.beaconrpcclient.GetBlockNumberForSlot(slot)
 	if err != nil {
-		logger.Error("Eth2TopRelayerV2 GetBlockNumberForSlot error", err)
 		return nil, err
 	}
 	header, err := relayer.ethrpcclient.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(number))
@@ -554,6 +550,15 @@ func (relayer *Eth2TopRelayerV2) isEnoughBlocksForLightClientUpdate(lastSubmitte
 		return false
 	}
 	if lastFinalizedEthSlot <= lastFinalizedTopSlot {
+		return false
+	}
+	// period of different LightClientUpdate should be submitted,Unless it's in the same period as eth
+	if beaconrpc.GetPeriodForSlot(lastSubmittedSlot) == beaconrpc.GetPeriodForSlot(lastFinalizedTopSlot) {
+		if beaconrpc.GetPeriodForSlot(lastSubmittedSlot) != beaconrpc.GetPeriodForSlot(lastFinalizedEthSlot) {
+			return false
+		}
+	}
+	if lastSubmittedSlot < beaconrpc.GetFinalizedForPeriod(beaconrpc.GetPeriodForSlot(lastSubmittedSlot)) {
 		return false
 	}
 	return true
