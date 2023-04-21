@@ -3,8 +3,10 @@ package ethbeacon_rpc
 import (
 	"context"
 	"errors"
-	state_native "github.com/prysmaticlabs/prysm/v3/beacon-chain/state/state-native"
-	eth "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
+	"fmt"
+	"github.com/ethereum/go-ethereum/common"
+	state_native "github.com/prysmaticlabs/prysm/v4/beacon-chain/state/state-native"
+	eth "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
 	"github.com/wonderivan/logger"
 	"sort"
 	"strconv"
@@ -16,40 +18,52 @@ func (c *BeaconGrpcClient) GetFinalizedLightClientUpdateV2() (*LightClientUpdate
 	if err != nil {
 		return nil, err
 	}
-	header, err := c.GetNonEmptyBeaconBlockHeaderLimitRange(finalizedSlot-31, finalizedSlot)
+	return c.getLightClientUpdateByFinalizedSlot(finalizedSlot, false)
+}
+
+func (c *BeaconGrpcClient) GetFinalizedLightClientUpdateV2WithNextSyncCommittee() (*LightClientUpdate, error) {
+	finalizedSlot, err := c.GetLastFinalizedSlotNumber()
 	if err != nil {
-		logger.Error("Eth2TopRelayerV2 GetNonEmptyBeaconBlockHeader error:", err)
 		return nil, err
 	}
-	lcu, err := c.GetFinalityLightClientUpdate(uint64(header.Slot), false)
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 getFinalityLightClientUpdate error:", err)
-		return nil, err
-	}
-	return ConvertEth2LightClientUpdate(lcu), nil
+	return c.getLightClientUpdateByFinalizedSlot(finalizedSlot, true)
 }
 
 func (c *BeaconGrpcClient) GetLightClientUpdateV2(period uint64) (*LightClientUpdate, error) {
-	currFinalizedSlot := period*EPOCHS_PER_PERIOD*SLOTS_PER_EPOCH + ONE_EPOCH_IN_SLOTS
-	attestedSlot, err := c.GetAttestedSlot(currFinalizedSlot)
+	currFinalizedSlot := GetFinalizedSlotForPeriod(period)
+	return c.getLightClientUpdateByFinalizedSlot(currFinalizedSlot, true)
+}
+
+func (c *BeaconGrpcClient) GetNextSyncCommitteeUpdateV2(period uint64) (*SyncCommitteeUpdate, error) {
+	currFinalizedSlot := GetFinalizedSlotForPeriod(period)
+	return c.getNextSyncCommitteeUpdateByFinalized(currFinalizedSlot)
+}
+
+func (c *BeaconGrpcClient) getLightClientUpdateByFinalizedSlot(finalizedSlot uint64, useNextSyncCommittee bool) (*LightClientUpdate, error) {
+	attestedSlot, err := c.GetAttestedSlot(finalizedSlot)
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 GetNonEmptyBeaconBlockHeader error:", err)
 		return nil, err
 	}
-	lcu, err := c.GetFinalityLightClientUpdate(attestedSlot, true)
+	if GetPeriodForSlot(attestedSlot) != GetPeriodForSlot(finalizedSlot) {
+		return nil, fmt.Errorf("Eth2TopRelayerV2 attestedSlot(%d) and finalizedSlot(%d) not in same period", attestedSlot, finalizedSlot)
+	}
+	lcu, err := c.getFinalityLightClientUpdate(attestedSlot, useNextSyncCommittee)
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 getFinalityLightClientUpdate error:", err)
 		return nil, err
 	}
-	return ConvertEth2LightClientUpdate(lcu), nil
+	return convertEth2LightClientUpdate(lcu), nil
 }
 
-func (c *BeaconGrpcClient) GetNextSyncCommitteeUpdateV2(period uint64) (*SyncCommitteeUpdate, error) {
-	currFinalizedSlot := period*EPOCHS_PER_PERIOD*SLOTS_PER_EPOCH + ONE_EPOCH_IN_SLOTS
-	attestedSlot, err := c.GetAttestedSlot(currFinalizedSlot)
+func (c *BeaconGrpcClient) getNextSyncCommitteeUpdateByFinalized(finalizedSlot uint64) (*SyncCommitteeUpdate, error) {
+	attestedSlot, err := c.GetAttestedSlot(finalizedSlot)
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 getAttestedSlotWithEnoughSyncCommitteeBitsSum error:", err)
 		return nil, err
+	}
+	if GetPeriodForSlot(attestedSlot) != GetPeriodForSlot(finalizedSlot) {
+		return nil, fmt.Errorf("Eth2TopRelayerV2 GetNextSyncCommitteeUpdateV2 attestedSlot(%d) and finalizedSlot(%d) not in same period", attestedSlot, finalizedSlot)
 	}
 	attestedSlot, signatureSlot, err := c.getAttestedSlotWithEnoughSyncCommitteeBitsSum(attestedSlot)
 	if err != nil {
@@ -57,9 +71,9 @@ func (c *BeaconGrpcClient) GetNextSyncCommitteeUpdateV2(period uint64) (*SyncCom
 		return nil, err
 	}
 	logger.Info("GetNextSyncCommitteeUpdateV2 attestedSlot:%d, signatureSlot:%d", attestedSlot, signatureSlot)
-	beaconState, err := c.GetBeaconState(strconv.FormatUint(attestedSlot, 10))
+	beaconState, err := c.getBeaconState(strconv.FormatUint(attestedSlot, 10))
 	if err != nil {
-		logger.Error("Eth2TopRelayerV2 GetBeaconState error:", err)
+		logger.Error("Eth2TopRelayerV2 getBeaconState error:", err)
 		return nil, err
 	}
 	cu, err := c.getNextSyncCommittee(beaconState)
@@ -76,6 +90,17 @@ func (c *BeaconGrpcClient) GetNextSyncCommitteeUpdateV2(period uint64) (*SyncCom
 func (c *BeaconGrpcClient) GetAttestedSlot(lastFinalizedSlotOnNear uint64) (uint64, error) {
 	nextFinalizedSlot := lastFinalizedSlotOnNear + ONE_EPOCH_IN_SLOTS
 	attestedSlot := nextFinalizedSlot + 2*ONE_EPOCH_IN_SLOTS
+	header, err := c.GetNonEmptyBeaconBlockHeader(attestedSlot)
+	if err != nil {
+		logger.Error("Eth2TopRelayerV2 GetNonEmptyBeaconBlockHeader error:", err)
+		return 0, err
+	}
+	return uint64(header.Slot), nil
+}
+
+func (c *BeaconGrpcClient) getAttestedSlotBeforeFinalizedSlot(finalizedSlot uint64) (uint64, error) {
+	// the range of attestedSlot is [finalizedSlot - 32, finalizedSlot]
+	attestedSlot := finalizedSlot - ONE_EPOCH_IN_SLOTS
 	header, err := c.GetNonEmptyBeaconBlockHeader(attestedSlot)
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 GetNonEmptyBeaconBlockHeader error:", err)
@@ -126,12 +151,12 @@ func (c *BeaconGrpcClient) getAttestedSlotWithEnoughSyncCommitteeBitsSum(atteste
 	}
 }
 
-func (c *BeaconGrpcClient) getNextSyncCommittee(beaconState *eth.BeaconStateBellatrix) (*ethtypes.SyncCommitteeUpdate, error) {
+func (c *BeaconGrpcClient) getNextSyncCommittee(beaconState *eth.BeaconStateCapella) (*ethtypes.SyncCommitteeUpdate, error) {
 	if beaconState.NextSyncCommittee == nil {
 		logger.Error("Eth2TopRelayerV2 NextSyncCommittee nil")
 		return nil, errors.New("NextSyncCommittee nil")
 	}
-	var state, err = state_native.InitializeFromProtoUnsafeBellatrix(beaconState)
+	var state, err = state_native.InitializeFromProtoCapella(beaconState)
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 InitializeFromProtoUnsafeBellatrix error:", err)
 		return nil, err
@@ -148,7 +173,7 @@ func (c *BeaconGrpcClient) getNextSyncCommittee(beaconState *eth.BeaconStateBell
 	return update, nil
 }
 
-func (c *BeaconGrpcClient) getFinalityLightClientUpdateForState(attestedSlot, signatureSlot uint64, beaconState, finalityBeaconState *eth.BeaconStateBellatrix) (*ethtypes.LightClientUpdate, error) {
+func (c *BeaconGrpcClient) getFinalityLightClientUpdateForState(attestedSlot, signatureSlot uint64, beaconState, finalityBeaconState *eth.BeaconStateCapella) (*ethtypes.LightClientUpdate, error) {
 	signatureBeaconBody, err := c.GetBeaconBlockBodyForBlockId(strconv.FormatUint(signatureSlot, 10))
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 GetBeaconBlockBodyForBlockId error:", err)
@@ -174,12 +199,15 @@ func (c *BeaconGrpcClient) getFinalityLightClientUpdateForState(attestedSlot, si
 		logger.Error("Eth2TopRelayerV2 GetBeaconBlockBodyForBlockId error:", err)
 		return nil, err
 	}
-	finalizedBlockBodyHash, err := finalizedBlockBody.HashTreeRoot()
+	//finalizedBlockBodyHash, err := finalizedBlockBody.HashTreeRoot()
+	blockHash := finalizedBlockBody.ExecutionPayload.GetBlockHash()
+	var finalizedBlockBodyHash common.Hash
+	copy(finalizedBlockBodyHash[:], blockHash[:])
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 finalizedBlockBody hash error:", err)
 		return nil, err
 	}
-	state, err := state_native.InitializeFromProtoUnsafeBellatrix(beaconState)
+	state, err := state_native.InitializeFromProtoUnsafeCapella(beaconState)
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 InitializeFromProtoUnsafeBellatrix error:", err)
 		return nil, err
@@ -214,34 +242,21 @@ func (c *BeaconGrpcClient) getFinalityLightClientUpdateForState(attestedSlot, si
 	return update, nil
 }
 
-func (c *BeaconGrpcClient) GetFinalityLightClientUpdate(attestedSlot uint64, useNextSyncCommittee bool) (*ethtypes.LightClientUpdate, error) {
+func (c *BeaconGrpcClient) getFinalityLightClientUpdate(attestedSlot uint64, useNextSyncCommittee bool) (*ethtypes.LightClientUpdate, error) {
 	attestedSlot, signatureSlot, err := c.getAttestedSlotWithEnoughSyncCommitteeBitsSum(attestedSlot)
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 getAttestedSlotWithEnoughSyncCommitteeBitsSum error:", err)
 		return nil, err
 	}
 	logger.Info("GetFinalityLightClientUpdate attestedSlot:%d, signatureSlot:%d", attestedSlot, signatureSlot)
-	beaconState, err := c.GetBeaconState(strconv.FormatUint(attestedSlot, 10))
+	beaconState, err := c.getBeaconState(strconv.FormatUint(attestedSlot, 10))
 	if err != nil {
-		logger.Error("Eth2TopRelayerV2 GetBeaconState error:", err)
+		logger.Error("Eth2TopRelayerV2 getBeaconState error:", err)
 		return nil, err
 	}
-	finalityHash := beaconState.GetFinalizedCheckpoint().Root
-
-	finalityHeader, err := c.GetBeaconBlockHeaderForBlockId(string(finalityHash))
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 GetBeaconBlockHeaderForBlockId error:", err)
-		return nil, err
-	}
-
-	finalitySlot := finalityHeader.Slot
-	var finalityBeaconState *eth.BeaconStateBellatrix = nil
+	var finalityBeaconState *eth.BeaconStateCapella = nil
 	if useNextSyncCommittee == true {
-		finalityBeaconState, err = c.GetBeaconState(strconv.FormatUint(uint64(finalitySlot), 10))
-		if err != nil {
-			logger.Error("Eth2TopRelayerV2 GetBeaconState error:", err)
-			return nil, err
-		}
+		finalityBeaconState = beaconState
 	}
 	return c.getFinalityLightClientUpdateForState(attestedSlot, signatureSlot, beaconState, finalityBeaconState)
 }
