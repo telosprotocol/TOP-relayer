@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -117,7 +118,6 @@ func GetPeriodForSlot(slot uint64) uint64 {
 func (c *BeaconGrpcClient) GetBeaconState(id string) (*eth.BeaconStateCapella, error) {
 	start := time.Now()
 	defer func() {
-		// 2m45.5945271s
 		logger.Info("Slot:%s,GetBeaconState time:%v", id, time.Since(start))
 	}()
 	slot, err := strconv.ParseUint(id, 10, 64)
@@ -125,10 +125,8 @@ func (c *BeaconGrpcClient) GetBeaconState(id string) (*eth.BeaconStateCapella, e
 		return nil, err
 	}
 
-	period := GetPeriodForSlot(slot)
-	currPeriodSlot := slot - (period * 32 * 256)
-	currPeriodEpochSlot := currPeriodSlot - (currPeriodSlot/32)*32
-	fileName := fmt.Sprintf("./state_%d_%d_%d_%d.ssz", period, currPeriodSlot/32, currPeriodEpochSlot%32, slot)
+	period, epochInPeriod, slotInEpoch := SplitSlot(slot)
+	fileName := fmt.Sprintf("./state_%d_%d_%d_%d.ssz", period, epochInPeriod, slotInEpoch, slot)
 	var data []byte
 	if data, err = os.ReadFile(fileName); err != nil {
 		resp, err := c.debugclient.GetBeaconStateSSZV2(context.Background(), &v2.BeaconStateRequestV2{StateId: []byte(id)})
@@ -169,7 +167,7 @@ func (c *BeaconGrpcClient) GetNonEmptyBeaconBlockHeader(startSlot uint64) (*eth.
 	for slot := startSlot; slot < finalizedSlot; slot++ {
 		if h, err := c.GetBeaconBlockHeaderForBlockId(strconv.FormatUint(slot, 10)); err != nil {
 			if strings.Contains(err.Error(), "NotFound") {
-				logger.Warn("GetBeaconBlockHeaderForBlockId slot(%d) error:", slot, err)
+				logger.Info("GetBeaconBlockHeaderForBlockId slot(%d) error:%s", slot, err.Error())
 				continue
 			} else {
 				logger.Error("GetBeaconBlockBodyForBlockId error:", err)
@@ -278,7 +276,7 @@ func (c *BeaconGrpcClient) GetFinalizedLightClientUpdate() (*LightClientUpdate, 
 	defer resp.Body.Close()
 
 	var result LightClientUpdateNoCommitteeMsg
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		logger.Error("outil.ReadAll error:", err)
 		return nil, err

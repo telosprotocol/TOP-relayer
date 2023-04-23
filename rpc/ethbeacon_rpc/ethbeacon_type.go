@@ -299,3 +299,20 @@ func ConvertEth2LightClientUpdate(lcu *ethtypes.LightClientUpdate) *LightClientU
 	}
 	return ret
 }
+
+func SplitSlot(slot uint64) (period, epochInPeriod, slotInEpoch uint64) {
+	period = GetPeriodForSlot(slot)
+	currPeriodSlot := slot - (period * SLOTS_PER_EPOCH * EPOCHS_PER_PERIOD)
+	epochInPeriod = currPeriodSlot / SLOTS_PER_EPOCH
+	currPeriodEpochSlot := currPeriodSlot - epochInPeriod*SLOTS_PER_EPOCH
+	return period, epochInPeriod, currPeriodEpochSlot % SLOTS_PER_EPOCH
+}
+
+func epochInPeriodForPeriod(period uint64) uint64 {
+	batch := period * EPOCHS_PER_PERIOD / 154
+	return (batch+1)*154 - (period * EPOCHS_PER_PERIOD)
+}
+
+func GetFinalizedForPeriod(period uint64) uint64 {
+	return period*EPOCHS_PER_PERIOD*SLOTS_PER_EPOCH + epochInPeriodForPeriod(period)*ONE_EPOCH_IN_SLOTS
+}

@@ -3,6 +3,7 @@ package ethbeacon_rpc
 import (
 	"context"
 	"errors"
+	"fmt"
 	state_native "github.com/prysmaticlabs/prysm/v4/beacon-chain/state/state-native"
 	eth "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
 	"github.com/wonderivan/logger"
@@ -12,16 +13,27 @@ import (
 )
 
 func (c *BeaconGrpcClient) GetFinalizedLightClientUpdateV2() (*LightClientUpdate, error) {
-	//finalizedSlot, err := c.GetLastFinalizedSlotNumber()
-	//if err != nil {
-	//	return nil, err
-	//}
-	//header, err := c.GetAttestedSlot(2193856)
-	//if err != nil {
-	//	logger.Error("Eth2TopRelayerV2 GetNonEmptyBeaconBlockHeader error:", err)
-	//	return nil, err
-	//}
-	lcu, err := c.GetFinalityLightClientUpdate(2193951, false)
+	return c.getFinalizedLightClientUpdate(false)
+}
+
+func (c *BeaconGrpcClient) GetFinalizedLightClientUpdateV2WithNextSyncCommittee() (*LightClientUpdate, error) {
+	return c.getFinalizedLightClientUpdate(true)
+}
+
+func (c *BeaconGrpcClient) getFinalizedLightClientUpdate(useNextSyncCommittee bool) (*LightClientUpdate, error) {
+	finalizedSlot, err := c.GetLastFinalizedSlotNumber()
+	if err != nil {
+		return nil, err
+	}
+	attestedSlot, err := c.getAttestedSlotBeforeFinalizedSlot(finalizedSlot)
+	if err != nil {
+		logger.Error("Eth2TopRelayerV2 GetNonEmptyBeaconBlockHeader error:", err)
+		return nil, err
+	}
+	if GetPeriodForSlot(attestedSlot) != GetPeriodForSlot(finalizedSlot) {
+		return nil, fmt.Errorf("Eth2TopRelayerV2 attestedSlot(%d) and finalizedSlot(%d) not in same period", attestedSlot, finalizedSlot)
+	}
+	lcu, err := c.GetFinalityLightClientUpdate(attestedSlot, useNextSyncCommittee)
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 getFinalityLightClientUpdate error:", err)
 		return nil, err
@@ -30,7 +42,7 @@ func (c *BeaconGrpcClient) GetFinalizedLightClientUpdateV2() (*LightClientUpdate
 }
 
 func (c *BeaconGrpcClient) GetLightClientUpdateV2(period uint64) (*LightClientUpdate, error) {
-	currFinalizedSlot := period*EPOCHS_PER_PERIOD*SLOTS_PER_EPOCH + ONE_EPOCH_IN_SLOTS
+	currFinalizedSlot := GetFinalizedForPeriod(period)
 	attestedSlot, err := c.GetAttestedSlot(currFinalizedSlot)
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 GetNonEmptyBeaconBlockHeader error:", err)
@@ -45,11 +57,14 @@ func (c *BeaconGrpcClient) GetLightClientUpdateV2(period uint64) (*LightClientUp
 }
 
 func (c *BeaconGrpcClient) GetNextSyncCommitteeUpdateV2(period uint64) (*SyncCommitteeUpdate, error) {
-	currFinalizedSlot := period*EPOCHS_PER_PERIOD*SLOTS_PER_EPOCH + ONE_EPOCH_IN_SLOTS
+	currFinalizedSlot := GetFinalizedForPeriod(period)
 	attestedSlot, err := c.GetAttestedSlot(currFinalizedSlot)
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 getAttestedSlotWithEnoughSyncCommitteeBitsSum error:", err)
 		return nil, err
+	}
+	if GetPeriodForSlot(attestedSlot) != GetPeriodForSlot(currFinalizedSlot) {
+		return nil, fmt.Errorf("Eth2TopRelayerV2 GetNextSyncCommitteeUpdateV2 attestedSlot(%d) and finalizedSlot(%d) not in same period", attestedSlot, currFinalizedSlot)
 	}
 	attestedSlot, signatureSlot, err := c.getAttestedSlotWithEnoughSyncCommitteeBitsSum(attestedSlot)
 	if err != nil {
@@ -74,8 +89,19 @@ func (c *BeaconGrpcClient) GetNextSyncCommitteeUpdateV2(period uint64) (*SyncCom
 }
 
 func (c *BeaconGrpcClient) GetAttestedSlot(lastFinalizedSlotOnNear uint64) (uint64, error) {
-	nextFinalizedSlot := (lastFinalizedSlotOnNear / ONE_EPOCH_IN_SLOTS) * ONE_EPOCH_IN_SLOTS
+	nextFinalizedSlot := lastFinalizedSlotOnNear + ONE_EPOCH_IN_SLOTS
 	attestedSlot := nextFinalizedSlot + 2*ONE_EPOCH_IN_SLOTS
+	header, err := c.GetNonEmptyBeaconBlockHeader(attestedSlot)
+	if err != nil {
+		logger.Error("Eth2TopRelayerV2 GetNonEmptyBeaconBlockHeader error:", err)
+		return 0, err
+	}
+	return uint64(header.Slot), nil
+}
+
+func (c *BeaconGrpcClient) getAttestedSlotBeforeFinalizedSlot(finalizedSlot uint64) (uint64, error) {
+	// the range of attestedSlot is [finalizedSlot - 32, finalizedSlot]
+	attestedSlot := finalizedSlot - ONE_EPOCH_IN_SLOTS
 	header, err := c.GetNonEmptyBeaconBlockHeader(attestedSlot)
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 GetNonEmptyBeaconBlockHeader error:", err)

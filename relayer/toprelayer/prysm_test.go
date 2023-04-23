@@ -55,6 +55,8 @@ func TestGetFinalizedLightClientUpdate4Lodestar(t *testing.T) {
 	fmt.Printf("FinalizedUpdate:%+v\n", *lcu.FinalizedUpdate)
 	//fmt.Printf("FinalizedUpdate->FinalityBranch:%v\n", *lcu.FinalizedUpdate.FinalityBranch)
 	fmt.Printf("NextSyncCommitteeUpdate:%+v\n", lcu.NextSyncCommitteeUpdate)
+	period, epoch, slot := beaconrpc.SplitSlot(lcu.FinalizedUpdate.HeaderUpdate.BeaconHeader.Slot)
+	fmt.Printf("period:%+v,epoch:%+v,slot:%+v\n", period, epoch, slot)
 }
 
 func TestGetLightClientUpdate4Lodestar(t *testing.T) {
@@ -77,6 +79,9 @@ func TestGetLightClientUpdate4Lodestar(t *testing.T) {
 	fmt.Printf("FinalizedUpdate:%+v\n", *lcu.FinalizedUpdate)
 	//fmt.Printf("FinalizedUpdate->FinalityBranch:%v\n", *lcu.FinalizedUpdate.FinalityBranch)
 	fmt.Printf("NextSyncCommitteeUpdate:%+v\n", *lcu.NextSyncCommitteeUpdate.NextSyncCommittee)
+	fmt.Printf("peridd:%+v\n", *lcu.FinalizedUpdate)
+	period, epoch, slot := beaconrpc.SplitSlot(lcu.FinalizedUpdate.HeaderUpdate.BeaconHeader.Slot)
+	fmt.Printf("period:%+v,epoch:%+v,slot:%+v\n", period, epoch, slot)
 }
 
 func TestGetGetNextSyncCommitteeUpdate4Lodestar(t *testing.T) {
@@ -150,7 +155,7 @@ func TestGetLightClientUpdateV24Prysm(t *testing.T) {
 		t.Error(err.Error())
 		return
 	}
-	lcu, err := b.GetLightClientUpdateV2(755)
+	lcu, err := b.GetLightClientUpdateV2(268)
 	if err != nil {
 		t.Error(err.Error())
 		return
@@ -375,9 +380,4 @@ func TestPrysmDeposit(t *testing.T) {
 	ret := UnsafeMerkleProof(leaf, branch, 6, 41, root)
 	fmt.Println("ret:", ret)
 	fmt.Println("root:", root)
-}
-
-func TestD(t *testing.T) {
-	s := (2193857 / 32) * 32
-	fmt.Println(s)
 }

@@ -106,18 +106,13 @@ func getEthInitData(eth1, prysm, lodestar string) ([]byte, error) {
 		logger.Error("getEthInitData ethclient.Dial error:", err)
 		return nil, err
 	}
-
-	lastSlot, err := beaconrpcclient.GetLastFinalizedSlotNumber()
-	if err != nil {
-		logger.Error("getEthInitData GetLastFinalizedSlotNumber error:", err)
-		return nil, err
-	}
-	lastPeriod := beaconrpc.GetPeriodForSlot(lastSlot)
-	lastUpdate, err := beaconrpcclient.GetLightClientUpdateV2(lastPeriod)
+	lastUpdate, err := beaconrpcclient.GetFinalizedLightClientUpdateV2WithNextSyncCommittee()
 	if err != nil {
 		logger.Error("getEthInitData GetLightClientUpdate error:", err)
 		return nil, err
 	}
+	lastSlot := lastUpdate.FinalizedUpdate.HeaderUpdate.BeaconHeader.Slot
+	lastPeriod := beaconrpc.GetPeriodForSlot(lastSlot)
 	prevUpdate, err := beaconrpcclient.GetNextSyncCommitteeUpdateV2(lastPeriod - 1)
 	if err != nil {
 		logger.Error(fmt.Sprintf("getEthInitData GetNextSyncCommitteeUpdate lastSlot:%d ，err：%s", lastSlot, err.Error()))

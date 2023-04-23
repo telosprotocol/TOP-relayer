@@ -14,9 +14,9 @@ const (
 )
 
 const (
-	ETHAddr     = "http://69.194.0.7:8545"
-	ETHPrysm    = "69.194.0.7:4000"
-	ETHLodestar = "http://69.194.0.7:9596"
+	ETHAddr     = "http://128.199.183.143:8545"
+	ETHPrysm    = "128.199.183.143:4000"
+	ETHLodestar = "http://128.199.183.143:9596"
 	ETHContract = ""
 )
 
