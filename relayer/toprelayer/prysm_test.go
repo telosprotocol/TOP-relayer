@@ -156,7 +156,7 @@ func TestGetLightClientUpdateV24Prysm(t *testing.T) {
 		t.Error(err.Error())
 		return
 	}
-	lcu, err := b.GetLightClientUpdateV2(268)
+	lcu, err := b.GetLightClientUpdateV2(270)
 	if err != nil {
 		t.Error(err.Error())
 		return
@@ -309,10 +309,6 @@ func TestBeaconGrpcApi(t *testing.T) {
 
 }
 
-func TestPrysmInit(t *testing.T) {
-
-}
-
 func TestPrysmDeposit(t *testing.T) {
 	//FinalizedUpdate->HeaderUpdate:{BeaconHeader:0xc000306180 ExecutionBlockHash:[86 239 6 57 229 213 76 133 39 5 55 24 212 46 219 181 2 206 114 138 118 128 184 174 71 100 235 120 65 100 237 2]}
 	//FinalizedUpdate->HeaderUpdate->BeaconHeader:{Slot:6209408 ProposerIndex:520505 ParentRoot:[76 239 217 180 58 159 189 129 95 58 48 136 21 158 220 121 31 87 160 240 251 246 131 188 176 107 247 204 61 192 30 111] StateRoot:[193 169 204 212 96 108 16 57 250 19 74 117 176 150 194 70 167 116 8 156 26 53 199 7 187 16 164 35 122 244 47 250] BodyRoot:[93 1 170 150 106 141 99 252 62 51 211 159 218 171 33 194 176 182 170 213 154 59 178 235 177 125 68 178 54 74 96 4]}
@@ -380,7 +376,7 @@ func TestETHInitContract(t *testing.T) {
 		Context:   context.Background(),
 		NoSend:    false,
 	}
-	data, err := os.ReadFile("../../demo3.txt")
+	data, err := os.ReadFile("../../demo2.txt")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -389,4 +385,105 @@ func TestETHInitContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	fmt.Println("txhash:", tt.Hash().Hex())
+}
+
+func TestETHSubmitLightClientUpdate(t *testing.T) {
+	var topUrl string = "http://192.168.95.3:8080"
+	var keyPath = "../../.relayer/wallet/top"
+	cfg := &config.Relayer{
+		Url:     []string{topUrl},
+		KeyPath: keyPath,
+	}
+	relayer := &Eth2TopRelayerV2{}
+	if err := relayer.Init(cfg, []string{eth1, prysm, lodestar}, defaultPass); err != nil {
+		t.Fatal(err)
+	}
+	nonce, err := relayer.wallet.NonceAt(context.Background(), relayer.wallet.Address(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gaspric, err := relayer.wallet.SuggestGasPrice(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	//must init ops as bellow
+	ops := &bind.TransactOpts{
+		From:      relayer.wallet.Address(),
+		Nonce:     big.NewInt(0).SetUint64(nonce),
+		GasLimit:  5000000,
+		GasFeeCap: gaspric,
+		GasTipCap: big.NewInt(0),
+		Signer:    relayer.signTransaction,
+		Context:   context.Background(),
+		NoSend:    false,
+	}
+	fmt.Println("Nonce:", ops.Nonce)
+
+	lcu, err := relayer.beaconrpcclient.GetFinalizedLightClientUpdate()
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+	fmt.Printf("AttestedBeaconHeader:%+v\n", *lcu.AttestedBeaconHeader)
+	fmt.Printf("SyncAggregate:%+v\n", lcu.SyncAggregate.SyncCommitteeBits)
+	fmt.Printf("SignatureSlot:%+v\n", lcu.SignatureSlot)
+	fmt.Printf("FinalizedUpdate->HeaderUpdate:%+v\n", *lcu.FinalizedUpdate.HeaderUpdate)
+	fmt.Printf("FinalizedUpdate->HeaderUpdate->BeaconHeader:%+v\n", *lcu.FinalizedUpdate.HeaderUpdate.BeaconHeader)
+	fmt.Printf("FinalizedUpdate:%+v\n", *lcu.FinalizedUpdate)
+	if lcu.NextSyncCommitteeUpdate != nil {
+		fmt.Printf("NextSyncCommitteeUpdate:%+v\n", *lcu.NextSyncCommitteeUpdate.NextSyncCommittee)
+	}
+	lcub, err := lcu.Encode()
+	if err != nil {
+		t.Error("EncodeToBytes error:", err)
+	}
+	if err = os.WriteFile("../lcu.txt", []byte(common.Bytes2Hex(lcub)), 0666); err != nil {
+		t.Log(err.Error())
+		return
+	}
+
+	lcu2, err := relayer.beaconrpcclient.GetLightClientUpdateV2(270)
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+	fmt.Printf("AttestedBeaconHeader:%+v\n", *lcu2.AttestedBeaconHeader)
+	fmt.Printf("SyncAggregate:%+v\n", lcu2.SyncAggregate.SyncCommitteeBits)
+	fmt.Printf("SignatureSlot:%+v\n", lcu2.SignatureSlot)
+	fmt.Printf("FinalizedUpdate->HeaderUpdate:%+v\n", *lcu2.FinalizedUpdate.HeaderUpdate)
+	fmt.Printf("FinalizedUpdate->HeaderUpdate->BeaconHeader:%+v\n", *lcu2.FinalizedUpdate.HeaderUpdate.BeaconHeader)
+	fmt.Printf("FinalizedUpdate:%+v\n", *lcu2.FinalizedUpdate)
+	if lcu2.NextSyncCommitteeUpdate != nil {
+		fmt.Printf("NextSyncCommitteeUpdate:%+v\n", *lcu2.NextSyncCommitteeUpdate.NextSyncCommittee)
+	}
+	lcu2b, err := lcu2.Encode()
+	if err != nil {
+		t.Error("EncodeToBytes error:", err)
+	}
+	if err = os.WriteFile("../lcu2.txt", []byte(common.Bytes2Hex(lcu2b)), 0666); err != nil {
+		t.Log(err.Error())
+		return
+	}
+	compareNextSyncCommitteeUpdate(lcu.NextSyncCommitteeUpdate, lcu2.NextSyncCommitteeUpdate)
+	if common.Bytes2Hex(lcu2b) != common.Bytes2Hex(lcub) {
+		t.Fatal()
+	}
+	//t.Log("Eth2TopRelayer submitLightClientUpdate data:", common.Bytes2Hex(bytes))
+	//sigTx, err := relayer.transactor.SubmitBeaconChainLightClientUpdate(ops, bytes)
+	//if err != nil {
+	//	t.Error("SubmitBeaconChainLightClientUpdate error:", err)
+	//}
+	//fmt.Println("txhash:", sigTx.Hash().Hex())
+}
+
+func compareNextSyncCommitteeUpdate(lcu *beaconrpc.SyncCommitteeUpdate, lcu2 *beaconrpc.SyncCommitteeUpdate) {
+	for _, v := range lcu.NextSyncCommitteeBranch {
+		fmt.Println(v)
+		fmt.Println(common.Bytes2Hex(v))
+	}
+	fmt.Println("***************")
+	for _, v := range lcu2.NextSyncCommitteeBranch {
+		fmt.Println(v)
+		fmt.Println(common.Bytes2Hex(v))
+	}
 }

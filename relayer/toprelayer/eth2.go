@@ -147,6 +147,7 @@ func (relayer *Eth2TopRelayerV2) linearSearchForward(slot, maxSlot uint64) (uint
 		}
 		if known {
 			slot += 1
+			logger.Debug("curr top known slot: %v,maxSlot: %v", slot, maxSlot)
 		} else {
 			break
 		}
@@ -278,7 +279,7 @@ func (relayer *Eth2TopRelayerV2) sendRegularLightClientUpdate(lastFinalizedTopSl
 }
 
 func (relayer *Eth2TopRelayerV2) sendLightClientUpdatesWithChecks(slot uint64) (bool, error) {
-	topSlot, err := relayer.getLastFinalizedSlotOnTop()
+	topFinalizedSlot, err := relayer.getLastFinalizedSlotOnTop()
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 getLastFinalizedSlotOnTop error:", err)
 		return false, err
@@ -288,8 +289,8 @@ func (relayer *Eth2TopRelayerV2) sendLightClientUpdatesWithChecks(slot uint64) (
 		logger.Error("Eth2TopRelayerV2 getLastFinalizedSlotOnEth error:", err)
 		return false, err
 	}
-	if relayer.isEnoughBlocksForLightClientUpdate(slot, topSlot, ethSlot) {
-		err = relayer.sendRegularLightClientUpdate(topSlot, ethSlot)
+	if relayer.isEnoughBlocksForLightClientUpdate(slot, topFinalizedSlot, ethSlot) {
+		err = relayer.sendRegularLightClientUpdate(topFinalizedSlot, ethSlot)
 		if err != nil {
 			logger.Error("Eth2TopRelayerV2 sendLightClientUpdates error:", err)
 			return false, err

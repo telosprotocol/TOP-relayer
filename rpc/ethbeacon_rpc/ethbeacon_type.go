@@ -1,6 +1,7 @@
 package ethbeacon_rpc
 
 import (
+	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	pb "github.com/prysmaticlabs/prysm/v4/proto/eth/service"
@@ -257,11 +258,13 @@ func (h *LightClientUpdate) Encode() ([]byte, error) {
 		}
 	}
 	var rlpBytes []byte
+	var rlpBytes2 []byte
 	rlpBytes = append(rlpBytes, b1...)
 	rlpBytes = append(rlpBytes, b2...)
 	rlpBytes = append(rlpBytes, b3...)
 	rlpBytes = append(rlpBytes, b4...)
 	rlpBytes = append(rlpBytes, b5...)
+	fmt.Println("rlpBytes", len(rlpBytes2))
 	return rlpBytes, nil
 }
 
@@ -276,10 +279,11 @@ func beaconBlockHeaderConvert(header *eth.BeaconBlockHeader) *BeaconBlockHeader 
 }
 
 func ConvertEth2LightClientUpdate(lcu *ethtypes.LightClientUpdate) *LightClientUpdate {
+
 	ret := &LightClientUpdate{
 		AttestedBeaconHeader: beaconBlockHeaderConvert(lcu.AttestedBeaconHeader),
 		SyncAggregate: &SyncAggregate{
-			SyncCommitteeBits:      common.Bytes2Hex(lcu.SyncAggregate.SyncCommitteeBits),
+			SyncCommitteeBits:      addHexPrefix(common.Bytes2Hex(lcu.SyncAggregate.SyncCommitteeBits)),
 			SyncCommitteeSignature: lcu.SyncAggregate.SyncCommitteeSignature,
 		},
 		SignatureSlot: lcu.SignatureSlot,
@@ -316,4 +320,11 @@ func epochInPeriodForPeriod(period uint64) uint64 {
 func GetFinalizedForPeriod(period uint64) uint64 {
 	epoch := epochInPeriodForPeriod(period)
 	return period*EPOCHS_PER_PERIOD*SLOTS_PER_EPOCH + epoch*ONE_EPOCH_IN_SLOTS
+}
+
+func addHexPrefix(hex string) string {
+	if strings.HasPrefix(hex, "0x") {
+		return hex
+	}
+	return "0x" + hex
 }
