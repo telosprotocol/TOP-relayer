@@ -103,7 +103,6 @@ func (c *BeaconGrpcClient) GetBlockNumberForSlot(slot uint64) (uint64, error) {
 func (c *BeaconGrpcClient) GetBlockHashForSlot(slot uint64) (common.Hash, error) {
 	b, err := c.GetBeaconBlockBodyForBlockId(strconv.FormatUint(slot, 10))
 	if err != nil {
-		logger.Error("GetBeaconBlockBodyForBlockId slot %v error %v", slot, err)
 		return common.Hash{}, err
 	}
 	return common.BytesToHash(b.GetExecutionPayload().BlockHash), nil

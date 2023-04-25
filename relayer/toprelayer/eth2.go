@@ -110,9 +110,8 @@ func (relayer *Eth2TopRelayerV2) Init(cfg *config.Relayer, listenUrl []string, p
 
 func (relayer *Eth2TopRelayerV2) blockKnownOnTop(slot uint64) (bool, error) {
 	hash, err := relayer.beaconrpcclient.GetBlockHashForSlot(slot)
-	logger.Debug("blockKnownOnTop slot %v, hash %v, err: %v", slot, hash, err)
+	//logger.Debug("blockKnownOnTop slot %v, hash %v", slot, hash)
 	if err != nil {
-		logger.Error("Eth2TopRelayerV2 GetBlockHashForSlot %v error %v", slot, err)
 		return false, err
 	}
 	return relayer.callerSession.IsKnownExecutionHeader(hash)
@@ -185,7 +184,7 @@ func (relayer *Eth2TopRelayerV2) linearSearchBackward(startSlot, lastSlot uint64
 
 func (relayer *Eth2TopRelayerV2) linerSlotSearch(slot, finalizedSlot, lastEthSlot uint64) (uint64, error) {
 	if slot == finalizedSlot {
-		logger.Debug("slot equal finalizedSlot %v go forward", slot)
+		logger.Info("slot equal finalizedSlot %v go forward,greater than lastEthSlot:%v", slot, lastEthSlot)
 		return relayer.linearSearchForward(slot, lastEthSlot)
 	}
 	known, err := relayer.blockKnownOnTop(slot)
