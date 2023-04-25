@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
 	state_native "github.com/prysmaticlabs/prysm/v4/beacon-chain/state/state-native"
 	eth "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
 	"github.com/wonderivan/logger"
@@ -200,7 +201,10 @@ func (c *BeaconGrpcClient) getFinalityLightClientUpdateForState(attestedSlot, si
 		logger.Error("Eth2TopRelayerV2 GetBeaconBlockBodyForBlockId error:", err)
 		return nil, err
 	}
-	finalizedBlockBodyHash, err := finalizedBlockBody.HashTreeRoot()
+	//finalizedBlockBodyHash, err := finalizedBlockBody.HashTreeRoot()
+	blockHash := finalizedBlockBody.ExecutionPayload.GetBlockHash()
+	var finalizedBlockBodyHash common.Hash
+	copy(finalizedBlockBodyHash[:], blockHash[:])
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 finalizedBlockBody hash error:", err)
 		return nil, err

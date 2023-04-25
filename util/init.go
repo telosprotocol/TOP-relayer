@@ -3,6 +3,7 @@ package util
 import (
 	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
 	"math/big"
 	"strconv"
 
@@ -154,7 +155,12 @@ func getEthInitData(eth1, prysm, lodestar string) ([]byte, error) {
 	initParam.FinalizedBeaconHeader = finalizedHeader
 	initParam.NextSyncCommittee = lastUpdate.NextSyncCommitteeUpdate.NextSyncCommittee
 	initParam.CurrentSyncCommittee = prevUpdate.NextSyncCommittee
-
+	// 2203865 2203776
+	// d15331da6463ec89f54bbaeda39d6dd20f575dd990ecd92bd5f98121767862c6
+	h := common.Bytes2Hex(initParam.FinalizedExecutionHeader.Hash().Bytes())
+	fmt.Println("eth header hash:", h)
+	ExecutionBlockHash := common.Bytes2Hex(initParam.FinalizedBeaconHeader.ExecutionBlockHash)
+	fmt.Println("ExecutionBlockHash hash:", ExecutionBlockHash)
 	bytes, err := initParam.Encode()
 	if err != nil {
 		logger.Error("getEthInitData initParam.Encode error:", err)
@@ -185,7 +191,7 @@ func getEthInitDataWithHeight(eth1, prysm, lodestar, slot string) ([]byte, error
 		logger.Error("getEthInitData GetLightClientUpdate error:", err)
 		return nil, err
 	}
-	prevUpdate, err := beaconrpcclient.GetNextSyncCommitteeUpdateV2(lastPeriod - 1)
+	prevUpdate, err := beaconrpcclient.GetNextSyncCommitteeUpdate(lastPeriod - 1)
 	if err != nil {
 		logger.Error("getEthInitData GetNextSyncCommitteeUpdate error:", err)
 		return nil, err

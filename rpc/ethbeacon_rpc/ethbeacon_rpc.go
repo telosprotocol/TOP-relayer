@@ -50,7 +50,6 @@ func NewBeaconGrpcClient(grpcUrl, httpUrl string) (*BeaconGrpcClient, error) {
 func (c *BeaconGrpcClient) GetBeaconBlockBodyForBlockId(id string) (*v2.BeaconBlockBodyCapella, error) {
 	resp, err := c.client.GetBlockV2(context.Background(), &v2.BlockRequestV2{BlockId: []byte(id)})
 	if err != nil {
-		logger.Error("GetBlockV2 id %v error %v", id, err)
 		return nil, err
 	}
 	signedBlock, ok := resp.Data.Message.(*v2.SignedBeaconBlockContainer_CapellaBlock)
@@ -96,7 +95,6 @@ func (c *BeaconGrpcClient) GetLastFinalizedSlotNumber() (uint64, error) {
 func (c *BeaconGrpcClient) GetBlockNumberForSlot(slot uint64) (uint64, error) {
 	b, err := c.GetBeaconBlockBodyForBlockId(strconv.FormatUint(slot, 10))
 	if err != nil {
-		logger.Error("GetBeaconBlockBodyForBlockId error:", err)
 		return 0, err
 	}
 	return b.GetExecutionPayload().BlockNumber, nil
@@ -166,7 +164,7 @@ func (c *BeaconGrpcClient) GetNonEmptyBeaconBlockHeader(startSlot uint64) (*eth.
 
 	for slot := startSlot; slot < finalizedSlot; slot++ {
 		if h, err := c.GetBeaconBlockHeaderForBlockId(strconv.FormatUint(slot, 10)); err != nil {
-			if strings.Contains(err.Error(), "NotFound") {
+			if IsErrorNoBlockForSlot(err) {
 				logger.Info("GetBeaconBlockHeaderForBlockId slot(%d) error:%s", slot, err.Error())
 				continue
 			} else {

@@ -314,5 +314,6 @@ func epochInPeriodForPeriod(period uint64) uint64 {
 }
 
 func GetFinalizedForPeriod(period uint64) uint64 {
-	return period*EPOCHS_PER_PERIOD*SLOTS_PER_EPOCH + epochInPeriodForPeriod(period)*ONE_EPOCH_IN_SLOTS
+	epoch := epochInPeriodForPeriod(period)
+	return period*EPOCHS_PER_PERIOD*SLOTS_PER_EPOCH + epoch*ONE_EPOCH_IN_SLOTS
 }

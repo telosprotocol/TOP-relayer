@@ -342,13 +342,12 @@ func (relayer *Eth2TopRelayerV2) submitEthHeader(headers []byte) error {
 		logger.Error("Eth2TopRelayerV2 txOption error:", err)
 		return err
 	}
-	logger.Debug("Eth2TopRelayer submitEthHeader data:", common.Bytes2Hex(headers))
 	sigTx, err := relayer.transactor.SubmitExecutionHeader(ops, headers)
 	if err != nil {
 		logger.Error("Eth2TopRelayer sync error:", err)
 		return err
 	}
-	logger.Info("Eth2TopRelayer submitEthHeader tx info, account[%v] hash:%v,size:%v", relayer.wallet.Address(), sigTx.Hash(), len(headers))
+	logger.Info("Eth2TopRelayer submitEthHeader tx info, account[%v] txHash:%v,size:%v", relayer.wallet.Address(), sigTx.Hash(), len(headers))
 	return nil
 }
 
@@ -464,7 +463,7 @@ func (relayer *Eth2TopRelayerV2) StartRelayer(wg *sync.WaitGroup) error {
 							}
 						}
 						curPeriod = beaconrpc.GetPeriodForSlot(curSlot)
-						logger.Info("Eth2TopRelayerV2 prev_period: %v, cur_period: %v", prevPeriod, curPeriod)
+						logger.Info("Eth2TopRelayerV2 prev_period(top now): %v, cur_period(send to top): %v", prevPeriod, curPeriod)
 						if curSlot+8 < eth2Slot {
 							logger.Info("Eth2TopRelayerV2 headers update not finish, continue update headers next round")
 							delay = time.Duration(SUCCESSDELAY)
@@ -535,7 +534,6 @@ func (relayer *Eth2TopRelayerV2) getExecutionBlocksBetween(start, end uint64) ([
 func (relayer *Eth2TopRelayerV2) getExecutionBlockBySlot(slot uint64) (*types.Header, error) {
 	number, err := relayer.beaconrpcclient.GetBlockNumberForSlot(slot)
 	if err != nil {
-		logger.Error("Eth2TopRelayerV2 GetBlockNumberForSlot error", err)
 		return nil, err
 	}
 	header, err := relayer.ethrpcclient.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(number))

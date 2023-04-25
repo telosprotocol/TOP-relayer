@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	TOPAddr = "192.168.95.3:8080"
+	TOPAddr = "http://192.168.95.3:8080"
 )
 
 const (

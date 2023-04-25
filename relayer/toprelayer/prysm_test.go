@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/wonderivan/logger"
 	"math/big"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -309,42 +310,7 @@ func TestBeaconGrpcApi(t *testing.T) {
 }
 
 func TestPrysmInit(t *testing.T) {
-	var topUrl string = "http://192.168.30.200:8080"
-	var keyPath = "../../.relayer/wallet/top"
 
-	cfg := &config.Relayer{
-		Url:     []string{topUrl},
-		KeyPath: keyPath,
-	}
-	relayer := &Eth2TopRelayerV2{}
-	err := relayer.Init(cfg, []string{hecoUrl}, defaultPass)
-	if err != nil {
-		t.Fatal(err)
-	}
-	nonce, err := relayer.wallet.NonceAt(context.Background(), relayer.wallet.Address(), nil)
-	if err != nil {
-		t.Error(err)
-	}
-	gaspric, err := relayer.wallet.SuggestGasPrice(context.Background())
-	if err != nil {
-		t.Error(err)
-	}
-	//must init ops as bellow
-	ops := &bind.TransactOpts{
-		From:      relayer.wallet.Address(),
-		Nonce:     big.NewInt(0).SetUint64(nonce),
-		GasLimit:  50000,
-		GasFeeCap: gaspric,
-		GasTipCap: big.NewInt(0),
-		Signer:    relayer.signTransaction,
-		Context:   context.Background(),
-		NoSend:    false,
-	}
-	tx, err := relayer.transactor.Init(ops, []byte("0x00000000"))
-	if err != nil {
-		t.Error(err)
-	}
-	t.Log(tx.Hash())
 }
 
 func TestPrysmDeposit(t *testing.T) {
@@ -380,4 +346,47 @@ func TestPrysmDeposit(t *testing.T) {
 	ret := UnsafeMerkleProof(leaf, branch, 6, 41, root)
 	fmt.Println("ret:", ret)
 	fmt.Println("root:", root)
+}
+
+func TestETHInitContract(t *testing.T) {
+	var topUrl string = "http://192.168.95.3:8080"
+	var keyPath = "../../.relayer/wallet/top"
+
+	cfg := &config.Relayer{
+		Url:     []string{topUrl},
+		KeyPath: keyPath,
+	}
+	relayer := &Eth2TopRelayerV2{}
+	err := relayer.Init(cfg, []string{eth1, prysm, lodestar}, defaultPass)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nonce, err := relayer.wallet.NonceAt(context.Background(), relayer.wallet.Address(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gaspric, err := relayer.wallet.SuggestGasPrice(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	//must init ops as bellow
+	ops := &bind.TransactOpts{
+		From:      relayer.wallet.Address(),
+		Nonce:     big.NewInt(0).SetUint64(nonce),
+		GasLimit:  5000000,
+		GasFeeCap: gaspric,
+		GasTipCap: big.NewInt(0),
+		Signer:    relayer.signTransaction,
+		Context:   context.Background(),
+		NoSend:    false,
+	}
+	data, err := os.ReadFile("../../demo3.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tt, err := relayer.transactor.Init(ops, common.Hex2Bytes(string(data)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println("txhash:", tt.Hash().Hex())
 }
