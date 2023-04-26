@@ -380,6 +380,7 @@ func TestETHInitContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	tt, err := relayer.transactor.Init(ops, common.Hex2Bytes(string(data)))
 	if err != nil {
 		t.Fatal(err)
@@ -398,7 +399,8 @@ func TestETHGetLightClientUpdate(t *testing.T) {
 	if err := relayer.Init(cfg, []string{eth1, prysm, lodestar}, defaultPass); err != nil {
 		t.Fatal(err)
 	}
-	lcu, err := relayer.beaconrpcclient.GetFinalizedLightClientUpdate()
+	// attestedSlot = 2212563
+	lcu, err := relayer.beaconrpcclient.GetLightClientUpdate(270)
 	if err != nil {
 		t.Error(err.Error())
 		return
@@ -465,6 +467,44 @@ func TestETHSubmitLightClientUpdate(t *testing.T) {
 	}
 	if err = relayer.submitLightClientUpdate(common.Hex2Bytes(string(data))); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestETHReset(t *testing.T) {
+	var topUrl string = "http://192.168.95.3:8080"
+	var keyPath = "../../.relayer/wallet/top"
+	cfg := &config.Relayer{
+		Url:     []string{topUrl},
+		KeyPath: keyPath,
+	}
+	relayer := &Eth2TopRelayerV2{}
+	err := relayer.Init(cfg, []string{eth1, prysm, lodestar}, defaultPass)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nonce, err := relayer.wallet.NonceAt(context.Background(), relayer.wallet.Address(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gaspric, err := relayer.wallet.SuggestGasPrice(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	//must init ops as bellow
+	ops := &bind.TransactOpts{
+		From:      relayer.wallet.Address(),
+		Nonce:     big.NewInt(0).SetUint64(nonce),
+		GasLimit:  5000000,
+		GasFeeCap: gaspric,
+		GasTipCap: big.NewInt(0),
+		Signer:    relayer.signTransaction,
+		Context:   context.Background(),
+		NoSend:    false,
+	}
+	if tx, err := relayer.transactor.Reset(ops); err != nil {
+		t.Fatal(err)
+	} else {
+		fmt.Println(tx.Hash().String())
 	}
 }
 

@@ -186,12 +186,13 @@ func getEthInitDataWithHeight(eth1, prysm, lodestar, slot string) ([]byte, error
 		return nil, err
 	}
 	lastPeriod := beaconrpc.GetPeriodForSlot(lastSlot)
+	// 269 2203865
 	lastUpdate, err := beaconrpcclient.GetLightClientUpdateV2(lastPeriod)
 	if err != nil {
 		logger.Error("getEthInitData GetLightClientUpdate error:", err)
 		return nil, err
 	}
-	prevUpdate, err := beaconrpcclient.GetNextSyncCommitteeUpdate(lastPeriod - 1)
+	prevUpdate, err := beaconrpcclient.GetNextSyncCommitteeUpdateV2(lastPeriod - 1)
 	if err != nil {
 		logger.Error("getEthInitData GetNextSyncCommitteeUpdate error:", err)
 		return nil, err
@@ -232,6 +233,11 @@ func getEthInitDataWithHeight(eth1, prysm, lodestar, slot string) ([]byte, error
 	initParam.FinalizedBeaconHeader = finalizedHeader
 	initParam.NextSyncCommittee = lastUpdate.NextSyncCommitteeUpdate.NextSyncCommittee
 	initParam.CurrentSyncCommittee = prevUpdate.NextSyncCommittee
+
+	for k, v := range initParam.NextSyncCommittee.Pubkeys {
+		fmt.Println("next sync committee:", k, v)
+
+	}
 
 	bytes, err := initParam.Encode()
 	if err != nil {

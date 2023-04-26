@@ -49,6 +49,7 @@ func (c *BeaconGrpcClient) GetLightClientUpdateV2(period uint64) (*LightClientUp
 		logger.Error("Eth2TopRelayerV2 GetNonEmptyBeaconBlockHeader error:", err)
 		return nil, err
 	}
+	//attestedSlot = 2203865
 	lcu, err := c.GetFinalityLightClientUpdate(attestedSlot, true)
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 getFinalityLightClientUpdate error:", err)
