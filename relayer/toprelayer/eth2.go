@@ -558,6 +558,9 @@ func (relayer *Eth2TopRelayerV2) isEnoughBlocksForLightClientUpdate(lastSubmitte
 			return false
 		}
 	}
+	if lastSubmittedSlot < beaconrpc.GetFinalizedForPeriod(beaconrpc.GetPeriodForSlot(lastSubmittedSlot)) {
+		return false
+	}
 	return true
 }
 
