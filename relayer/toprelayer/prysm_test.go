@@ -387,7 +387,7 @@ func TestETHInitContract(t *testing.T) {
 	fmt.Println("txhash:", tt.Hash().Hex())
 }
 
-func TestETHSubmitLightClientUpdate(t *testing.T) {
+func TestETHGetLightClientUpdate(t *testing.T) {
 	var topUrl string = "http://192.168.95.3:8080"
 	var keyPath = "../../.relayer/wallet/top"
 	cfg := &config.Relayer{
@@ -398,27 +398,6 @@ func TestETHSubmitLightClientUpdate(t *testing.T) {
 	if err := relayer.Init(cfg, []string{eth1, prysm, lodestar}, defaultPass); err != nil {
 		t.Fatal(err)
 	}
-	nonce, err := relayer.wallet.NonceAt(context.Background(), relayer.wallet.Address(), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	gaspric, err := relayer.wallet.SuggestGasPrice(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	//must init ops as bellow
-	ops := &bind.TransactOpts{
-		From:      relayer.wallet.Address(),
-		Nonce:     big.NewInt(0).SetUint64(nonce),
-		GasLimit:  5000000,
-		GasFeeCap: gaspric,
-		GasTipCap: big.NewInt(0),
-		Signer:    relayer.signTransaction,
-		Context:   context.Background(),
-		NoSend:    false,
-	}
-	fmt.Println("Nonce:", ops.Nonce)
-
 	lcu, err := relayer.beaconrpcclient.GetFinalizedLightClientUpdate()
 	if err != nil {
 		t.Error(err.Error())
@@ -437,7 +416,7 @@ func TestETHSubmitLightClientUpdate(t *testing.T) {
 	if err != nil {
 		t.Error("EncodeToBytes error:", err)
 	}
-	if err = os.WriteFile("../lcu.txt", []byte(common.Bytes2Hex(lcub)), 0666); err != nil {
+	if err = os.WriteFile("../../lcu.txt", []byte(common.Bytes2Hex(lcub)), 0666); err != nil {
 		t.Log(err.Error())
 		return
 	}
@@ -460,20 +439,33 @@ func TestETHSubmitLightClientUpdate(t *testing.T) {
 	if err != nil {
 		t.Error("EncodeToBytes error:", err)
 	}
-	if err = os.WriteFile("../lcu2.txt", []byte(common.Bytes2Hex(lcu2b)), 0666); err != nil {
+	if err = os.WriteFile("../../lcu2.txt", []byte(common.Bytes2Hex(lcu2b)), 0666); err != nil {
 		t.Log(err.Error())
 		return
 	}
-	compareNextSyncCommitteeUpdate(lcu.NextSyncCommitteeUpdate, lcu2.NextSyncCommitteeUpdate)
-	if common.Bytes2Hex(lcu2b) != common.Bytes2Hex(lcub) {
-		t.Fatal()
-	}
-	//t.Log("Eth2TopRelayer submitLightClientUpdate data:", common.Bytes2Hex(bytes))
-	//sigTx, err := relayer.transactor.SubmitBeaconChainLightClientUpdate(ops, bytes)
-	//if err != nil {
-	//	t.Error("SubmitBeaconChainLightClientUpdate error:", err)
+	//if common.Bytes2Hex(lcu2b) != common.Bytes2Hex(lcub) {
+	//	t.Fatal()
 	//}
-	//fmt.Println("txhash:", sigTx.Hash().Hex())
+}
+
+func TestETHSubmitLightClientUpdate(t *testing.T) {
+	var topUrl string = "http://192.168.95.3:8080"
+	var keyPath = "../../.relayer/wallet/top"
+	cfg := &config.Relayer{
+		Url:     []string{topUrl},
+		KeyPath: keyPath,
+	}
+	relayer := &Eth2TopRelayerV2{}
+	if err := relayer.Init(cfg, []string{eth1, prysm, lodestar}, defaultPass); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile("../../lcu2.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = relayer.submitLightClientUpdate(common.Hex2Bytes(string(data))); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func compareNextSyncCommitteeUpdate(lcu *beaconrpc.SyncCommitteeUpdate, lcu2 *beaconrpc.SyncCommitteeUpdate) {

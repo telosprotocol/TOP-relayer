@@ -315,7 +315,7 @@ func (relayer *Eth2TopRelayerV2) txOption(packData []byte) (*bind.TransactOpts, 
 	}
 	gaslimit, err := relayer.wallet.EstimateGas(context.Background(), &eth2ClientSystemContract, packData)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Eth2TopRelayer EstimateGas error:%s, data:%v", err, packData))
+		logger.Error(fmt.Sprintf("Eth2TopRelayer EstimateGas error:%s, data:%v", err, common.Bytes2Hex(packData)))
 		return nil, err
 	}
 	logger.Info("Eth2TopRelayer tx option info, account[%v] nonce:%v,capfee:%v", relayer.wallet.Address(), nonce, gaspric)
@@ -449,12 +449,12 @@ func (relayer *Eth2TopRelayerV2) StartRelayer(wg *sync.WaitGroup) error {
 							delay = time.Duration(ERRDELAY)
 							break
 						}
-						err = relayer.submitExecutionBlocks(headers, curSlot)
-						if err != nil {
+						if err = relayer.submitExecutionBlocks(headers, curSlot); err != nil {
 							logger.Error("Eth2TopRelayerV2 submitExecutionBlocks failed:", err)
 							delay = time.Duration(ERRDELAY)
 							break
 						}
+
 						if prevPeriod == 0 {
 							if topLastSlot, err := relayer.getLastFinalizedSlotOnTop(); err != nil {
 								logger.Error("Eth2TopRelayerV2 getLastFinalizedSlotOnTop error:", err)
@@ -463,7 +463,7 @@ func (relayer *Eth2TopRelayerV2) StartRelayer(wg *sync.WaitGroup) error {
 							}
 						}
 						curPeriod = beaconrpc.GetPeriodForSlot(curSlot)
-						logger.Info("Eth2TopRelayerV2 prev_period(top now): %v, cur_period(send to top): %v", prevPeriod, curPeriod)
+						logger.Info("Eth2TopRelayerV2 prev(period:%v), curr(period:%+v,slot:%+v)", prevPeriod, curPeriod, curSlot)
 						if curSlot+8 < eth2Slot {
 							logger.Info("Eth2TopRelayerV2 headers update not finish, continue update headers next round")
 							delay = time.Duration(SUCCESSDELAY)
