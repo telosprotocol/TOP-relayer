@@ -449,12 +449,18 @@ func (relayer *Eth2TopRelayerV2) StartRelayer(wg *sync.WaitGroup) error {
 							delay = time.Duration(ERRDELAY)
 							break
 						}
+						if curSlot+8 > eth2Slot {
+							logger.Info("Eth2TopRelayerV2 headers update not finish, continue update headers next round")
+							delay = time.Duration(SUCCESSDELAY)
+							break
+						}
 						if err = relayer.submitExecutionBlocks(headers, curSlot); err != nil {
 							logger.Error("Eth2TopRelayerV2 submitExecutionBlocks failed:", err)
 							delay = time.Duration(ERRDELAY)
 							break
+						} else {
+							topSlot = curSlot
 						}
-
 						if prevPeriod == 0 {
 							if topLastSlot, err := relayer.getLastFinalizedSlotOnTop(); err != nil {
 								logger.Error("Eth2TopRelayerV2 getLastFinalizedSlotOnTop error:", err)
@@ -463,24 +469,15 @@ func (relayer *Eth2TopRelayerV2) StartRelayer(wg *sync.WaitGroup) error {
 							}
 						}
 						curPeriod = beaconrpc.GetPeriodForSlot(curSlot)
-						logger.Info("Eth2TopRelayerV2 prev(period:%v), curr(period:%+v,slot:%+v)", prevPeriod, curPeriod, curSlot)
-						if curSlot+8 < eth2Slot {
-							logger.Info("Eth2TopRelayerV2 headers update not finish, continue update headers next round")
-							delay = time.Duration(SUCCESSDELAY)
-							break
-						} else {
-							topSlot = curSlot
-						}
+						logger.Info("Eth2TopRelayerV2 topFinalized(period:%v),topUnFinalized(period:%v,slot:%v)", prevPeriod, curPeriod, curSlot)
 					}
 					logger.Info("Eth2TopRelayerV2 headers update finish, update light client update for a while")
 					time.Sleep(time.Second * time.Duration(SUCCESSDELAY))
-					ret, err := relayer.sendLightClientUpdatesWithChecks(topSlot)
-					if err != nil {
+					if ret, err := relayer.sendLightClientUpdatesWithChecks(topSlot); err != nil {
 						logger.Error("Eth2TopRelayerV2 sendLightClientUpdatesWithChecks error:", err)
 					} else if ret == true {
 						prevPeriod = curPeriod
 					}
-
 					if set := timeout.Reset(timeoutDuration); !set {
 						logger.Error("Eth2TopRelayerV2 reset timeout falied!")
 						delay = time.Duration(ERRDELAY)
