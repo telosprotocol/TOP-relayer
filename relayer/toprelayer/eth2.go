@@ -471,6 +471,7 @@ func (relayer *Eth2TopRelayerV2) StartRelayer(wg *sync.WaitGroup) error {
 						curPeriod = beaconrpc.GetPeriodForSlot(curSlot)
 						logger.Info("Eth2TopRelayerV2 topFinalized(period:%v),topUnFinalized(period:%v,slot:%v)", prevPeriod, curPeriod, curSlot)
 					}
+
 					logger.Info("Eth2TopRelayerV2 headers update finish, update light client update for a while")
 					time.Sleep(time.Second * time.Duration(SUCCESSDELAY))
 					if ret, err := relayer.sendLightClientUpdatesWithChecks(topSlot); err != nil {
@@ -550,6 +551,12 @@ func (relayer *Eth2TopRelayerV2) isEnoughBlocksForLightClientUpdate(lastSubmitte
 	}
 	if lastFinalizedEthSlot <= lastFinalizedTopSlot {
 		return false
+	}
+	// period of different LightClientUpdate should be submitted,Unless it's in the same period as eth
+	if beaconrpc.GetPeriodForSlot(lastSubmittedSlot) == beaconrpc.GetPeriodForSlot(lastFinalizedTopSlot) {
+		if beaconrpc.GetPeriodForSlot(lastSubmittedSlot) != beaconrpc.GetPeriodForSlot(lastFinalizedEthSlot) {
+			return false
+		}
 	}
 	return true
 }
