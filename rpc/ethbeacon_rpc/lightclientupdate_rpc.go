@@ -18,11 +18,16 @@ func (c *BeaconGrpcClient) GetFinalizedLightClientUpdateV2() (*LightClientUpdate
 	if err != nil {
 		return nil, err
 	}
+	finalizedSlot = GetFinalizedSlotForPeriod(GetPeriodForSlot(finalizedSlot))
 	return c.getLightClientUpdateByFinalizedSlot(finalizedSlot, false)
 }
 
 func (c *BeaconGrpcClient) GetFinalizedLightClientUpdateV2WithNextSyncCommittee() (*LightClientUpdate, error) {
 	finalizedSlot, err := c.GetLastFinalizedSlotNumber()
+	if err != nil {
+		return nil, err
+	}
+	finalizedSlot, err = GetBeforeSlotInSamePeriod(finalizedSlot)
 	if err != nil {
 		return nil, err
 	}
@@ -88,8 +93,7 @@ func (c *BeaconGrpcClient) getNextSyncCommitteeUpdateByFinalized(finalizedSlot u
 }
 
 func (c *BeaconGrpcClient) GetAttestedSlot(lastFinalizedSlotOnNear uint64) (uint64, error) {
-	nextFinalizedSlot := lastFinalizedSlotOnNear + ONE_EPOCH_IN_SLOTS
-	attestedSlot := nextFinalizedSlot + 2*ONE_EPOCH_IN_SLOTS
+	attestedSlot := getAttestationSlot(lastFinalizedSlotOnNear)
 	header, err := c.GetNonEmptyBeaconBlockHeader(attestedSlot)
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 GetNonEmptyBeaconBlockHeader error:", err)

@@ -234,11 +234,6 @@ func getEthInitDataWithHeight(eth1, prysm, lodestar, slot string) ([]byte, error
 	initParam.NextSyncCommittee = lastUpdate.NextSyncCommitteeUpdate.NextSyncCommittee
 	initParam.CurrentSyncCommittee = prevUpdate.NextSyncCommittee
 
-	for k, v := range initParam.NextSyncCommittee.Pubkeys {
-		fmt.Println("next sync committee:", k, v)
-
-	}
-
 	bytes, err := initParam.Encode()
 	if err != nil {
 		logger.Error("getEthInitData initParam.Encode error:", err)

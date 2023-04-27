@@ -327,3 +327,23 @@ func addHexPrefix(hex string) string {
 	}
 	return "0x" + hex
 }
+
+func GetBeforeSlotInSamePeriod(finalizedSlot uint64) (uint64, error) {
+	slot := finalizedSlot - 4*ONE_EPOCH_IN_SLOTS
+	_, epoch, _ := SplitSlot(slot)
+	if epoch < 5 {
+		return slot, fmt.Errorf("not an available slot:%d,it should be bigger", finalizedSlot)
+	}
+	if epoch > 245 {
+		return slot, fmt.Errorf("not an available slot:%d,it should be smaller", finalizedSlot)
+	}
+	if GetPeriodForSlot(slot) != GetPeriodForSlot(finalizedSlot) {
+		return slot, fmt.Errorf("not an available slot:%d,it should be bigger", finalizedSlot)
+	}
+	return slot, nil
+}
+
+func getAttestationSlot(lastFinalizedSlotOnNear uint64) uint64 {
+	nextFinalizedSlot := lastFinalizedSlotOnNear + ONE_EPOCH_IN_SLOTS
+	return nextFinalizedSlot + 2*ONE_EPOCH_IN_SLOTS
+}
