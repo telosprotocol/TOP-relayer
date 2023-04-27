@@ -317,7 +317,7 @@ func epochInPeriodForPeriod(period uint64) uint64 {
 	return (batch+1)*154 - (period * EPOCHS_PER_PERIOD)
 }
 
-func GetFinalizedForPeriod(period uint64) uint64 {
+func GetFinalizedSlotForPeriod(period uint64) uint64 {
 	epoch := epochInPeriodForPeriod(period)
 	return period*EPOCHS_PER_PERIOD*SLOTS_PER_EPOCH + epoch*ONE_EPOCH_IN_SLOTS
 }

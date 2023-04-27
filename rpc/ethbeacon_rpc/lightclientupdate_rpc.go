@@ -14,19 +14,33 @@ import (
 )
 
 func (c *BeaconGrpcClient) GetFinalizedLightClientUpdateV2() (*LightClientUpdate, error) {
-	return c.getFinalizedLightClientUpdate(false)
-}
-
-func (c *BeaconGrpcClient) GetFinalizedLightClientUpdateV2WithNextSyncCommittee() (*LightClientUpdate, error) {
-	return c.getFinalizedLightClientUpdate(true)
-}
-
-func (c *BeaconGrpcClient) getFinalizedLightClientUpdate(useNextSyncCommittee bool) (*LightClientUpdate, error) {
 	finalizedSlot, err := c.GetLastFinalizedSlotNumber()
 	if err != nil {
 		return nil, err
 	}
-	attestedSlot, err := c.getAttestedSlotBeforeFinalizedSlot(finalizedSlot)
+	return c.getLightClientUpdateByFinalizedSlot(finalizedSlot, false)
+}
+
+func (c *BeaconGrpcClient) GetFinalizedLightClientUpdateV2WithNextSyncCommittee() (*LightClientUpdate, error) {
+	finalizedSlot, err := c.GetLastFinalizedSlotNumber()
+	if err != nil {
+		return nil, err
+	}
+	return c.getLightClientUpdateByFinalizedSlot(finalizedSlot, true)
+}
+
+func (c *BeaconGrpcClient) GetLightClientUpdateV2(period uint64) (*LightClientUpdate, error) {
+	currFinalizedSlot := GetFinalizedSlotForPeriod(period)
+	return c.getLightClientUpdateByFinalizedSlot(currFinalizedSlot, true)
+}
+
+func (c *BeaconGrpcClient) GetNextSyncCommitteeUpdateV2(period uint64) (*SyncCommitteeUpdate, error) {
+	currFinalizedSlot := GetFinalizedSlotForPeriod(period)
+	return c.getNextSyncCommitteeUpdateByFinalized(currFinalizedSlot)
+}
+
+func (c *BeaconGrpcClient) getLightClientUpdateByFinalizedSlot(finalizedSlot uint64, useNextSyncCommittee bool) (*LightClientUpdate, error) {
+	attestedSlot, err := c.GetAttestedSlot(finalizedSlot)
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 GetNonEmptyBeaconBlockHeader error:", err)
 		return nil, err
@@ -42,31 +56,14 @@ func (c *BeaconGrpcClient) getFinalizedLightClientUpdate(useNextSyncCommittee bo
 	return ConvertEth2LightClientUpdate(lcu), nil
 }
 
-func (c *BeaconGrpcClient) GetLightClientUpdateV2(period uint64) (*LightClientUpdate, error) {
-	currFinalizedSlot := GetFinalizedForPeriod(period)
-	attestedSlot, err := c.GetAttestedSlot(currFinalizedSlot)
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 GetNonEmptyBeaconBlockHeader error:", err)
-		return nil, err
-	}
-	//attestedSlot = 2203865
-	lcu, err := c.GetFinalityLightClientUpdate(attestedSlot, true)
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 getFinalityLightClientUpdate error:", err)
-		return nil, err
-	}
-	return ConvertEth2LightClientUpdate(lcu), nil
-}
-
-func (c *BeaconGrpcClient) GetNextSyncCommitteeUpdateV2(period uint64) (*SyncCommitteeUpdate, error) {
-	currFinalizedSlot := GetFinalizedForPeriod(period)
-	attestedSlot, err := c.GetAttestedSlot(currFinalizedSlot)
+func (c *BeaconGrpcClient) getNextSyncCommitteeUpdateByFinalized(finalizedSlot uint64) (*SyncCommitteeUpdate, error) {
+	attestedSlot, err := c.GetAttestedSlot(finalizedSlot)
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 getAttestedSlotWithEnoughSyncCommitteeBitsSum error:", err)
 		return nil, err
 	}
-	if GetPeriodForSlot(attestedSlot) != GetPeriodForSlot(currFinalizedSlot) {
-		return nil, fmt.Errorf("Eth2TopRelayerV2 GetNextSyncCommitteeUpdateV2 attestedSlot(%d) and finalizedSlot(%d) not in same period", attestedSlot, currFinalizedSlot)
+	if GetPeriodForSlot(attestedSlot) != GetPeriodForSlot(finalizedSlot) {
+		return nil, fmt.Errorf("Eth2TopRelayerV2 GetNextSyncCommitteeUpdateV2 attestedSlot(%d) and finalizedSlot(%d) not in same period", attestedSlot, finalizedSlot)
 	}
 	attestedSlot, signatureSlot, err := c.getAttestedSlotWithEnoughSyncCommitteeBitsSum(attestedSlot)
 	if err != nil {
