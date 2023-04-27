@@ -6,14 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"os"
-	"strconv"
-	"strings"
-	"time"
-
 	"github.com/ethereum/go-ethereum/common"
 	pb "github.com/prysmaticlabs/prysm/v4/proto/eth/service"
 	v1 "github.com/prysmaticlabs/prysm/v4/proto/eth/v1"
@@ -22,6 +14,12 @@ import (
 	"github.com/wonderivan/logger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
 )
 
 func NewBeaconGrpcClient(grpcUrl, httpUrl string) (*BeaconGrpcClient, error) {
@@ -117,27 +115,13 @@ func (c *BeaconGrpcClient) GetBeaconState(id string) (*eth.BeaconStateCapella, e
 	defer func() {
 		logger.Info("Slot:%s,GetBeaconState time:%v", id, time.Since(start))
 	}()
-	slot, err := strconv.ParseUint(id, 10, 64)
+	resp, err := c.debugclient.GetBeaconStateSSZV2(context.Background(), &v2.BeaconStateRequestV2{StateId: []byte(id)})
 	if err != nil {
+		logger.Error("GetBeaconStateV2 error:", err)
 		return nil, err
 	}
-
-	period, epochInPeriod, slotInEpoch := SplitSlot(slot)
-	fileName := fmt.Sprintf("./state_%d_%d_%d_%d.ssz", period, epochInPeriod, slotInEpoch, slot)
-	var data []byte
-	if data, err = os.ReadFile(fileName); err != nil {
-		resp, err := c.debugclient.GetBeaconStateSSZV2(context.Background(), &v2.BeaconStateRequestV2{StateId: []byte(id)})
-		if err != nil {
-			logger.Error("GetBeaconStateV2 error:", err)
-			return nil, err
-		}
-		if err := os.WriteFile(fileName, resp.Data, 0644); err != nil {
-			logger.Error("WriteFile error:", err)
-		}
-		data = resp.Data
-	}
 	var state eth.BeaconStateCapella
-	if err = state.UnmarshalSSZ(data); err != nil {
+	if err = state.UnmarshalSSZ(resp.Data); err != nil {
 		logger.Error("UnmarshalSSZ error:", err)
 		return nil, err
 	}

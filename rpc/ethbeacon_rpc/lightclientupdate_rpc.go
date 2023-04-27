@@ -257,22 +257,8 @@ func (c *BeaconGrpcClient) GetFinalityLightClientUpdate(attestedSlot uint64, use
 		logger.Error("Eth2TopRelayerV2 GetBeaconState error:", err)
 		return nil, err
 	}
-	//finalityHash := beaconState.GetFinalizedCheckpoint().Root
-	//
-	//finalityHeader, err := c.GetBeaconBlockHeaderForBlockId(string(finalityHash))
-	//if err != nil {
-	//	logger.Error("Eth2TopRelayerV2 GetBeaconBlockHeaderForBlockId error:", err)
-	//	return nil, err
-	//}
-
-	//finalitySlot := finalityHeader.Slot
 	var finalityBeaconState *eth.BeaconStateCapella = nil
 	if useNextSyncCommittee == true {
-		//finalityBeaconState, err = c.GetBeaconState(strconv.FormatUint(uint64(finalitySlot), 10))
-		//if err != nil {
-		//	logger.Error("Eth2TopRelayerV2 GetBeaconState error:", err)
-		//	return nil, err
-		//}
 		finalityBeaconState = beaconState
 	}
 	return c.getFinalityLightClientUpdateForState(attestedSlot, signatureSlot, beaconState, finalityBeaconState)
