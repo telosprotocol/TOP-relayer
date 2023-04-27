@@ -110,10 +110,10 @@ func GetPeriodForSlot(slot uint64) uint64 {
 	return (slot / (SLOTS_PER_EPOCH * EPOCHS_PER_PERIOD))
 }
 
-func (c *BeaconGrpcClient) GetBeaconState(id string) (*eth.BeaconStateCapella, error) {
+func (c *BeaconGrpcClient) getBeaconState(id string) (*eth.BeaconStateCapella, error) {
 	start := time.Now()
 	defer func() {
-		logger.Info("Slot:%s,GetBeaconState time:%v", id, time.Since(start))
+		logger.Info("Slot:%s,getBeaconState time:%v", id, time.Since(start))
 	}()
 	resp, err := c.debugclient.GetBeaconStateSSZV2(context.Background(), &v2.BeaconStateRequestV2{StateId: []byte(id)})
 	if err != nil {

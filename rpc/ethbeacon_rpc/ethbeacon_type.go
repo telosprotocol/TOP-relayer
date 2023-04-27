@@ -278,8 +278,7 @@ func beaconBlockHeaderConvert(header *eth.BeaconBlockHeader) *BeaconBlockHeader 
 	}
 }
 
-func ConvertEth2LightClientUpdate(lcu *ethtypes.LightClientUpdate) *LightClientUpdate {
-
+func convertEth2LightClientUpdate(lcu *ethtypes.LightClientUpdate) *LightClientUpdate {
 	ret := &LightClientUpdate{
 		AttestedBeaconHeader: beaconBlockHeaderConvert(lcu.AttestedBeaconHeader),
 		SyncAggregate: &SyncAggregate{

@@ -564,63 +564,6 @@ func (relayer *Eth2TopRelayerV2) isEnoughBlocksForLightClientUpdate(lastSubmitte
 	return true
 }
 
-func (relayer *Eth2TopRelayerV2) sendLightClientUpdates(lastFinalizedTopSlot, lastFinalizedEthSlot uint64) error {
-	attestedSlot, err := relayer.beaconrpcclient.GetAttestedSlot(lastFinalizedTopSlot)
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 getAttestedSlot error:", err)
-		return err
-	}
-	lastTopPeriod := beaconrpc.GetPeriodForSlot(lastFinalizedTopSlot)
-	endPeriod := beaconrpc.GetPeriodForSlot(lastFinalizedEthSlot)
-	useNextSyncCommittee := lastTopPeriod == endPeriod
-	for {
-		update, err := relayer.beaconrpcclient.GetFinalityLightClientUpdate(attestedSlot, useNextSyncCommittee)
-		if err != nil {
-			logger.Error("Eth2TopRelayerV2 getFinalityLightClientUpdate error:", err)
-			return err
-		}
-		finalityUpdateSlot := uint64(update.FinalizedUpdate.HeaderUpdate.BeaconHeader.Slot)
-		if finalityUpdateSlot <= lastFinalizedTopSlot {
-			attestedSlot, err = relayer.beaconrpcclient.GetAttestedSlot(lastFinalizedTopSlot + beaconrpc.SLOTS_PER_EPOCH)
-			if err != nil {
-				logger.Error("Eth2TopRelayerV2 getAttestedSlot error:", err)
-				return err
-			}
-			continue
-		}
-		return relayer.sendSpecificLightClientUpdate(update)
-	}
-}
-
-func (relayer *Eth2TopRelayerV2) sendSpecificLightClientUpdate(update *ethtypes.LightClientUpdate) error {
-	isKnown, err := relayer.callerSession.IsKnownExecutionHeader(update.FinalizedUpdate.HeaderUpdate.ExecutionBlockHash)
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 IsKnownExecutionHeader error:", err)
-		return err
-	}
-	if !isKnown {
-		logger.Error("Eth2TopRelayerV2 IsKnownExecutionHeader not known block")
-		return nil
-	}
-	err = relayer.verify_bls_signature_for_finality_update(update)
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 verify_bls_signature_for_finality_update error:", err)
-		return nil
-	}
-	upateBytes, err := rlp.EncodeToBytes(update)
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 EncodeToBytes error:", err)
-		return nil
-	}
-	err = relayer.submitLightClientUpdate(upateBytes)
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 submitLightClientUpdate error:", err)
-		return err
-	}
-
-	return nil
-}
-
 func FilterSyncCommitteeVotes(committeeKeys [][]byte, sync *eth.SyncAggregate) ([]bls.PublicKey, error) {
 	if sync.SyncCommitteeBits.Len() > uint64(len(committeeKeys)) {
 		return nil, errors.New("bits length exceeds committee length")

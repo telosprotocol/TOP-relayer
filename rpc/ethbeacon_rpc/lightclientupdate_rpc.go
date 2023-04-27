@@ -48,12 +48,12 @@ func (c *BeaconGrpcClient) getLightClientUpdateByFinalizedSlot(finalizedSlot uin
 	if GetPeriodForSlot(attestedSlot) != GetPeriodForSlot(finalizedSlot) {
 		return nil, fmt.Errorf("Eth2TopRelayerV2 attestedSlot(%d) and finalizedSlot(%d) not in same period", attestedSlot, finalizedSlot)
 	}
-	lcu, err := c.GetFinalityLightClientUpdate(attestedSlot, useNextSyncCommittee)
+	lcu, err := c.getFinalityLightClientUpdate(attestedSlot, useNextSyncCommittee)
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 getFinalityLightClientUpdate error:", err)
 		return nil, err
 	}
-	return ConvertEth2LightClientUpdate(lcu), nil
+	return convertEth2LightClientUpdate(lcu), nil
 }
 
 func (c *BeaconGrpcClient) getNextSyncCommitteeUpdateByFinalized(finalizedSlot uint64) (*SyncCommitteeUpdate, error) {
@@ -71,9 +71,9 @@ func (c *BeaconGrpcClient) getNextSyncCommitteeUpdateByFinalized(finalizedSlot u
 		return nil, err
 	}
 	logger.Info("GetNextSyncCommitteeUpdateV2 attestedSlot:%d, signatureSlot:%d", attestedSlot, signatureSlot)
-	beaconState, err := c.GetBeaconState(strconv.FormatUint(attestedSlot, 10))
+	beaconState, err := c.getBeaconState(strconv.FormatUint(attestedSlot, 10))
 	if err != nil {
-		logger.Error("Eth2TopRelayerV2 GetBeaconState error:", err)
+		logger.Error("Eth2TopRelayerV2 getBeaconState error:", err)
 		return nil, err
 	}
 	cu, err := c.getNextSyncCommittee(beaconState)
@@ -242,16 +242,16 @@ func (c *BeaconGrpcClient) getFinalityLightClientUpdateForState(attestedSlot, si
 	return update, nil
 }
 
-func (c *BeaconGrpcClient) GetFinalityLightClientUpdate(attestedSlot uint64, useNextSyncCommittee bool) (*ethtypes.LightClientUpdate, error) {
+func (c *BeaconGrpcClient) getFinalityLightClientUpdate(attestedSlot uint64, useNextSyncCommittee bool) (*ethtypes.LightClientUpdate, error) {
 	attestedSlot, signatureSlot, err := c.getAttestedSlotWithEnoughSyncCommitteeBitsSum(attestedSlot)
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 getAttestedSlotWithEnoughSyncCommitteeBitsSum error:", err)
 		return nil, err
 	}
 	logger.Info("GetFinalityLightClientUpdate attestedSlot:%d, signatureSlot:%d", attestedSlot, signatureSlot)
-	beaconState, err := c.GetBeaconState(strconv.FormatUint(attestedSlot, 10))
+	beaconState, err := c.getBeaconState(strconv.FormatUint(attestedSlot, 10))
 	if err != nil {
-		logger.Error("Eth2TopRelayerV2 GetBeaconState error:", err)
+		logger.Error("Eth2TopRelayerV2 getBeaconState error:", err)
 		return nil, err
 	}
 	var finalityBeaconState *eth.BeaconStateCapella = nil
