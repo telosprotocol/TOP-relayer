@@ -10,13 +10,12 @@ import (
 )
 
 const (
-	TOPAddr = "http://192.168.95.3:8080"
+	TOPAddr = ""
 )
 
 const (
-	ETHAddr     = "http://128.199.183.143:8545"
-	ETHPrysm    = "128.199.183.143:4000"
-	ETHLodestar = "http://128.199.183.143:9596"
+	ETHAddr     = ""
+	ETHPrysm    = ""
 	ETHContract = ""
 )
 
@@ -134,7 +133,6 @@ func fullConfigInfo(cfg *Config) error {
 			v.Url = make([]string, 3)
 			v.Url[0] = ETHAddr
 			v.Url[1] = ETHPrysm
-			v.Url[2] = ETHLodestar
 		case BSC_CHAIN:
 			v.Url = make([]string, 1)
 			v.Url[0] = BSCAddr

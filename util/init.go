@@ -96,8 +96,8 @@ func (init *InitInput) Encode() ([]byte, error) {
 	return rlpBytes, nil
 }
 
-func getEthInitData(eth1, prysm, lodestar string) ([]byte, error) {
-	beaconrpcclient, err := beaconrpc.NewBeaconGrpcClient(prysm, lodestar)
+func getEthInitData(eth1, prysm string) ([]byte, error) {
+	beaconrpcclient, err := beaconrpc.NewBeaconGrpcClient(prysm)
 	if err != nil {
 		logger.Error("getEthInitData NewBeaconGrpcClient error:", err)
 		return nil, err
@@ -169,8 +169,8 @@ func getEthInitData(eth1, prysm, lodestar string) ([]byte, error) {
 	return bytes, nil
 }
 
-func getEthInitDataWithHeight(eth1, prysm, lodestar, slot string) ([]byte, error) {
-	beaconrpcclient, err := beaconrpc.NewBeaconGrpcClient(prysm, lodestar)
+func getEthInitDataWithHeight(eth1, prysm, slot string) ([]byte, error) {
+	beaconrpcclient, err := beaconrpc.NewBeaconGrpcClient(prysm)
 	if err != nil {
 		logger.Error("getEthInitData NewBeaconGrpcClient error:", err)
 		return nil, err

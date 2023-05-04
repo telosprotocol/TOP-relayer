@@ -20,7 +20,7 @@ func TestGetBeaconHeaderAndBlockForBlockId(t *testing.T) {
 	var s uint64 = 969983
 	ss := strconv.Itoa(969983)
 
-	c, err := NewBeaconGrpcClient(LOCAL_GRPC_URL, SEPOLIA_URL)
+	c, err := NewBeaconGrpcClient(LOCAL_GRPC_URL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +55,7 @@ func TestGetBeaconHeaderAndBlockForBlockId(t *testing.T) {
 }
 
 func TestGetBeaconBlockForBlockIdErrNoBlockForSlot(t *testing.T) {
-	c, err := NewBeaconGrpcClient(LOCAL_GRPC_URL, SEPOLIA_URL)
+	c, err := NewBeaconGrpcClient(LOCAL_GRPC_URL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +119,7 @@ func TestGetEth1Data(t *testing.T) {
 }
 
 func TestGetLightClientUpdateData(t *testing.T) {
-	c, err := NewBeaconGrpcClient(LOCAL_GRPC_URL, SEPOLIA_URL)
+	c, err := NewBeaconGrpcClient(LOCAL_GRPC_URL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +140,7 @@ func TestGetLightClientUpdateData(t *testing.T) {
 }
 
 func TestGetFinalizedLightClientUpdateData(t *testing.T) {
-	c, err := NewBeaconGrpcClient(LOCAL_GRPC_URL, SEPOLIA_URL)
+	c, err := NewBeaconGrpcClient(LOCAL_GRPC_URL)
 	if err != nil {
 		t.Fatal(err)
 	}

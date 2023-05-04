@@ -22,7 +22,7 @@ import (
 	"time"
 )
 
-func NewBeaconGrpcClient(grpcUrl, httpUrl string) (*BeaconGrpcClient, error) {
+func NewBeaconGrpcClient(grpcUrl string) (*BeaconGrpcClient, error) {
 	grpcDefault, err := grpc.Dial(grpcUrl, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		logger.Error("create grpcDefault error:", err)
@@ -40,7 +40,7 @@ func NewBeaconGrpcClient(grpcUrl, httpUrl string) (*BeaconGrpcClient, error) {
 		httpclient: &http.Client{Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}},
-		httpurl: httpUrl,
+		httpurl: "",
 	}
 	return c, nil
 }

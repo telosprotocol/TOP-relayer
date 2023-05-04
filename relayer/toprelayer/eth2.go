@@ -43,7 +43,7 @@ type Eth2TopRelayerV2 struct {
 }
 
 func NewRelayerByRpcClient(prysm string) *Eth2TopRelayerV2 {
-	b, err := beaconrpc.NewBeaconGrpcClient(prysm, "")
+	b, err := beaconrpc.NewBeaconGrpcClient(prysm)
 	if err != nil {
 		logger.Error("NewRelayerByRpcClient NewBeaconGrpcClient error:", err)
 		return nil
@@ -71,7 +71,7 @@ func (relayer *Eth2TopRelayerV2) Init(cfg *config.Relayer, listenUrl []string, p
 		logger.Error("Eth2TopRelayerV2 ethclient.Dial error:", err)
 		return err
 	}
-	relayer.beaconrpcclient, err = beaconrpc.NewBeaconGrpcClient(listenUrl[1], listenUrl[2])
+	relayer.beaconrpcclient, err = beaconrpc.NewBeaconGrpcClient(listenUrl[1])
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 NewBeaconGrpcClient error:", err)
 		return err
