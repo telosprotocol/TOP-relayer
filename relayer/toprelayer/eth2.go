@@ -410,6 +410,12 @@ func (relayer *Eth2TopRelayerV2) StartRelayer(wg *sync.WaitGroup) error {
 			default:
 				for {
 					time.Sleep(time.Second * delay)
+					// step0: check period
+					if ok, err := relayer.callerSession.Initialized(); err != nil || !ok {
+						logger.Error("Eth2TopRelayerV2 don't initialize the header,error:", err)
+						delay = time.Duration(ERRDELAY)
+						break
+					}
 					// step1: eth slot
 					eth2Slot, err := relayer.getMaxSlotForSubmission()
 					if err != nil {
