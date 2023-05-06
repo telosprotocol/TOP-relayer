@@ -331,11 +331,8 @@ func addHexPrefix(hex string) string {
 func GetBeforeSlotInSamePeriod(finalizedSlot uint64) (uint64, error) {
 	slot := finalizedSlot - 4*ONE_EPOCH_IN_SLOTS
 	period, epoch, _ := SplitSlot(slot)
-	if epoch < 5 {
-		return slot, fmt.Errorf("not an available slot:%d,it should be bigger", finalizedSlot)
-	}
 	if epoch > 245 {
-		return period*EPOCHS_PER_PERIOD*SLOTS_PER_EPOCH + 245*SLOTS_PER_EPOCH, nil
+		slot = period*EPOCHS_PER_PERIOD*SLOTS_PER_EPOCH + 245*SLOTS_PER_EPOCH
 	}
 	if GetPeriodForSlot(slot) != GetPeriodForSlot(finalizedSlot) {
 		return slot, fmt.Errorf("not an available slot:%d,it should be bigger", finalizedSlot)

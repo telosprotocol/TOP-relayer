@@ -3,7 +3,7 @@ package ethbeacon_rpc
 import "testing"
 
 func TestGetBeforeSlotInSamePeriod(t *testing.T) {
-	slot, err := GetBeforeSlotInSamePeriod(2301888)
+	slot, err := GetBeforeSlotInSamePeriod(2302239)
 	if err != nil {
 		t.Fatal(err)
 	}
