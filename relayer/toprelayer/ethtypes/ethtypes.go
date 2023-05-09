@@ -2,8 +2,8 @@ package ethtypes
 
 import (
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/prysmaticlabs/prysm/v3/encoding/bytesutil"
-	eth "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
+	"github.com/prysmaticlabs/prysm/v4/encoding/bytesutil"
+	eth "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
 )
 
 const (
@@ -46,11 +46,11 @@ type SyncCommitteeUpdate struct {
 }
 
 type LightClientUpdate struct {
-	AttestedBeaconHeader *eth.BeaconBlockHeader
-	SyncAggregate        *eth.SyncAggregate
-	Signatureslot        uint64
-	FinalityUpdate       *FinalizedHeaderUpdate
-	SyncCommitteeUpdate  *SyncCommitteeUpdate
+	AttestedBeaconHeader    *eth.BeaconBlockHeader
+	SyncAggregate           *eth.SyncAggregate
+	SignatureSlot           uint64
+	FinalizedUpdate         *FinalizedHeaderUpdate
+	NextSyncCommitteeUpdate *SyncCommitteeUpdate
 }
 
 type LightClientState struct {

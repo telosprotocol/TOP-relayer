@@ -30,7 +30,7 @@ const (
 )
 
 var (
-	openAllianceClientSystemContract = common.HexToAddress("0x2769D9a843ba3830DEcCb15222d09559B441709C")
+	openAllianceClientSystemContract = common.HexToAddress(config.OAContractOnTop)
 )
 
 type OpenAlliance2TopRelayer struct {

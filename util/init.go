@@ -3,6 +3,7 @@ package util
 import (
 	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
 	"math/big"
 	"strconv"
 
@@ -13,8 +14,8 @@ import (
 
 	beaconrpc "toprelayer/rpc/ethbeacon_rpc"
 
-	primitives "github.com/prysmaticlabs/prysm/v3/consensus-types/primitives"
-	eth "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
+	primitives "github.com/prysmaticlabs/prysm/v4/consensus-types/primitives"
+	eth "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
 )
 
 type ExtendedBeaconBlockHeader struct {
@@ -95,8 +96,8 @@ func (init *InitInput) Encode() ([]byte, error) {
 	return rlpBytes, nil
 }
 
-func getEthInitData(eth1, prysm, lodestar string) ([]byte, error) {
-	beaconrpcclient, err := beaconrpc.NewBeaconGrpcClient(prysm, lodestar)
+func getEthInitData(eth1, prysm string) ([]byte, error) {
+	beaconrpcclient, err := beaconrpc.NewBeaconGrpcClient(prysm)
 	if err != nil {
 		logger.Error("getEthInitData NewBeaconGrpcClient error:", err)
 		return nil, err
@@ -106,19 +107,14 @@ func getEthInitData(eth1, prysm, lodestar string) ([]byte, error) {
 		logger.Error("getEthInitData ethclient.Dial error:", err)
 		return nil, err
 	}
-
-	lastSlot, err := beaconrpcclient.GetLastFinalizedSlotNumber()
-	if err != nil {
-		logger.Error("getEthInitData GetLastFinalizedSlotNumber error:", err)
-		return nil, err
-	}
-	lastPeriod := beaconrpc.GetPeriodForSlot(lastSlot)
-	lastUpdate, err := beaconrpcclient.GetLightClientUpdate(lastPeriod)
+	lastUpdate, err := beaconrpcclient.GetFinalizedLightClientUpdateV2WithNextSyncCommittee()
 	if err != nil {
 		logger.Error("getEthInitData GetLightClientUpdate error:", err)
 		return nil, err
 	}
-	prevUpdate, err := beaconrpcclient.GetNextSyncCommitteeUpdate(lastPeriod - 1)
+	lastSlot := lastUpdate.FinalizedUpdate.HeaderUpdate.BeaconHeader.Slot
+	lastPeriod := beaconrpc.GetPeriodForSlot(lastSlot)
+	prevUpdate, err := beaconrpcclient.GetNextSyncCommitteeUpdateV2(lastPeriod - 1)
 	if err != nil {
 		logger.Error(fmt.Sprintf("getEthInitData GetNextSyncCommitteeUpdate lastSlot:%d ，err：%s", lastSlot, err.Error()))
 		return nil, err
@@ -159,7 +155,12 @@ func getEthInitData(eth1, prysm, lodestar string) ([]byte, error) {
 	initParam.FinalizedBeaconHeader = finalizedHeader
 	initParam.NextSyncCommittee = lastUpdate.NextSyncCommitteeUpdate.NextSyncCommittee
 	initParam.CurrentSyncCommittee = prevUpdate.NextSyncCommittee
-
+	// 2203865 2203776
+	// d15331da6463ec89f54bbaeda39d6dd20f575dd990ecd92bd5f98121767862c6
+	h := common.Bytes2Hex(initParam.FinalizedExecutionHeader.Hash().Bytes())
+	fmt.Println("eth header hash:", h)
+	ExecutionBlockHash := common.Bytes2Hex(initParam.FinalizedBeaconHeader.ExecutionBlockHash)
+	fmt.Println("ExecutionBlockHash hash:", ExecutionBlockHash)
 	bytes, err := initParam.Encode()
 	if err != nil {
 		logger.Error("getEthInitData initParam.Encode error:", err)
@@ -168,8 +169,8 @@ func getEthInitData(eth1, prysm, lodestar string) ([]byte, error) {
 	return bytes, nil
 }
 
-func getEthInitDataWithHeight(eth1, prysm, lodestar, slot string) ([]byte, error) {
-	beaconrpcclient, err := beaconrpc.NewBeaconGrpcClient(prysm, lodestar)
+func getEthInitDataWithHeight(eth1, prysm, slot string) ([]byte, error) {
+	beaconrpcclient, err := beaconrpc.NewBeaconGrpcClient(prysm)
 	if err != nil {
 		logger.Error("getEthInitData NewBeaconGrpcClient error:", err)
 		return nil, err
@@ -185,12 +186,13 @@ func getEthInitDataWithHeight(eth1, prysm, lodestar, slot string) ([]byte, error
 		return nil, err
 	}
 	lastPeriod := beaconrpc.GetPeriodForSlot(lastSlot)
-	lastUpdate, err := beaconrpcclient.GetLightClientUpdate(lastPeriod)
+	// 269 2203865
+	lastUpdate, err := beaconrpcclient.GetLightClientUpdateV2(lastPeriod)
 	if err != nil {
 		logger.Error("getEthInitData GetLightClientUpdate error:", err)
 		return nil, err
 	}
-	prevUpdate, err := beaconrpcclient.GetNextSyncCommitteeUpdate(lastPeriod - 1)
+	prevUpdate, err := beaconrpcclient.GetNextSyncCommitteeUpdateV2(lastPeriod - 1)
 	if err != nil {
 		logger.Error("getEthInitData GetNextSyncCommitteeUpdate error:", err)
 		return nil, err

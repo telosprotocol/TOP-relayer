@@ -38,12 +38,12 @@ func getInitData(ctx *cli.Context) error {
 	case config.ETH_CHAIN:
 		switch argsNum {
 		case 1: // get_init_data ETH
-			bytes, err = getEthInitData(config.ETHAddr, config.ETHPrysm, config.ETHLodestar)
+			bytes, err = getEthInitData(config.ETHAddr, config.ETHPrysm)
 		case 2: // get_init_data ETH  123
 			if false == isNumber(ctx.Args().Get(1)) {
 				return errors.New("the height needs to be a number")
 			}
-			bytes, err = getEthInitDataWithHeight(config.ETHAddr, config.ETHPrysm, config.ETHLodestar, ctx.Args().Get(1))
+			bytes, err = getEthInitDataWithHeight(config.ETHAddr, config.ETHPrysm, ctx.Args().Get(1))
 		default:
 			return errors.New("invalid arg nums")
 		}
