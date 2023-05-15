@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	state_native "github.com/prysmaticlabs/prysm/v4/beacon-chain/state/state-native"
+	v2 "github.com/prysmaticlabs/prysm/v4/proto/eth/v2"
 	eth "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
 	"github.com/wonderivan/logger"
 	"sort"
@@ -177,6 +178,18 @@ func (c *BeaconGrpcClient) getNextSyncCommittee(beaconState *eth.BeaconStateCape
 	return update, nil
 }
 
+func (c *BeaconGrpcClient) constructFromBeaconBlockBody(beaconBlockBody *v2.BeaconBlockBodyCapella) (*ethtypes.ExecutionBlockProof, error) {
+	//finalizedBlockBodyHash, err := finalizedBlockBody.HashTreeRoot()
+	blockHash := beaconBlockBody.ExecutionPayload.GetBlockHash()
+	var finalizedBlockBodyHash common.Hash
+	copy(finalizedBlockBodyHash[:], blockHash[:])
+	// todo
+	return &ethtypes.ExecutionBlockProof{
+		BlockHash: finalizedBlockBodyHash,
+		Proof:     nil,
+	}, nil
+}
+
 func (c *BeaconGrpcClient) getFinalityLightClientUpdateForState(attestedSlot, signatureSlot uint64, beaconState, finalityBeaconState *eth.BeaconStateCapella) (*ethtypes.LightClientUpdate, error) {
 	signatureBeaconBody, err := c.GetBeaconBlockBodyForBlockId(strconv.FormatUint(signatureSlot, 10))
 	if err != nil {
@@ -203,10 +216,11 @@ func (c *BeaconGrpcClient) getFinalityLightClientUpdateForState(attestedSlot, si
 		logger.Error("Eth2TopRelayerV2 GetBeaconBlockBodyForBlockId error:", err)
 		return nil, err
 	}
-	//finalizedBlockBodyHash, err := finalizedBlockBody.HashTreeRoot()
-	blockHash := finalizedBlockBody.ExecutionPayload.GetBlockHash()
-	var finalizedBlockBodyHash common.Hash
-	copy(finalizedBlockBodyHash[:], blockHash[:])
+	executionBlockProof, err := c.constructFromBeaconBlockBody(finalizedBlockBody)
+	if err != nil {
+		logger.Error("Eth2TopRelayerV2 constructFromBeaconBlockBody hash error:", err)
+		return nil, err
+	}
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 finalizedBlockBody hash error:", err)
 		return nil, err
@@ -231,8 +245,9 @@ func (c *BeaconGrpcClient) getFinalityLightClientUpdateForState(attestedSlot, si
 	}
 	update.FinalizedUpdate = &ethtypes.FinalizedHeaderUpdate{
 		HeaderUpdate: &ethtypes.HeaderUpdate{
-			BeaconHeader:       finalityHeader,
-			ExecutionBlockHash: finalizedBlockBodyHash,
+			BeaconHeader:        finalityHeader,
+			ExecutionBlockHash:  executionBlockProof.BlockHash,
+			ExecutionHashBranch: executionBlockProof.Proof,
 		},
 		FinalityBranch: proof,
 	}

@@ -1,6 +1,8 @@
 package toprelayer
 
 import (
+	"fmt"
+	"github.com/prysmaticlabs/prysm/v4/container/slice"
 	"math/big"
 	"testing"
 	"toprelayer/contract/top/eth2client"
@@ -201,4 +203,10 @@ func TestPackHeaders(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log(common.Bytes2Hex(pack))
+}
+
+func TestAA(t *testing.T) {
+	a := []int{1, 2, 3, 4, 5, 6}
+	slice.Reverse(a)
+	fmt.Println(a)
 }

@@ -31,8 +31,9 @@ type ExtendedBeaconBlockHeader struct {
 }
 
 type HeaderUpdate struct {
-	BeaconHeader       *eth.BeaconBlockHeader
-	ExecutionBlockHash common.Hash
+	BeaconHeader        *eth.BeaconBlockHeader
+	ExecutionBlockHash  common.Hash
+	ExecutionHashBranch []common.Hash
 }
 
 type FinalizedHeaderUpdate struct {
@@ -57,4 +58,9 @@ type LightClientState struct {
 	FinalizedBeaconHeader *ExtendedBeaconBlockHeader
 	CurrentSyncCommittee  *eth.SyncCommittee
 	NextSyncCommittee     *eth.SyncCommittee
+}
+
+type ExecutionBlockProof struct {
+	BlockHash common.Hash
+	Proof     []common.Hash
 }

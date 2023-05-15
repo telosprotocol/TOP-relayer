@@ -138,8 +138,9 @@ func (s *SyncAggregate) Encode() ([]byte, error) {
 }
 
 type HeaderUpdate struct {
-	BeaconHeader       *BeaconBlockHeader
-	ExecutionBlockHash []byte
+	BeaconHeader        *BeaconBlockHeader
+	ExecutionBlockHash  []byte
+	ExecutionHashBranch [][]byte
 }
 
 func (update *HeaderUpdate) Encode() ([]byte, error) {
@@ -279,6 +280,10 @@ func beaconBlockHeaderConvert(header *eth.BeaconBlockHeader) *BeaconBlockHeader 
 }
 
 func convertEth2LightClientUpdate(lcu *ethtypes.LightClientUpdate) *LightClientUpdate {
+	var executionHashBranch [][]byte
+	for _, hash := range lcu.FinalizedUpdate.HeaderUpdate.ExecutionHashBranch {
+		executionHashBranch = append(executionHashBranch, hash[:])
+	}
 	ret := &LightClientUpdate{
 		AttestedBeaconHeader: beaconBlockHeaderConvert(lcu.AttestedBeaconHeader),
 		SyncAggregate: &SyncAggregate{
@@ -288,8 +293,9 @@ func convertEth2LightClientUpdate(lcu *ethtypes.LightClientUpdate) *LightClientU
 		SignatureSlot: lcu.SignatureSlot,
 		FinalizedUpdate: &FinalizedHeaderUpdate{
 			HeaderUpdate: &HeaderUpdate{
-				BeaconHeader:       beaconBlockHeaderConvert(lcu.FinalizedUpdate.HeaderUpdate.BeaconHeader),
-				ExecutionBlockHash: lcu.FinalizedUpdate.HeaderUpdate.ExecutionBlockHash[:],
+				BeaconHeader:        beaconBlockHeaderConvert(lcu.FinalizedUpdate.HeaderUpdate.BeaconHeader),
+				ExecutionBlockHash:  lcu.FinalizedUpdate.HeaderUpdate.ExecutionBlockHash[:],
+				ExecutionHashBranch: executionHashBranch,
 			},
 			FinalityBranch: lcu.FinalizedUpdate.FinalityBranch,
 		},
