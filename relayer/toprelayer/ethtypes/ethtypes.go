@@ -64,3 +64,19 @@ type ExecutionBlockProof struct {
 	BlockHash common.Hash
 	Proof     []common.Hash
 }
+
+func ConvertSliceHash2Bytes(hash []common.Hash) [][]byte {
+	res := make([][]byte, len(hash))
+	for i, h := range hash {
+		res[i] = h[:]
+	}
+	return res
+}
+
+func ConvertSliceBytes2Hash(bytes [][32]byte) []common.Hash {
+	res := make([]common.Hash, len(bytes))
+	for i, b := range bytes {
+		res[i] = b
+	}
+	return res
+}

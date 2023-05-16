@@ -179,14 +179,23 @@ func (c *BeaconGrpcClient) getNextSyncCommittee(beaconState *eth.BeaconStateCape
 }
 
 func (c *BeaconGrpcClient) constructFromBeaconBlockBody(beaconBlockBody *v2.BeaconBlockBodyCapella) (*ethtypes.ExecutionBlockProof, error) {
-	//finalizedBlockBodyHash, err := finalizedBlockBody.HashTreeRoot()
 	blockHash := beaconBlockBody.ExecutionPayload.GetBlockHash()
 	var finalizedBlockBodyHash common.Hash
 	copy(finalizedBlockBodyHash[:], blockHash[:])
-	// todo
+	var err error
+	var beaconBlockMerkleTree, executionPayloadMerkleTree MerkleTreeNode
+	if beaconBlockMerkleTree, err = BeaconBlockBodyMerkleTreeNew(beaconBlockBody); err != nil {
+		return nil, err
+	}
+	if executionPayloadMerkleTree, err = ExecutionPayloadMerkleTreeNew(beaconBlockBody.GetExecutionPayload()); err != nil {
+		return nil, err
+	}
+	_, proof1 := generateProof(beaconBlockMerkleTree, L1BeaconBlockBodyTreeExecutionPayloadIndex, L1BeaconBlockBodyProofSize)
+	_, proof2 := generateProof(executionPayloadMerkleTree, L2ExecutionPayloadTreeExecutionBlockIndex, L2ExecutionPayloadProofSize)
+	blockProof := append(proof2, proof1...)
 	return &ethtypes.ExecutionBlockProof{
 		BlockHash: finalizedBlockBodyHash,
-		Proof:     nil,
+		Proof:     ethtypes.ConvertSliceBytes2Hash(blockProof),
 	}, nil
 }
 

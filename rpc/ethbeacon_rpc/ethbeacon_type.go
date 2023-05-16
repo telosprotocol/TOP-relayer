@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
+	ssz "github.com/prysmaticlabs/fastssz"
+	v11 "github.com/prysmaticlabs/prysm/v4/proto/engine/v1"
 	pb "github.com/prysmaticlabs/prysm/v4/proto/eth/service"
+	v2 "github.com/prysmaticlabs/prysm/v4/proto/eth/v2"
 	eth "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
 	"net/http"
 	"strings"
@@ -280,10 +283,6 @@ func beaconBlockHeaderConvert(header *eth.BeaconBlockHeader) *BeaconBlockHeader 
 }
 
 func convertEth2LightClientUpdate(lcu *ethtypes.LightClientUpdate) *LightClientUpdate {
-	var executionHashBranch [][]byte
-	for _, hash := range lcu.FinalizedUpdate.HeaderUpdate.ExecutionHashBranch {
-		executionHashBranch = append(executionHashBranch, hash[:])
-	}
 	ret := &LightClientUpdate{
 		AttestedBeaconHeader: beaconBlockHeaderConvert(lcu.AttestedBeaconHeader),
 		SyncAggregate: &SyncAggregate{
@@ -295,7 +294,7 @@ func convertEth2LightClientUpdate(lcu *ethtypes.LightClientUpdate) *LightClientU
 			HeaderUpdate: &HeaderUpdate{
 				BeaconHeader:        beaconBlockHeaderConvert(lcu.FinalizedUpdate.HeaderUpdate.BeaconHeader),
 				ExecutionBlockHash:  lcu.FinalizedUpdate.HeaderUpdate.ExecutionBlockHash[:],
-				ExecutionHashBranch: executionHashBranch,
+				ExecutionHashBranch: ethtypes.ConvertSliceHash2Bytes(lcu.FinalizedUpdate.HeaderUpdate.ExecutionHashBranch),
 			},
 			FinalityBranch: lcu.FinalizedUpdate.FinalityBranch,
 		},
@@ -349,4 +348,338 @@ func GetBeforeSlotInSamePeriod(finalizedSlot uint64) (uint64, error) {
 func getAttestationSlot(lastFinalizedSlotOnNear uint64) uint64 {
 	nextFinalizedSlot := lastFinalizedSlotOnNear + ONE_EPOCH_IN_SLOTS
 	return nextFinalizedSlot + 2*ONE_EPOCH_IN_SLOTS
+}
+
+const (
+	BeaconBlockBodyTreeDepth  uint64 = 4
+	ExecutionPayloadTreeDepth uint64 = 4
+
+	L1BeaconBlockBodyTreeExecutionPayloadIndex uint64 = 9
+	L1BeaconBlockBodyProofSize                 uint64 = BeaconBlockBodyTreeDepth
+
+	L2ExecutionPayloadTreeExecutionBlockIndex uint64 = 12
+	L2ExecutionPayloadProofSize               uint64 = ExecutionPayloadTreeDepth
+)
+
+func VecObjectHashTreeRoot(data []ssz.HashRoot, lenLimit uint64) ([32]byte, error) {
+	hh := ssz.DefaultHasherPool.Get()
+	if err := vecObjectHashTreeRootWith(hh, data, lenLimit); err != nil {
+		ssz.DefaultHasherPool.Put(hh)
+		return [32]byte{}, err
+	}
+	root, err := hh.HashRoot()
+	ssz.DefaultHasherPool.Put(hh)
+	return root, err
+}
+
+func vecObjectHashTreeRootWith(hh *ssz.Hasher, data []ssz.HashRoot, lenLimit uint64) (err error) {
+	subIdx := hh.Index()
+	num := uint64(len(data))
+	if num > lenLimit {
+		err = ssz.ErrIncorrectListSize
+		return
+	}
+	for _, elem := range data {
+		if err = elem.HashTreeRootWith(hh); err != nil {
+			return
+		}
+	}
+	if ssz.EnableVectorizedHTR {
+		hh.MerkleizeWithMixinVectorizedHTR(subIdx, num, lenLimit)
+	} else {
+		hh.MerkleizeWithMixin(subIdx, num, lenLimit)
+	}
+	return nil
+}
+
+func BytesHashTreeRoot(data []byte, lenLimit int, remark string) ([32]byte, error) {
+	hh := ssz.DefaultHasherPool.Get()
+	if size := len(data); size != lenLimit {
+		ssz.DefaultHasherPool.Put(hh)
+		return [32]byte{}, ssz.ErrBytesLengthFn("--."+remark, size, lenLimit)
+	}
+	hh.PutBytes(data)
+	root, err := hh.HashRoot()
+	ssz.DefaultHasherPool.Put(hh)
+	return root, err
+}
+
+func Uint64HashTreeRoot(data uint64) ([32]byte, error) {
+	hh := ssz.DefaultHasherPool.Get()
+	hh.PutUint64(data)
+	root, err := hh.HashRoot()
+	ssz.DefaultHasherPool.Put(hh)
+	return root, err
+}
+
+func specialFieldExtraDataHashTreeRoot(extraData []byte) ([32]byte, error) {
+	hh := ssz.DefaultHasherPool.Get()
+	elemIndx := hh.Index()
+	byteLen := uint64(len(extraData))
+	if byteLen > 32 {
+		ssz.DefaultHasherPool.Put(hh)
+		return [32]byte{}, ssz.ErrIncorrectListSize
+	}
+	hh.PutBytes(extraData)
+	if ssz.EnableVectorizedHTR {
+		hh.MerkleizeWithMixinVectorizedHTR(elemIndx, byteLen, (32+31)/32)
+	} else {
+		hh.MerkleizeWithMixin(elemIndx, byteLen, (32+31)/32)
+	}
+	root, err := hh.HashRoot()
+	ssz.DefaultHasherPool.Put(hh)
+	return root, err
+}
+
+func specialFieldTransactionsHashTreeRoot(transactions [][]byte) ([32]byte, error) {
+	hh := ssz.DefaultHasherPool.Get()
+	subIdx := hh.Index()
+	num := uint64(len(transactions))
+	if num > 1048576 {
+		ssz.DefaultHasherPool.Put(hh)
+		return [32]byte{}, ssz.ErrIncorrectListSize
+	}
+	for _, elem := range transactions {
+		{
+			elemIndx := hh.Index()
+			byteLen := uint64(len(elem))
+			if byteLen > 1073741824 {
+				ssz.DefaultHasherPool.Put(hh)
+				return [32]byte{}, ssz.ErrIncorrectListSize
+			}
+			hh.AppendBytes32(elem)
+			if ssz.EnableVectorizedHTR {
+				hh.MerkleizeWithMixinVectorizedHTR(elemIndx, byteLen, (1073741824+31)/32)
+			} else {
+				hh.MerkleizeWithMixin(elemIndx, byteLen, (1073741824+31)/32)
+			}
+		}
+	}
+	if ssz.EnableVectorizedHTR {
+		hh.MerkleizeWithMixinVectorizedHTR(subIdx, num, 1048576)
+	} else {
+		hh.MerkleizeWithMixin(subIdx, num, 1048576)
+	}
+	root, err := hh.HashRoot()
+	ssz.DefaultHasherPool.Put(hh)
+	return root, err
+}
+
+func BeaconBlockBodyMerkleTreeNew(b *v2.BeaconBlockBodyCapella) (MerkleTreeNode, error) {
+	b.HashTreeRoot()
+	leaves := make([][32]byte, 11)
+	// field 0
+	if hashRoot, err := BytesHashTreeRoot(b.RandaoReveal, 96, "RandaoReveal"); err != nil {
+		return nil, err
+	} else {
+		leaves[0] = hashRoot
+	}
+	// field 1
+	if hashRoot, err := b.Eth1Data.HashTreeRoot(); err != nil {
+		return nil, err
+	} else {
+		leaves[1] = hashRoot
+	}
+
+	// field 2
+	if hashRoot, err := BytesHashTreeRoot(b.Graffiti, 32, "Graffiti"); err != nil {
+		return nil, err
+	} else {
+		leaves[2] = hashRoot
+	}
+
+	// field 3
+	hrs := make([]ssz.HashRoot, len(b.ProposerSlashings))
+	for i, v := range b.ProposerSlashings {
+		hrs[i] = v
+	}
+	if hashRoot, err := VecObjectHashTreeRoot(hrs, 16); err != nil {
+		return nil, err
+	} else {
+		leaves[3] = hashRoot
+	}
+
+	// field 4
+	hrs = make([]ssz.HashRoot, len(b.AttesterSlashings))
+	for i, v := range b.AttesterSlashings {
+		hrs[i] = v
+	}
+	if hashRoot, err := VecObjectHashTreeRoot(hrs, 2); err != nil {
+		return nil, err
+	} else {
+		leaves[4] = hashRoot
+	}
+
+	// field 5
+	hrs = make([]ssz.HashRoot, len(b.Attestations))
+	for i, v := range b.Attestations {
+		hrs[i] = v
+	}
+	if hashRoot, err := VecObjectHashTreeRoot(hrs, 128); err != nil {
+		return nil, err
+	} else {
+		leaves[5] = hashRoot
+	}
+
+	// field 6
+	hrs = make([]ssz.HashRoot, len(b.Deposits))
+	for i, v := range b.Deposits {
+		hrs[i] = v
+	}
+	if hashRoot, err := VecObjectHashTreeRoot(hrs, 16); err != nil {
+		return nil, err
+	} else {
+		leaves[6] = hashRoot
+	}
+
+	// field 7
+	hrs = make([]ssz.HashRoot, len(b.VoluntaryExits))
+	for i, v := range b.VoluntaryExits {
+		hrs[i] = v
+	}
+	if hashRoot, err := VecObjectHashTreeRoot(hrs, 16); err != nil {
+		return nil, err
+	} else {
+		leaves[7] = hashRoot
+	}
+
+	// field 8
+	if hashRoot, err := b.SyncAggregate.HashTreeRoot(); err != nil {
+		return nil, err
+	} else {
+		leaves[8] = hashRoot
+	}
+
+	// field 9
+	if hashRoot, err := b.ExecutionPayload.HashTreeRoot(); err != nil {
+		return nil, err
+	} else {
+		leaves[9] = hashRoot
+	}
+
+	// field 10
+	hrs = make([]ssz.HashRoot, len(b.BlsToExecutionChanges))
+	for i, v := range b.BlsToExecutionChanges {
+		hrs[i] = v
+	}
+	if hashRoot, err := VecObjectHashTreeRoot(hrs, 16); err != nil {
+		return nil, err
+	} else {
+		leaves[10] = hashRoot
+	}
+	return create(leaves, BeaconBlockBodyTreeDepth), nil
+}
+
+func ExecutionPayloadMerkleTreeNew(b *v11.ExecutionPayloadCapella) (MerkleTreeNode, error) {
+	b.HashTreeRoot()
+	leaves := make([][32]byte, 15)
+	// field 0
+	if hashRoot, err := BytesHashTreeRoot(b.ParentHash, 32, "ParentHash"); err != nil {
+		return nil, err
+	} else {
+		leaves[0] = hashRoot
+	}
+
+	// field 1
+	if hashRoot, err := BytesHashTreeRoot(b.FeeRecipient, 20, "FeeRecipient"); err != nil {
+		return nil, err
+	} else {
+		leaves[1] = hashRoot
+	}
+
+	// field 2
+	if hashRoot, err := BytesHashTreeRoot(b.StateRoot, 32, "StateRoot"); err != nil {
+		return nil, err
+	} else {
+		leaves[2] = hashRoot
+	}
+
+	// field 3
+	if hashRoot, err := BytesHashTreeRoot(b.ReceiptsRoot, 32, "ReceiptsRoot"); err != nil {
+		return nil, err
+	} else {
+		leaves[3] = hashRoot
+	}
+
+	// field 4
+	if hashRoot, err := BytesHashTreeRoot(b.LogsBloom, 256, "LogsBloom"); err != nil {
+		return nil, err
+	} else {
+		leaves[4] = hashRoot
+	}
+
+	// field 5
+	if hashRoot, err := BytesHashTreeRoot(b.PrevRandao, 32, "PrevRandao"); err != nil {
+		return nil, err
+	} else {
+		leaves[5] = hashRoot
+	}
+
+	// field 6
+	if hashRoot, err := Uint64HashTreeRoot(b.BlockNumber); err != nil {
+		return nil, err
+	} else {
+		leaves[6] = hashRoot
+	}
+
+	// field 7
+	if hashRoot, err := Uint64HashTreeRoot(b.GasLimit); err != nil {
+		return nil, err
+	} else {
+		leaves[7] = hashRoot
+	}
+
+	// field 8
+	if hashRoot, err := Uint64HashTreeRoot(b.GasUsed); err != nil {
+		return nil, err
+	} else {
+		leaves[8] = hashRoot
+	}
+
+	// field 9
+	if hashRoot, err := Uint64HashTreeRoot(b.Timestamp); err != nil {
+		return nil, err
+	} else {
+		leaves[9] = hashRoot
+	}
+
+	// field 10
+	if hashRoot, err := specialFieldExtraDataHashTreeRoot(b.ExtraData); err != nil {
+		return nil, err
+	} else {
+		leaves[10] = hashRoot
+	}
+
+	// field 11
+	if hashRoot, err := BytesHashTreeRoot(b.BaseFeePerGas, 32, "BaseFeePerGas"); err != nil {
+		return nil, err
+	} else {
+		leaves[11] = hashRoot
+	}
+
+	// field 12
+	if hashRoot, err := BytesHashTreeRoot(b.BlockHash, 32, "BlockHash"); err != nil {
+		return nil, err
+	} else {
+		leaves[12] = hashRoot
+	}
+
+	// field 13
+	if hashRoot, err := specialFieldTransactionsHashTreeRoot(b.Transactions); err != nil {
+		return nil, err
+	} else {
+		leaves[13] = hashRoot
+	}
+
+	// field 14
+	hrs := make([]ssz.HashRoot, len(b.Withdrawals))
+	for i, v := range b.Withdrawals {
+		hrs[i] = v
+	}
+	if hashRoot, err := VecObjectHashTreeRoot(hrs, 16); err != nil {
+		return nil, err
+	} else {
+		leaves[14] = hashRoot
+	}
+	return create(leaves, BeaconBlockBodyTreeDepth), nil
 }
