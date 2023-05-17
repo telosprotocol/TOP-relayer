@@ -133,7 +133,7 @@ func getEthInitData(eth1, prysm string) ([]byte, error) {
 	}
 	finalizedHeader := new(ExtendedBeaconBlockHeader)
 	finalizedHeader.BeaconBlockRoot = root[:]
-	finalizedHeader.Header = lastUpdate.FinalizedUpdate.HeaderUpdate.BeaconHeader
+	finalizedHeader.Header = lastUpdate.FinalizedUpdate.HeaderUpdate.BeaconHeader // 2381600
 	finalizedHeader.ExecutionBlockHash = lastUpdate.FinalizedUpdate.HeaderUpdate.ExecutionBlockHash
 
 	finalitySlot := lastUpdate.FinalizedUpdate.HeaderUpdate.BeaconHeader.Slot

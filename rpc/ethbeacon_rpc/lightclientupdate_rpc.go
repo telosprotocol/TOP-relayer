@@ -19,7 +19,10 @@ func (c *BeaconGrpcClient) GetFinalizedLightClientUpdateV2() (*LightClientUpdate
 	if err != nil {
 		return nil, err
 	}
-	finalizedSlot = GetFinalizedSlotForPeriod(GetPeriodForSlot(finalizedSlot))
+	finalizedSlot, err = GetBeforeSlotInSamePeriod(finalizedSlot)
+	if err != nil {
+		return nil, err
+	}
 	return c.getLightClientUpdateByFinalizedSlot(finalizedSlot, false)
 }
 

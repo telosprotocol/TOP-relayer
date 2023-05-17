@@ -115,13 +115,25 @@ func (c *BeaconGrpcClient) getBeaconState(id string) (*eth.BeaconStateCapella, e
 	defer func() {
 		logger.Info("Slot:%s,getBeaconState time:%v", id, time.Since(start))
 	}()
+	var data []byte
+	//attestedSlot, err := strconv.Atoi(id)
+	//period, epoch, slot := SplitSlot(uint64(attestedSlot))
+	//fileName := fmt.Sprintf("state_%d_%d_%d_%s", period, epoch, slot, id)
+	//data, err = os.ReadFile(fileName)
+	//if err != nil {
 	resp, err := c.debugclient.GetBeaconStateSSZV2(context.Background(), &v2.BeaconStateRequestV2{StateId: []byte(id)})
 	if err != nil {
 		logger.Error("GetBeaconStateV2 error:", err)
 		return nil, err
 	}
+	data = resp.Data
+	//	if err = os.WriteFile(fileName, resp.Data, 0666); err != nil {
+	//		return nil, err
+	//	}
+	//}
+
 	var state eth.BeaconStateCapella
-	if err = state.UnmarshalSSZ(resp.Data); err != nil {
+	if err = state.UnmarshalSSZ(data); err != nil {
 		logger.Error("UnmarshalSSZ error:", err)
 		return nil, err
 	}
@@ -292,7 +304,7 @@ func (c *BeaconGrpcClient) BeaconHeaderconvert(data *BeaconBlockHeaderData) (*Be
 
 func (c *BeaconGrpcClient) SyncAggregateconvert(data *SyncAggregateData) (*SyncAggregate, error) {
 	aggregate := new(SyncAggregate)
-	aggregate.SyncCommitteeBits = data.SyncCommitteeBits
+	//aggregate.SyncCommitteeBits = data.SyncCommitteeBits
 	aggregate.SyncCommitteeSignature = common.Hex2Bytes(data.SyncCommitteeSignature[2:])
 	return aggregate, nil
 }

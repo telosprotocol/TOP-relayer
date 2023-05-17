@@ -29,7 +29,7 @@ func PackSubmitExecutionHeaderParam(data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	pack, err := abi.Pack("submit_execution_header", data)
+	pack, err := abi.Pack("submit_execution_headers", data)
 	if err != nil {
 		return nil, err
 	}

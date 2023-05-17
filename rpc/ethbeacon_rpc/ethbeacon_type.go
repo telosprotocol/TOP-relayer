@@ -2,7 +2,6 @@ package ethbeacon_rpc
 
 import (
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	ssz "github.com/prysmaticlabs/fastssz"
 	v11 "github.com/prysmaticlabs/prysm/v4/proto/engine/v1"
@@ -121,11 +120,13 @@ func (h *BeaconBlockHeader) Encode() ([]byte, error) {
 }
 
 type SyncAggregate struct {
-	SyncCommitteeBits      string
+	SyncCommitteeBits      []byte
 	SyncCommitteeSignature []byte
 }
 
 func (s *SyncAggregate) Encode() ([]byte, error) {
+	ss := len(s.SyncCommitteeBits)
+	fmt.Println(ss)
 	b1, err := rlp.EncodeToBytes(s.SyncCommitteeBits)
 	if err != nil {
 		return nil, err
@@ -159,9 +160,14 @@ func (update *HeaderUpdate) Encode() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	b3, err := rlp.EncodeToBytes(update.ExecutionHashBranch)
+	if err != nil {
+		return nil, err
+	}
 	var rlpBytes []byte
 	rlpBytes = append(rlpBytes, b1...)
 	rlpBytes = append(rlpBytes, b2...)
+	rlpBytes = append(rlpBytes, b3...)
 	return rlpBytes, nil
 }
 
@@ -262,13 +268,11 @@ func (h *LightClientUpdate) Encode() ([]byte, error) {
 		}
 	}
 	var rlpBytes []byte
-	var rlpBytes2 []byte
 	rlpBytes = append(rlpBytes, b1...)
 	rlpBytes = append(rlpBytes, b2...)
 	rlpBytes = append(rlpBytes, b3...)
 	rlpBytes = append(rlpBytes, b4...)
 	rlpBytes = append(rlpBytes, b5...)
-	fmt.Println("rlpBytes", len(rlpBytes2))
 	return rlpBytes, nil
 }
 
@@ -286,7 +290,7 @@ func convertEth2LightClientUpdate(lcu *ethtypes.LightClientUpdate) *LightClientU
 	ret := &LightClientUpdate{
 		AttestedBeaconHeader: beaconBlockHeaderConvert(lcu.AttestedBeaconHeader),
 		SyncAggregate: &SyncAggregate{
-			SyncCommitteeBits:      addHexPrefix(common.Bytes2Hex(lcu.SyncAggregate.SyncCommitteeBits)),
+			SyncCommitteeBits:      lcu.SyncAggregate.SyncCommitteeBits,
 			SyncCommitteeSignature: lcu.SyncAggregate.SyncCommitteeSignature,
 		},
 		SignatureSlot: lcu.SignatureSlot,
