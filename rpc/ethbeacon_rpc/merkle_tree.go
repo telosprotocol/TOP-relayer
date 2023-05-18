@@ -7,11 +7,6 @@ import (
 	"github.com/prysmaticlabs/prysm/v4/math"
 )
 
-const (
-	// DepositContractDepth is the maximum tree depth as defined by EIP-4881.
-	DepositContractDepth = 32
-)
-
 var (
 	// ErrFinalizedNodeCannotPushLeaf may occur when attempting to push a leaf to a finalized node. When a node is finalized, it cannot be modified or changed.
 	ErrFinalizedNodeCannotPushLeaf = errors.New("can't push a leaf to a finalized node")

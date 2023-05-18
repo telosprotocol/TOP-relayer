@@ -11,7 +11,9 @@ import (
 	"toprelayer/config"
 )
 
-func newRelayerClient() *Eth2TopRelayerV2 {
+var relayer *Eth2TopRelayerV2
+
+func init() {
 	var topUrl string = "http://192.168.2.104:8080"
 	var keyPath = "../../.relayer/wallet/top"
 
@@ -19,14 +21,13 @@ func newRelayerClient() *Eth2TopRelayerV2 {
 		Url:     []string{topUrl},
 		KeyPath: keyPath,
 	}
-	relayer := &Eth2TopRelayerV2{}
+	relayer = &Eth2TopRelayerV2{}
 	if err := relayer.Init(cfg, []string{config.ETHAddr, config.ETHPrysm}, defaultPass); err != nil {
 		panic(err.Error())
 	}
-	return relayer
 }
+
 func TestEthInitContract(t *testing.T) {
-	relayer := newRelayerClient()
 	nonce, err := relayer.wallet.NonceAt(context.Background(), relayer.wallet.Address(), nil)
 	if err != nil {
 		t.Fatal(err)
@@ -58,7 +59,6 @@ func TestEthInitContract(t *testing.T) {
 }
 
 func TestReset(t *testing.T) {
-	relayer := newRelayerClient()
 	nonce, err := relayer.wallet.NonceAt(context.Background(), relayer.wallet.Address(), nil)
 	if err != nil {
 		t.Fatal(err)
@@ -86,7 +86,6 @@ func TestReset(t *testing.T) {
 }
 
 func TestEthClient(t *testing.T) {
-	relayer := newRelayerClient()
 	b, err := relayer.beaconrpcclient.GetLastSlotNumber()
 	if err != nil {
 		t.Fatal(err)
@@ -101,7 +100,6 @@ func TestEthClient(t *testing.T) {
 }
 
 func TestInitialized(t *testing.T) {
-	relayer := newRelayerClient()
 	if ok, err := relayer.callerSession.Initialized(); err != nil {
 		t.Fatal(err)
 	} else {
@@ -110,7 +108,6 @@ func TestInitialized(t *testing.T) {
 }
 
 func TestGetClientMode(t *testing.T) {
-	relayer := newRelayerClient()
 	mode, err := relayer.callerSession.GetClientMode()
 	if err != nil {
 		t.Fatal(err)
@@ -119,8 +116,7 @@ func TestGetClientMode(t *testing.T) {
 }
 
 func TestLCU(t *testing.T) {
-	relayer := newRelayerClient()
-	v2, err := relayer.beaconrpcclient.GetFinalizedLightClientUpdateV2()
+	v2, err := relayer.beaconrpcclient.GetLastFinalizedLightClientUpdateV2()
 	if err != nil {
 		t.Fatal(err)
 	}

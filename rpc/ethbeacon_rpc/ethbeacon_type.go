@@ -125,8 +125,6 @@ type SyncAggregate struct {
 }
 
 func (s *SyncAggregate) Encode() ([]byte, error) {
-	ss := len(s.SyncCommitteeBits)
-	fmt.Println(ss)
 	b1, err := rlp.EncodeToBytes(s.SyncCommitteeBits)
 	if err != nil {
 		return nil, err
@@ -337,7 +335,7 @@ func addHexPrefix(hex string) string {
 	return "0x" + hex
 }
 
-func GetBeforeSlotInSamePeriod(finalizedSlot uint64) (uint64, error) {
+func getBeforeSlotInSamePeriod(finalizedSlot uint64) (uint64, error) {
 	slot := finalizedSlot - 4*ONE_EPOCH_IN_SLOTS
 	period, epoch, _ := SplitSlot(slot)
 	if epoch > 245 {
@@ -418,7 +416,7 @@ func Uint64HashTreeRoot(data uint64) ([32]byte, error) {
 
 func specialFieldExtraDataHashTreeRoot(extraData []byte) ([32]byte, error) {
 	hh := ssz.DefaultHasherPool.Get()
-	elemIndx := hh.Index()
+	elemIdx := hh.Index()
 	byteLen := uint64(len(extraData))
 	if byteLen > 32 {
 		ssz.DefaultHasherPool.Put(hh)
@@ -426,9 +424,9 @@ func specialFieldExtraDataHashTreeRoot(extraData []byte) ([32]byte, error) {
 	}
 	hh.PutBytes(extraData)
 	if ssz.EnableVectorizedHTR {
-		hh.MerkleizeWithMixinVectorizedHTR(elemIndx, byteLen, (32+31)/32)
+		hh.MerkleizeWithMixinVectorizedHTR(elemIdx, byteLen, (32+31)/32)
 	} else {
-		hh.MerkleizeWithMixin(elemIndx, byteLen, (32+31)/32)
+		hh.MerkleizeWithMixin(elemIdx, byteLen, (32+31)/32)
 	}
 	root, err := hh.HashRoot()
 	ssz.DefaultHasherPool.Put(hh)
@@ -445,7 +443,7 @@ func specialFieldTransactionsHashTreeRoot(transactions [][]byte) ([32]byte, erro
 	}
 	for _, elem := range transactions {
 		{
-			elemIndx := hh.Index()
+			elemIdx := hh.Index()
 			byteLen := uint64(len(elem))
 			if byteLen > 1073741824 {
 				ssz.DefaultHasherPool.Put(hh)
@@ -453,9 +451,9 @@ func specialFieldTransactionsHashTreeRoot(transactions [][]byte) ([32]byte, erro
 			}
 			hh.AppendBytes32(elem)
 			if ssz.EnableVectorizedHTR {
-				hh.MerkleizeWithMixinVectorizedHTR(elemIndx, byteLen, (1073741824+31)/32)
+				hh.MerkleizeWithMixinVectorizedHTR(elemIdx, byteLen, (1073741824+31)/32)
 			} else {
-				hh.MerkleizeWithMixin(elemIndx, byteLen, (1073741824+31)/32)
+				hh.MerkleizeWithMixin(elemIdx, byteLen, (1073741824+31)/32)
 			}
 		}
 	}
@@ -469,8 +467,163 @@ func specialFieldTransactionsHashTreeRoot(transactions [][]byte) ([32]byte, erro
 	return root, err
 }
 
+//func BeaconBlockBodyMerkleTreeNew2(b *v2.BeaconBlockBodyCapella) (MerkleTreeNode, err error) {
+//	hh := ssz.DefaultHasherPool.Get()
+//	defer ssz.DefaultHasherPool.Put(hh)
+//	//indx := hh.Index()
+//	// Field (0) 'RandaoReveal'
+//	if size := len(b.RandaoReveal); size != 96 {
+//		err = ssz.ErrBytesLengthFn("--.RandaoReveal", size, 96)
+//		return
+//	}
+//	hh.PutBytes(b.RandaoReveal)
+//
+//	// Field (1) 'Eth1Data'
+//	if err = b.Eth1Data.HashTreeRootWith(hh); err != nil {
+//		return
+//	}
+//
+//	// Field (2) 'Graffiti'
+//	if size := len(b.Graffiti); size != 32 {
+//		err = ssz.ErrBytesLengthFn("--.Graffiti", size, 32)
+//		return
+//	}
+//	hh.PutBytes(b.Graffiti)
+//
+//	// Field (3) 'ProposerSlashings'
+//	{
+//		subIndx := hh.Index()
+//		num := uint64(len(b.ProposerSlashings))
+//		if num > 16 {
+//			err = ssz.ErrIncorrectListSize
+//			return
+//		}
+//		for _, elem := range b.ProposerSlashings {
+//			if err = elem.HashTreeRootWith(hh); err != nil {
+//				return
+//			}
+//		}
+//		if ssz.EnableVectorizedHTR {
+//			hh.MerkleizeWithMixinVectorizedHTR(subIndx, num, 16)
+//		} else {
+//			hh.MerkleizeWithMixin(subIndx, num, 16)
+//		}
+//	}
+//
+//	// Field (4) 'AttesterSlashings'
+//	{
+//		subIndx := hh.Index()
+//		num := uint64(len(b.AttesterSlashings))
+//		if num > 2 {
+//			err = ssz.ErrIncorrectListSize
+//			return
+//		}
+//		for _, elem := range b.AttesterSlashings {
+//			if err = elem.HashTreeRootWith(hh); err != nil {
+//				return
+//			}
+//		}
+//		if ssz.EnableVectorizedHTR {
+//			hh.MerkleizeWithMixinVectorizedHTR(subIndx, num, 2)
+//		} else {
+//			hh.MerkleizeWithMixin(subIndx, num, 2)
+//		}
+//	}
+//
+//	// Field (5) 'Attestations'
+//	{
+//		subIndx := hh.Index()
+//		num := uint64(len(b.Attestations))
+//		if num > 128 {
+//			err = ssz.ErrIncorrectListSize
+//			return
+//		}
+//		for _, elem := range b.Attestations {
+//			if err = elem.HashTreeRootWith(hh); err != nil {
+//				return
+//			}
+//		}
+//		if ssz.EnableVectorizedHTR {
+//			hh.MerkleizeWithMixinVectorizedHTR(subIndx, num, 128)
+//		} else {
+//			hh.MerkleizeWithMixin(subIndx, num, 128)
+//		}
+//	}
+//
+//	// Field (6) 'Deposits'
+//	{
+//		subIndx := hh.Index()
+//		num := uint64(len(b.Deposits))
+//		if num > 16 {
+//			err = ssz.ErrIncorrectListSize
+//			return
+//		}
+//		for _, elem := range b.Deposits {
+//			if err = elem.HashTreeRootWith(hh); err != nil {
+//				return
+//			}
+//		}
+//		if ssz.EnableVectorizedHTR {
+//			hh.MerkleizeWithMixinVectorizedHTR(subIndx, num, 16)
+//		} else {
+//			hh.MerkleizeWithMixin(subIndx, num, 16)
+//		}
+//	}
+//
+//	// Field (7) 'VoluntaryExits'
+//	{
+//		subIndx := hh.Index()
+//		num := uint64(len(b.VoluntaryExits))
+//		if num > 16 {
+//			err = ssz.ErrIncorrectListSize
+//			return
+//		}
+//		for _, elem := range b.VoluntaryExits {
+//			if err = elem.HashTreeRootWith(hh); err != nil {
+//				return
+//			}
+//		}
+//		if ssz.EnableVectorizedHTR {
+//			hh.MerkleizeWithMixinVectorizedHTR(subIndx, num, 16)
+//		} else {
+//			hh.MerkleizeWithMixin(subIndx, num, 16)
+//		}
+//	}
+//
+//	// Field (8) 'SyncAggregate'
+//	if err = b.SyncAggregate.HashTreeRootWith(hh); err != nil {
+//		return
+//	}
+//
+//	// Field (9) 'ExecutionPayload'
+//	if err = b.ExecutionPayload.HashTreeRootWith(hh); err != nil {
+//		return
+//	}
+//
+//	// Field (10) 'BlsToExecutionChanges'
+//	{
+//		subIndx := hh.Index()
+//		num := uint64(len(b.BlsToExecutionChanges))
+//		if num > 16 {
+//			err = ssz.ErrIncorrectListSize
+//			return
+//		}
+//		for _, elem := range b.BlsToExecutionChanges {
+//			if err = elem.HashTreeRootWith(hh); err != nil {
+//				return
+//			}
+//		}
+//		if ssz.EnableVectorizedHTR {
+//			hh.MerkleizeWithMixinVectorizedHTR(subIndx, num, 16)
+//		} else {
+//			hh.MerkleizeWithMixin(subIndx, num, 16)
+//		}
+//	}
+//
+//	return create(hh.GetBuf(), BeaconBlockBodyTreeDepth), nil
+//}
+
 func BeaconBlockBodyMerkleTreeNew(b *v2.BeaconBlockBodyCapella) (MerkleTreeNode, error) {
-	b.HashTreeRoot()
 	leaves := make([][32]byte, 11)
 	// field 0
 	if hashRoot, err := BytesHashTreeRoot(b.RandaoReveal, 96, "RandaoReveal"); err != nil {
@@ -575,7 +728,7 @@ func BeaconBlockBodyMerkleTreeNew(b *v2.BeaconBlockBodyCapella) (MerkleTreeNode,
 }
 
 func ExecutionPayloadMerkleTreeNew(b *v11.ExecutionPayloadCapella) (MerkleTreeNode, error) {
-	b.HashTreeRoot()
+
 	leaves := make([][32]byte, 15)
 	// field 0
 	if hashRoot, err := BytesHashTreeRoot(b.ParentHash, 32, "ParentHash"); err != nil {

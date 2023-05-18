@@ -165,7 +165,7 @@ func TestRLP4BeaconBlockHeader(t *testing.T) {
 			BodyRoot:      []byte("BodyRoot"),
 		},
 		SyncAggregate: &SyncAggregate{
-			SyncCommitteeBits:      "1111111111000000011111",
+			SyncCommitteeBits:      []byte("1111111111000000011111"),
 			SyncCommitteeSignature: []byte("SyncCommitteeSignature"),
 		},
 		SignatureSlot: 0,

@@ -14,24 +14,24 @@ import (
 	"toprelayer/relayer/toprelayer/ethtypes"
 )
 
-func (c *BeaconGrpcClient) GetFinalizedLightClientUpdateV2() (*LightClientUpdate, error) {
+func (c *BeaconGrpcClient) GetLastFinalizedLightClientUpdateV2FinalizedSlot() (uint64, error) {
 	finalizedSlot, err := c.GetLastFinalizedSlotNumber()
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
-	finalizedSlot, err = GetBeforeSlotInSamePeriod(finalizedSlot)
+	return getBeforeSlotInSamePeriod(finalizedSlot)
+}
+
+func (c *BeaconGrpcClient) GetLastFinalizedLightClientUpdateV2() (*LightClientUpdate, error) {
+	finalizedSlot, err := c.GetLastFinalizedLightClientUpdateV2FinalizedSlot()
 	if err != nil {
 		return nil, err
 	}
 	return c.getLightClientUpdateByFinalizedSlot(finalizedSlot, false)
 }
 
-func (c *BeaconGrpcClient) GetFinalizedLightClientUpdateV2WithNextSyncCommittee() (*LightClientUpdate, error) {
-	finalizedSlot, err := c.GetLastFinalizedSlotNumber()
-	if err != nil {
-		return nil, err
-	}
-	finalizedSlot, err = GetBeforeSlotInSamePeriod(finalizedSlot)
+func (c *BeaconGrpcClient) GetLastFinalizedLightClientUpdateV2WithNextSyncCommittee() (*LightClientUpdate, error) {
+	finalizedSlot, err := c.GetLastFinalizedLightClientUpdateV2FinalizedSlot()
 	if err != nil {
 		return nil, err
 	}
@@ -62,6 +62,8 @@ func (c *BeaconGrpcClient) getLightClientUpdateByFinalizedSlot(finalizedSlot uin
 		logger.Error("Eth2TopRelayerV2 getFinalityLightClientUpdate error:", err)
 		return nil, err
 	}
+	logger.Info("LightClientUpdate FinalizedSlot:%d,AttestedSlot:%d",
+		lcu.FinalizedUpdate.HeaderUpdate.BeaconHeader.Slot, lcu.AttestedBeaconHeader.Slot)
 	return convertEth2LightClientUpdate(lcu), nil
 }
 
@@ -195,10 +197,10 @@ func (c *BeaconGrpcClient) constructFromBeaconBlockBody(beaconBlockBody *v2.Beac
 	}
 	_, proof1 := generateProof(beaconBlockMerkleTree, L1BeaconBlockBodyTreeExecutionPayloadIndex, L1BeaconBlockBodyProofSize)
 	_, proof2 := generateProof(executionPayloadMerkleTree, L2ExecutionPayloadTreeExecutionBlockIndex, L2ExecutionPayloadProofSize)
-	blockProof := append(proof2, proof1...)
+	proof2 = append(proof2, proof1...)
 	return &ethtypes.ExecutionBlockProof{
 		BlockHash: finalizedBlockBodyHash,
-		Proof:     ethtypes.ConvertSliceBytes2Hash(blockProof),
+		Proof:     ethtypes.ConvertSliceBytes2Hash(proof2),
 	}, nil
 }
 

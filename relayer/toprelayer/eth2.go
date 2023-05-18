@@ -108,42 +108,44 @@ func (relayer *Eth2TopRelayerV2) Init(cfg *config.Relayer, listenUrl []string, p
 }
 
 func (relayer *Eth2TopRelayerV2) StartRelayer(wg *sync.WaitGroup) error {
-	logger.Info("Start Eth2TopRelayerV2, subBatch: %v certaintyBlocks: %v", BATCH_NUM, CONFIRM_NUM)
+	logger.Info("Start Eth2TopRelayerV2")
 	go func() {
 		defer wg.Done()
 		sleepTime := time.Duration(10)
 		for {
-			time.Sleep(time.Second * sleepTime)
 			logger.Info("Eth2TopRelayerV2 ===================== New Cycle Start =====================")
+			time.Sleep(time.Second * sleepTime)
 			if ok, err := relayer.callerSession.Initialized(); err != nil || !ok {
 				logger.Error("Eth2TopRelayerV2 don't initialize the header,error:", err)
-				sleepTime = time.Duration(WAITDELAY)
+				sleepTime = time.Duration(30)
 				continue
 			}
 			mode, err := relayer.callerSession.GetClientMode()
 			if err != nil {
 				logger.Error("Eth2TopRelayerV2 get client mode,error:", err.Error())
-				sleepTime = time.Duration(ERRDELAY)
+				sleepTime = time.Duration(30)
 				continue
 			}
 			logger.Info("Eth2TopRelayerV2 ClientMode(%d) Start", mode)
-			var submit bool
 			if ClientModeEnum(mode) == SubmitLightClientUpdateMode {
-				submit, err = relayer.sendLightClientUpdatesWithChecks()
+				err = relayer.sendLightClientUpdatesWithChecks()
 			} else if ClientModeEnum(mode) == SubmitHeaderMode {
-				submit, err = relayer.submitHeaders()
+				err = relayer.submitHeaders()
 			} else {
 				logger.Error("Eth2TopRelayerV2 Invalid ClientMode(%v):", mode)
-				sleepTime = time.Duration(FATALTIMEOUT)
+				sleepTime = time.Duration(30)
 				continue
 			}
-
-			if err != nil || !submit {
-				logger.Error("Eth2TopRelayerV2 ClientMode(%d) Submit Fail,error:%s", mode, err)
-				sleepTime = time.Duration(FATALTIMEOUT)
+			if err != nil {
+				if strings.Contains(err.Error(), "no need to submit") {
+					logger.Info("Eth2TopRelayerV2 ClientMode(%d), %s", mode, err)
+				} else {
+					logger.Error("Eth2TopRelayerV2 ClientMode(%d) Submit Fail,%s", mode, err)
+				}
+				sleepTime = time.Duration(30)
 				continue
 			}
-			sleepTime = time.Duration(SUCCESSDELAY)
+			sleepTime = time.Duration(30)
 			logger.Info("Eth2TopRelayerV2 ClientMode(%d) Success", mode)
 		}
 	}()
@@ -282,11 +284,11 @@ func (relayer *Eth2TopRelayerV2) getLastFinalizedSlotOnEth() (uint64, error) {
 
 func (relayer *Eth2TopRelayerV2) sendRegularLightClientUpdate(lastFinalizedTopSlot, lastFinalizedEthSlot uint64) error {
 	lastPeriodOnTOP, lastPeriodOnEth := beaconrpc.GetPeriodForSlot(lastFinalizedTopSlot), beaconrpc.GetPeriodForSlot(lastFinalizedEthSlot)
-	logger.Info("Eth2TopRelayerV2 sendRegularLightClientUpdate period(%d),slot(%d), period(%d)slot(%d)", lastPeriodOnTOP, lastFinalizedTopSlot, lastPeriodOnEth, lastFinalizedEthSlot)
+	logger.Info("Eth2TopRelayerV2 lastFinalizedSlot TOP(Period:%d,slot:%d), ETH(period:%d,slot:%d)", lastPeriodOnTOP, lastFinalizedTopSlot, lastPeriodOnEth, lastFinalizedEthSlot)
 	var data *beaconrpc.LightClientUpdate
 	var err error
 	if lastPeriodOnTOP == lastPeriodOnEth {
-		data, err = relayer.beaconrpcclient.GetFinalizedLightClientUpdateV2()
+		data, err = relayer.beaconrpcclient.GetLastFinalizedLightClientUpdateV2()
 		if err != nil {
 			logger.Error("Eth2TopRelayerV2 GetLightClientUpdate error:", err)
 			return err
@@ -306,28 +308,25 @@ func (relayer *Eth2TopRelayerV2) sendRegularLightClientUpdate(lastFinalizedTopSl
 	return relayer.submitLightClientUpdate(bytes)
 }
 
-func (relayer *Eth2TopRelayerV2) sendLightClientUpdatesWithChecks() (bool, error) {
+func (relayer *Eth2TopRelayerV2) sendLightClientUpdatesWithChecks() error {
 	lastFinalizedSlotOnTop, err := relayer.getLastFinalizedSlotOnTop()
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 getLastFinalizedSlotOnTop error:", err)
-		return false, err
+		return err
 	}
 	lastFinalizedSlotOnEth, err := relayer.getLastFinalizedSlotOnEth()
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 getLastFinalizedSlotOnEth error:", err)
-		return false, err
+		return err
 	}
-	if relayer.isEnoughBlocksForLightClientUpdate(lastFinalizedSlotOnTop, lastFinalizedSlotOnEth) {
-		err = relayer.sendRegularLightClientUpdate(lastFinalizedSlotOnTop, lastFinalizedSlotOnEth)
-		if err != nil {
-			logger.Error("Eth2TopRelayerV2 sendLightClientUpdates error:", err)
-			return false, err
-		}
-		return true, nil
-	} else {
-		logger.Debug("Eth2TopRelayerV2 no need to light client update")
+	if !relayer.isEnoughBlocksForLightClientUpdate(lastFinalizedSlotOnTop, lastFinalizedSlotOnEth) {
+		return errors.New("no need to submit LightClientUpdate")
 	}
-	return false, nil
+	if err = relayer.sendRegularLightClientUpdate(lastFinalizedSlotOnTop, lastFinalizedSlotOnEth); err != nil {
+		logger.Error("Eth2TopRelayerV2 sendLightClientUpdates error:", err)
+		return err
+	}
+	return nil
 }
 
 func (relayer *Eth2TopRelayerV2) txOption(packData []byte) (*bind.TransactOpts, error) {
@@ -359,33 +358,33 @@ func (relayer *Eth2TopRelayerV2) txOption(packData []byte) (*bind.TransactOpts, 
 	}, nil
 }
 
-func (relayer *Eth2TopRelayerV2) submitHeaders() (bool, error) {
+func (relayer *Eth2TopRelayerV2) submitHeaders() error {
 	lastFinalizedBlockNumber, err := relayer.callerSession.LastBlockNumber()
 	if err != nil {
-		return false, err
+		return err
 	}
 	currentBlockNumber, err := relayer.getMaxBlockNumber()
 	if err != nil {
-		return false, err
+		return err
 	}
 	logger.Info("Eth2TopRelayerV2  lastFinalizedBlockNumber: %v, currentTailBlockNumber: %v", lastFinalizedBlockNumber, currentBlockNumber)
 	minBlockNumberInBatch := math.Max(lastFinalizedBlockNumber+1, currentBlockNumber-beaconrpc.HEADER_BATCH_SIZE+1)
 	headers, err := relayer.getExecutionBlocksBetweenByNumber(minBlockNumberInBatch, currentBlockNumber)
 	if err != nil {
-		return false, err
+		return err
 	}
 	logger.Info("Eth2TopRelayerV2 submitHeaders len: %v", len(headers))
 	slice.Reverse(headers)
 	if err = relayer.submitEthHeader(headers); err != nil {
-		return false, err
+		return err
 	}
-	return true, nil
+	return nil
 }
 
 func (relayer *Eth2TopRelayerV2) getMaxBlockNumber() (uint64, error) {
 	number, err := relayer.callerSession.GetUnfinalizedTailBlockNumber()
 	if err != nil {
-		return 0, nil
+		return 0, err
 	}
 	if number > 0 {
 		return number - 1, nil
@@ -553,6 +552,14 @@ func (relayer *Eth2TopRelayerV2) isEnoughBlocksForLightClientUpdate(lastFinalize
 		if (lastFinalizedEthSlot - lastFinalizedTopSlot) < beaconrpc.ONE_EPOCH_IN_SLOTS*3 {
 			return false
 		}
+	}
+	submitFinalizedSlot, err := relayer.beaconrpcclient.GetLastFinalizedLightClientUpdateV2FinalizedSlot()
+	if err != nil {
+		return false
+	}
+	if lastFinalizedTopSlot >= submitFinalizedSlot {
+		logger.Warn("must : lastFinalizedTopSlot(%d) < submitFinalizedSlot:(%d)", lastFinalizedTopSlot, submitFinalizedSlot)
+		return false
 	}
 	return true
 }
