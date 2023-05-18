@@ -367,7 +367,7 @@ func (relayer *Eth2TopRelayerV2) submitHeaders() error {
 	if err != nil {
 		return err
 	}
-	logger.Info("Eth2TopRelayerV2  lastFinalizedBlockNumber: %v, currentTailBlockNumber: %v", lastFinalizedBlockNumber, currentBlockNumber)
+	logger.Info("Eth2TopRelayerV2 lastBlockNumberOnTop Finalized:%v, Tail:%v", lastFinalizedBlockNumber, currentBlockNumber+1)
 	minBlockNumberInBatch := math.Max(lastFinalizedBlockNumber+1, currentBlockNumber-beaconrpc.HEADER_BATCH_SIZE+1)
 	headers, err := relayer.getExecutionBlocksBetweenByNumber(minBlockNumberInBatch, currentBlockNumber)
 	if err != nil {
@@ -434,7 +434,7 @@ func (relayer *Eth2TopRelayerV2) submitLightClientUpdate(update []byte) error {
 		logger.Error("Eth2TopRelayerV2 txOption error:", err)
 		return err
 	}
-	logger.Info("Eth2TopRelayer submitLightClientUpdate data:", common.Bytes2Hex(update))
+	logger.Info("Eth2TopRelayer submitLightClientUpdate len:", len(update))
 	sigTx, err := relayer.transactor.SubmitBeaconChainLightClientUpdate(ops, update)
 	if err != nil {
 		logger.Error("Eth2TopRelayer SubmitBeaconChainLightClientUpdate error:", err)

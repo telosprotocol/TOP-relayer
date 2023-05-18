@@ -67,8 +67,8 @@ type ExecutionBlockProof struct {
 
 func ConvertSliceHash2Bytes(hash []common.Hash) [][]byte {
 	res := make([][]byte, len(hash))
-	for i, h := range hash {
-		res[i] = h[:]
+	for i := range hash {
+		res[i] = hash[i][:]
 	}
 	return res
 }

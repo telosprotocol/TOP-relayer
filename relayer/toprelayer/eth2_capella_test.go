@@ -7,7 +7,6 @@ import (
 	"math/big"
 	"os"
 	"testing"
-	"time"
 	"toprelayer/config"
 )
 
@@ -116,18 +115,11 @@ func TestGetClientMode(t *testing.T) {
 }
 
 func TestLCU(t *testing.T) {
-	v2, err := relayer.beaconrpcclient.GetLastFinalizedLightClientUpdateV2()
+	v2, err := relayer.beaconrpcclient.GetLightClientUpdateV2(289)
 	if err != nil {
 		t.Fatal(err)
 	}
-	encode, err := v2.Encode()
-	if err != nil {
-		t.Fatal(err)
-	}
-	fmt.Println(encode)
 	fmt.Println(v2)
-
-	fmt.Println(time.Now())
 }
 
 //func TestSubmit(t *testing.T) {
