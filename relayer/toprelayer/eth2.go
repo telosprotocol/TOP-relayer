@@ -284,7 +284,6 @@ func (relayer *Eth2TopRelayerV2) getLastFinalizedSlotOnEth() (uint64, error) {
 
 func (relayer *Eth2TopRelayerV2) sendRegularLightClientUpdate(lastFinalizedTopSlot, lastFinalizedEthSlot uint64) error {
 	lastPeriodOnTOP, lastPeriodOnEth := beaconrpc.GetPeriodForSlot(lastFinalizedTopSlot), beaconrpc.GetPeriodForSlot(lastFinalizedEthSlot)
-	logger.Info("Eth2TopRelayerV2 lastFinalizedSlot TOP(Period:%d,slot:%d), ETH(period:%d,slot:%d)", lastPeriodOnTOP, lastFinalizedTopSlot, lastPeriodOnEth, lastFinalizedEthSlot)
 	var data *beaconrpc.LightClientUpdate
 	var err error
 	if lastPeriodOnTOP == lastPeriodOnEth {
@@ -319,6 +318,8 @@ func (relayer *Eth2TopRelayerV2) sendLightClientUpdatesWithChecks() error {
 		logger.Error("Eth2TopRelayerV2 getLastFinalizedSlotOnEth error:", err)
 		return err
 	}
+	lastPeriodOnTOP, lastPeriodOnEth := beaconrpc.GetPeriodForSlot(lastFinalizedSlotOnTop), beaconrpc.GetPeriodForSlot(lastFinalizedSlotOnEth)
+	logger.Info("Eth2TopRelayerV2 lastFinalizedSlot TOP(Period:%d,slot:%d), ETH(period:%d,slot:%d)", lastPeriodOnTOP, lastFinalizedSlotOnTop, lastPeriodOnEth, lastFinalizedSlotOnEth)
 	if !relayer.isEnoughBlocksForLightClientUpdate(lastFinalizedSlotOnTop, lastFinalizedSlotOnEth) {
 		return errors.New("no need to submit LightClientUpdate")
 	}
@@ -342,7 +343,7 @@ func (relayer *Eth2TopRelayerV2) txOption(packData []byte) (*bind.TransactOpts, 
 	}
 	gaslimit, err := relayer.wallet.EstimateGas(context.Background(), &eth2ClientSystemContract, packData)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Eth2TopRelayer EstimateGas error:%s, data:%v", err, common.Bytes2Hex(packData)))
+		logger.Error(fmt.Sprintf("Eth2TopRelayer EstimateGas error:%s, data len:%v", err, len(packData)))
 		return nil, err
 	}
 	logger.Info("Eth2TopRelayer tx option info, account[%v] nonce:%v,capfee:%v", relayer.wallet.Address(), nonce, gaspric)
@@ -543,7 +544,7 @@ func (relayer *Eth2TopRelayerV2) isEnoughBlocksForLightClientUpdate(lastFinalize
 	}
 	lastPeriodOnEth := beaconrpc.GetPeriodForSlot(lastFinalizedEthSlot)
 	lastPeriodOnTop := beaconrpc.GetPeriodForSlot(lastFinalizedTopSlot)
-	if lastPeriodOnEth > lastPeriodOnTop {
+	if lastPeriodOnEth == lastPeriodOnTop+1 {
 		if beaconrpc.GetFinalizedSlotForPeriod(lastPeriodOnEth) >= lastFinalizedEthSlot {
 			return false
 		}
@@ -552,14 +553,14 @@ func (relayer *Eth2TopRelayerV2) isEnoughBlocksForLightClientUpdate(lastFinalize
 		if (lastFinalizedEthSlot - lastFinalizedTopSlot) < beaconrpc.ONE_EPOCH_IN_SLOTS*3 {
 			return false
 		}
-	}
-	submitFinalizedSlot, err := relayer.beaconrpcclient.GetLastFinalizedLightClientUpdateV2FinalizedSlot()
-	if err != nil {
-		return false
-	}
-	if lastFinalizedTopSlot >= submitFinalizedSlot {
-		logger.Warn("must : lastFinalizedTopSlot(%d) < submitFinalizedSlot:(%d)", lastFinalizedTopSlot, submitFinalizedSlot)
-		return false
+		submitFinalizedSlot, err := relayer.beaconrpcclient.GetLastFinalizedLightClientUpdateV2FinalizedSlot()
+		if err != nil {
+			return false
+		}
+		if lastFinalizedTopSlot >= submitFinalizedSlot {
+			logger.Warn("must : lastFinalizedTopSlot(%d) < submitFinalizedSlot:(%d)", lastFinalizedTopSlot, submitFinalizedSlot)
+			return false
+		}
 	}
 	return true
 }

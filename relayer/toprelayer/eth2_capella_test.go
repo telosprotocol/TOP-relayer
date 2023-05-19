@@ -13,11 +13,10 @@ import (
 var relayer *Eth2TopRelayerV2
 
 func init() {
-	var topUrl string = "http://192.168.2.104:8080"
 	var keyPath = "../../.relayer/wallet/top"
 
 	cfg := &config.Relayer{
-		Url:     []string{topUrl},
+		Url:     []string{config.TOPAddr},
 		KeyPath: keyPath,
 	}
 	relayer = &Eth2TopRelayerV2{}
