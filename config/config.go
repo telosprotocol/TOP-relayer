@@ -10,12 +10,12 @@ import (
 )
 
 const (
-	TOPAddr = "http://192.168.2.100:8080"
+	TOPAddr = ""
 )
 
 const (
-	ETHAddr     = "http://128.199.183.143:8545"
-	ETHPrysm    = "128.199.183.143:4000"
+	ETHAddr     = ""
+	ETHPrysm    = ""
 	ETHContract = ""
 )
 
