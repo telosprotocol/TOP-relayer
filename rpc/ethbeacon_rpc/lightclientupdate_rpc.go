@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	state_native "github.com/prysmaticlabs/prysm/v4/beacon-chain/state/state-native"
+	v2 "github.com/prysmaticlabs/prysm/v4/proto/eth/v2"
 	eth "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
 	"github.com/wonderivan/logger"
 	"sort"
@@ -13,21 +14,24 @@ import (
 	"toprelayer/relayer/toprelayer/ethtypes"
 )
 
-func (c *BeaconGrpcClient) GetFinalizedLightClientUpdateV2() (*LightClientUpdate, error) {
+func (c *BeaconGrpcClient) GetLastFinalizedLightClientUpdateV2FinalizedSlot() (uint64, error) {
 	finalizedSlot, err := c.GetLastFinalizedSlotNumber()
+	if err != nil {
+		return 0, err
+	}
+	return getBeforeSlotInSamePeriod(finalizedSlot)
+}
+
+func (c *BeaconGrpcClient) GetLastFinalizedLightClientUpdateV2() (*LightClientUpdate, error) {
+	finalizedSlot, err := c.GetLastFinalizedLightClientUpdateV2FinalizedSlot()
 	if err != nil {
 		return nil, err
 	}
-	finalizedSlot = GetFinalizedSlotForPeriod(GetPeriodForSlot(finalizedSlot))
 	return c.getLightClientUpdateByFinalizedSlot(finalizedSlot, false)
 }
 
-func (c *BeaconGrpcClient) GetFinalizedLightClientUpdateV2WithNextSyncCommittee() (*LightClientUpdate, error) {
-	finalizedSlot, err := c.GetLastFinalizedSlotNumber()
-	if err != nil {
-		return nil, err
-	}
-	finalizedSlot, err = GetBeforeSlotInSamePeriod(finalizedSlot)
+func (c *BeaconGrpcClient) GetLastFinalizedLightClientUpdateV2WithNextSyncCommittee() (*LightClientUpdate, error) {
+	finalizedSlot, err := c.GetLastFinalizedLightClientUpdateV2FinalizedSlot()
 	if err != nil {
 		return nil, err
 	}
@@ -58,6 +62,8 @@ func (c *BeaconGrpcClient) getLightClientUpdateByFinalizedSlot(finalizedSlot uin
 		logger.Error("Eth2TopRelayerV2 getFinalityLightClientUpdate error:", err)
 		return nil, err
 	}
+	logger.Info("LightClientUpdate FinalizedSlot:%d,AttestedSlot:%d",
+		lcu.FinalizedUpdate.HeaderUpdate.BeaconHeader.Slot, lcu.AttestedBeaconHeader.Slot)
 	return convertEth2LightClientUpdate(lcu), nil
 }
 
@@ -177,6 +183,27 @@ func (c *BeaconGrpcClient) getNextSyncCommittee(beaconState *eth.BeaconStateCape
 	return update, nil
 }
 
+func (c *BeaconGrpcClient) constructFromBeaconBlockBody(beaconBlockBody *v2.BeaconBlockBodyCapella) (*ethtypes.ExecutionBlockProof, error) {
+	blockHash := beaconBlockBody.ExecutionPayload.GetBlockHash()
+	var finalizedBlockBodyHash common.Hash
+	copy(finalizedBlockBodyHash[:], blockHash[:])
+	var err error
+	var beaconBlockMerkleTree, executionPayloadMerkleTree MerkleTreeNode
+	if beaconBlockMerkleTree, err = BeaconBlockBodyMerkleTreeNew(beaconBlockBody); err != nil {
+		return nil, err
+	}
+	if executionPayloadMerkleTree, err = ExecutionPayloadMerkleTreeNew(beaconBlockBody.GetExecutionPayload()); err != nil {
+		return nil, err
+	}
+	_, proof1 := generateProof(beaconBlockMerkleTree, L1BeaconBlockBodyTreeExecutionPayloadIndex, L1BeaconBlockBodyProofSize)
+	_, proof2 := generateProof(executionPayloadMerkleTree, L2ExecutionPayloadTreeExecutionBlockIndex, L2ExecutionPayloadProofSize)
+	proof2 = append(proof2, proof1...)
+	return &ethtypes.ExecutionBlockProof{
+		BlockHash: finalizedBlockBodyHash,
+		Proof:     ethtypes.ConvertSliceBytes2Hash(proof2),
+	}, nil
+}
+
 func (c *BeaconGrpcClient) getFinalityLightClientUpdateForState(attestedSlot, signatureSlot uint64, beaconState, finalityBeaconState *eth.BeaconStateCapella) (*ethtypes.LightClientUpdate, error) {
 	signatureBeaconBody, err := c.GetBeaconBlockBodyForBlockId(strconv.FormatUint(signatureSlot, 10))
 	if err != nil {
@@ -203,10 +230,11 @@ func (c *BeaconGrpcClient) getFinalityLightClientUpdateForState(attestedSlot, si
 		logger.Error("Eth2TopRelayerV2 GetBeaconBlockBodyForBlockId error:", err)
 		return nil, err
 	}
-	//finalizedBlockBodyHash, err := finalizedBlockBody.HashTreeRoot()
-	blockHash := finalizedBlockBody.ExecutionPayload.GetBlockHash()
-	var finalizedBlockBodyHash common.Hash
-	copy(finalizedBlockBodyHash[:], blockHash[:])
+	executionBlockProof, err := c.constructFromBeaconBlockBody(finalizedBlockBody)
+	if err != nil {
+		logger.Error("Eth2TopRelayerV2 constructFromBeaconBlockBody hash error:", err)
+		return nil, err
+	}
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 finalizedBlockBody hash error:", err)
 		return nil, err
@@ -231,8 +259,9 @@ func (c *BeaconGrpcClient) getFinalityLightClientUpdateForState(attestedSlot, si
 	}
 	update.FinalizedUpdate = &ethtypes.FinalizedHeaderUpdate{
 		HeaderUpdate: &ethtypes.HeaderUpdate{
-			BeaconHeader:       finalityHeader,
-			ExecutionBlockHash: finalizedBlockBodyHash,
+			BeaconHeader:        finalityHeader,
+			ExecutionBlockHash:  executionBlockProof.BlockHash,
+			ExecutionHashBranch: executionBlockProof.Proof,
 		},
 		FinalityBranch: proof,
 	}

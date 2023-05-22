@@ -132,7 +132,7 @@ func (et *Eth2TopRelayer) submitEthHeader(header []byte) error {
 	return nil
 }
 
-//callback function to sign tx before send.
+// callback function to sign tx before send.
 func (et *Eth2TopRelayer) signTransaction(addr common.Address, tx *types.Transaction) (*types.Transaction, error) {
 	acc := et.wallet.Address()
 	if strings.EqualFold(acc.Hex(), addr.Hex()) {

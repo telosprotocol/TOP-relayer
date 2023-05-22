@@ -31,8 +31,9 @@ type ExtendedBeaconBlockHeader struct {
 }
 
 type HeaderUpdate struct {
-	BeaconHeader       *eth.BeaconBlockHeader
-	ExecutionBlockHash common.Hash
+	BeaconHeader        *eth.BeaconBlockHeader
+	ExecutionBlockHash  common.Hash
+	ExecutionHashBranch []common.Hash
 }
 
 type FinalizedHeaderUpdate struct {
@@ -57,4 +58,25 @@ type LightClientState struct {
 	FinalizedBeaconHeader *ExtendedBeaconBlockHeader
 	CurrentSyncCommittee  *eth.SyncCommittee
 	NextSyncCommittee     *eth.SyncCommittee
+}
+
+type ExecutionBlockProof struct {
+	BlockHash common.Hash
+	Proof     []common.Hash
+}
+
+func ConvertSliceHash2Bytes(hash []common.Hash) [][]byte {
+	res := make([][]byte, len(hash))
+	for i := range hash {
+		res[i] = hash[i][:]
+	}
+	return res
+}
+
+func ConvertSliceBytes2Hash(bytes [][32]byte) []common.Hash {
+	res := make([]common.Hash, len(bytes))
+	for i, b := range bytes {
+		res[i] = b
+	}
+	return res
 }

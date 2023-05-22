@@ -107,7 +107,7 @@ func getEthInitData(eth1, prysm string) ([]byte, error) {
 		logger.Error("getEthInitData ethclient.Dial error:", err)
 		return nil, err
 	}
-	lastUpdate, err := beaconrpcclient.GetFinalizedLightClientUpdateV2WithNextSyncCommittee()
+	lastUpdate, err := beaconrpcclient.GetLastFinalizedLightClientUpdateV2WithNextSyncCommittee()
 	if err != nil {
 		logger.Error("getEthInitData GetLightClientUpdate error:", err)
 		return nil, err
@@ -133,7 +133,7 @@ func getEthInitData(eth1, prysm string) ([]byte, error) {
 	}
 	finalizedHeader := new(ExtendedBeaconBlockHeader)
 	finalizedHeader.BeaconBlockRoot = root[:]
-	finalizedHeader.Header = lastUpdate.FinalizedUpdate.HeaderUpdate.BeaconHeader
+	finalizedHeader.Header = lastUpdate.FinalizedUpdate.HeaderUpdate.BeaconHeader // 2381600
 	finalizedHeader.ExecutionBlockHash = lastUpdate.FinalizedUpdate.HeaderUpdate.ExecutionBlockHash
 
 	finalitySlot := lastUpdate.FinalizedUpdate.HeaderUpdate.BeaconHeader.Slot

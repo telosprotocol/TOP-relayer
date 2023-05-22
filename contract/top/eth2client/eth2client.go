@@ -31,7 +31,7 @@ var (
 
 // Eth2ClientMetaData contains all meta data concerning the Eth2Client contract.
 var Eth2ClientMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[{\"internalType\":\"uint64\",\"name\":\"height\",\"type\":\"uint64\"}],\"name\":\"block_hash_safe\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"hash\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"disable_reset\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"finalized_beacon_block_header\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"header\",\"type\":\"bytes\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"finalized_beacon_block_root\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"root\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"finalized_beacon_block_slot\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"slot\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"get_light_client_state\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"state\",\"type\":\"bytes\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"genesis\",\"type\":\"bytes\"}],\"name\":\"init\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"initialized\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"inited\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"height\",\"type\":\"uint256\"},{\"internalType\":\"bytes32\",\"name\":\"data\",\"type\":\"bytes32\"}],\"name\":\"is_confirmed\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"known\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"data\",\"type\":\"bytes32\"}],\"name\":\"is_known_execution_header\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"known\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"last_block_number\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"number\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"reset\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"update\",\"type\":\"bytes\"}],\"name\":\"submit_beacon_chain_light_client_update\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"header\",\"type\":\"bytes\"}],\"name\":\"submit_execution_header\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
+	ABI: "[{\"inputs\":[{\"internalType\":\"uint64\",\"name\":\"height\",\"type\":\"uint64\"}],\"name\":\"block_hash_safe\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"hash\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"disable_reset\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"finalized_beacon_block_header\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"header\",\"type\":\"bytes\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"finalized_beacon_block_root\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"root\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"finalized_beacon_block_slot\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"slot\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"get_client_mode\",\"outputs\":[{\"internalType\":\"enumClientMode\",\"name\":\"mode\",\"type\":\"uint8\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"get_light_client_state\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"state\",\"type\":\"bytes\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"get_unfinalized_tail_block_number\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"number\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"genesis\",\"type\":\"bytes\"}],\"name\":\"init\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"initialized\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"inited\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"height\",\"type\":\"uint256\"},{\"internalType\":\"bytes32\",\"name\":\"data\",\"type\":\"bytes32\"}],\"name\":\"is_confirmed\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"known\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint64\",\"name\":\"height\",\"type\":\"uint64\"}],\"name\":\"is_known_execution_header\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"known\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"last_block_number\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"number\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"reset\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"update\",\"type\":\"bytes\"}],\"name\":\"submit_beacon_chain_light_client_update\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"headers\",\"type\":\"bytes\"}],\"name\":\"submit_execution_headers\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
 }
 
 // Eth2ClientABI is the input ABI used to generate the binding from.
@@ -304,6 +304,37 @@ func (_Eth2Client *Eth2ClientCallerSession) FinalizedBeaconBlockSlot() (uint64, 
 	return _Eth2Client.Contract.FinalizedBeaconBlockSlot(&_Eth2Client.CallOpts)
 }
 
+// GetClientMode is a free data retrieval call binding the contract method 0x0968a773.
+//
+// Solidity: function get_client_mode() view returns(uint8 mode)
+func (_Eth2Client *Eth2ClientCaller) GetClientMode(opts *bind.CallOpts) (uint8, error) {
+	var out []interface{}
+	err := _Eth2Client.contract.Call(opts, &out, "get_client_mode")
+
+	if err != nil {
+		return *new(uint8), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint8)).(*uint8)
+
+	return out0, err
+
+}
+
+// GetClientMode is a free data retrieval call binding the contract method 0x0968a773.
+//
+// Solidity: function get_client_mode() view returns(uint8 mode)
+func (_Eth2Client *Eth2ClientSession) GetClientMode() (uint8, error) {
+	return _Eth2Client.Contract.GetClientMode(&_Eth2Client.CallOpts)
+}
+
+// GetClientMode is a free data retrieval call binding the contract method 0x0968a773.
+//
+// Solidity: function get_client_mode() view returns(uint8 mode)
+func (_Eth2Client *Eth2ClientCallerSession) GetClientMode() (uint8, error) {
+	return _Eth2Client.Contract.GetClientMode(&_Eth2Client.CallOpts)
+}
+
 // GetLightClientState is a free data retrieval call binding the contract method 0x3ae8d743.
 //
 // Solidity: function get_light_client_state() view returns(bytes state)
@@ -333,6 +364,37 @@ func (_Eth2Client *Eth2ClientSession) GetLightClientState() ([]byte, error) {
 // Solidity: function get_light_client_state() view returns(bytes state)
 func (_Eth2Client *Eth2ClientCallerSession) GetLightClientState() ([]byte, error) {
 	return _Eth2Client.Contract.GetLightClientState(&_Eth2Client.CallOpts)
+}
+
+// GetUnfinalizedTailBlockNumber is a free data retrieval call binding the contract method 0xf6d1f443.
+//
+// Solidity: function get_unfinalized_tail_block_number() view returns(uint64 number)
+func (_Eth2Client *Eth2ClientCaller) GetUnfinalizedTailBlockNumber(opts *bind.CallOpts) (uint64, error) {
+	var out []interface{}
+	err := _Eth2Client.contract.Call(opts, &out, "get_unfinalized_tail_block_number")
+
+	if err != nil {
+		return *new(uint64), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint64)).(*uint64)
+
+	return out0, err
+
+}
+
+// GetUnfinalizedTailBlockNumber is a free data retrieval call binding the contract method 0xf6d1f443.
+//
+// Solidity: function get_unfinalized_tail_block_number() view returns(uint64 number)
+func (_Eth2Client *Eth2ClientSession) GetUnfinalizedTailBlockNumber() (uint64, error) {
+	return _Eth2Client.Contract.GetUnfinalizedTailBlockNumber(&_Eth2Client.CallOpts)
+}
+
+// GetUnfinalizedTailBlockNumber is a free data retrieval call binding the contract method 0xf6d1f443.
+//
+// Solidity: function get_unfinalized_tail_block_number() view returns(uint64 number)
+func (_Eth2Client *Eth2ClientCallerSession) GetUnfinalizedTailBlockNumber() (uint64, error) {
+	return _Eth2Client.Contract.GetUnfinalizedTailBlockNumber(&_Eth2Client.CallOpts)
 }
 
 // Initialized is a free data retrieval call binding the contract method 0x158ef93e.
@@ -397,12 +459,12 @@ func (_Eth2Client *Eth2ClientCallerSession) IsConfirmed(height *big.Int, data [3
 	return _Eth2Client.Contract.IsConfirmed(&_Eth2Client.CallOpts, height, data)
 }
 
-// IsKnownExecutionHeader is a free data retrieval call binding the contract method 0x43b1378b.
+// IsKnownExecutionHeader is a free data retrieval call binding the contract method 0x7120345a.
 //
-// Solidity: function is_known_execution_header(bytes32 data) view returns(bool known)
-func (_Eth2Client *Eth2ClientCaller) IsKnownExecutionHeader(opts *bind.CallOpts, data [32]byte) (bool, error) {
+// Solidity: function is_known_execution_header(uint64 height) view returns(bool known)
+func (_Eth2Client *Eth2ClientCaller) IsKnownExecutionHeader(opts *bind.CallOpts, height uint64) (bool, error) {
 	var out []interface{}
-	err := _Eth2Client.contract.Call(opts, &out, "is_known_execution_header", data)
+	err := _Eth2Client.contract.Call(opts, &out, "is_known_execution_header", height)
 
 	if err != nil {
 		return *new(bool), err
@@ -414,18 +476,18 @@ func (_Eth2Client *Eth2ClientCaller) IsKnownExecutionHeader(opts *bind.CallOpts,
 
 }
 
-// IsKnownExecutionHeader is a free data retrieval call binding the contract method 0x43b1378b.
+// IsKnownExecutionHeader is a free data retrieval call binding the contract method 0x7120345a.
 //
-// Solidity: function is_known_execution_header(bytes32 data) view returns(bool known)
-func (_Eth2Client *Eth2ClientSession) IsKnownExecutionHeader(data [32]byte) (bool, error) {
-	return _Eth2Client.Contract.IsKnownExecutionHeader(&_Eth2Client.CallOpts, data)
+// Solidity: function is_known_execution_header(uint64 height) view returns(bool known)
+func (_Eth2Client *Eth2ClientSession) IsKnownExecutionHeader(height uint64) (bool, error) {
+	return _Eth2Client.Contract.IsKnownExecutionHeader(&_Eth2Client.CallOpts, height)
 }
 
-// IsKnownExecutionHeader is a free data retrieval call binding the contract method 0x43b1378b.
+// IsKnownExecutionHeader is a free data retrieval call binding the contract method 0x7120345a.
 //
-// Solidity: function is_known_execution_header(bytes32 data) view returns(bool known)
-func (_Eth2Client *Eth2ClientCallerSession) IsKnownExecutionHeader(data [32]byte) (bool, error) {
-	return _Eth2Client.Contract.IsKnownExecutionHeader(&_Eth2Client.CallOpts, data)
+// Solidity: function is_known_execution_header(uint64 height) view returns(bool known)
+func (_Eth2Client *Eth2ClientCallerSession) IsKnownExecutionHeader(height uint64) (bool, error) {
+	return _Eth2Client.Contract.IsKnownExecutionHeader(&_Eth2Client.CallOpts, height)
 }
 
 // LastBlockNumber is a free data retrieval call binding the contract method 0x1eeaebb2.
@@ -543,23 +605,23 @@ func (_Eth2Client *Eth2ClientTransactorSession) SubmitBeaconChainLightClientUpda
 	return _Eth2Client.Contract.SubmitBeaconChainLightClientUpdate(&_Eth2Client.TransactOpts, update)
 }
 
-// SubmitExecutionHeader is a paid mutator transaction binding the contract method 0x3c1a38b6.
+// SubmitExecutionHeaders is a paid mutator transaction binding the contract method 0xe9211822.
 //
-// Solidity: function submit_execution_header(bytes header) returns(bool success)
-func (_Eth2Client *Eth2ClientTransactor) SubmitExecutionHeader(opts *bind.TransactOpts, header []byte) (*types.Transaction, error) {
-	return _Eth2Client.contract.Transact(opts, "submit_execution_header", header)
+// Solidity: function submit_execution_headers(bytes headers) returns(bool success)
+func (_Eth2Client *Eth2ClientTransactor) SubmitExecutionHeaders(opts *bind.TransactOpts, headers []byte) (*types.Transaction, error) {
+	return _Eth2Client.contract.Transact(opts, "submit_execution_headers", headers)
 }
 
-// SubmitExecutionHeader is a paid mutator transaction binding the contract method 0x3c1a38b6.
+// SubmitExecutionHeaders is a paid mutator transaction binding the contract method 0xe9211822.
 //
-// Solidity: function submit_execution_header(bytes header) returns(bool success)
-func (_Eth2Client *Eth2ClientSession) SubmitExecutionHeader(header []byte) (*types.Transaction, error) {
-	return _Eth2Client.Contract.SubmitExecutionHeader(&_Eth2Client.TransactOpts, header)
+// Solidity: function submit_execution_headers(bytes headers) returns(bool success)
+func (_Eth2Client *Eth2ClientSession) SubmitExecutionHeaders(headers []byte) (*types.Transaction, error) {
+	return _Eth2Client.Contract.SubmitExecutionHeaders(&_Eth2Client.TransactOpts, headers)
 }
 
-// SubmitExecutionHeader is a paid mutator transaction binding the contract method 0x3c1a38b6.
+// SubmitExecutionHeaders is a paid mutator transaction binding the contract method 0xe9211822.
 //
-// Solidity: function submit_execution_header(bytes header) returns(bool success)
-func (_Eth2Client *Eth2ClientTransactorSession) SubmitExecutionHeader(header []byte) (*types.Transaction, error) {
-	return _Eth2Client.Contract.SubmitExecutionHeader(&_Eth2Client.TransactOpts, header)
+// Solidity: function submit_execution_headers(bytes headers) returns(bool success)
+func (_Eth2Client *Eth2ClientTransactorSession) SubmitExecutionHeaders(headers []byte) (*types.Transaction, error) {
+	return _Eth2Client.Contract.SubmitExecutionHeaders(&_Eth2Client.TransactOpts, headers)
 }
