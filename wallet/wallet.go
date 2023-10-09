@@ -121,12 +121,12 @@ func (w *Wallet) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
 	return w.ethclient.SuggestGasTipCap(ctx)
 }
 
-//sign tx
+// sign tx
 func (w *Wallet) SignTx(tx *types.Transaction) (signedTx *types.Transaction, err error) {
 	return w.provider.SignTx(w.account, tx, big.NewInt(0).SetUint64(w.chainId))
 }
 
-//send signed tx
+// send signed tx
 func (w *Wallet) SendTransaction(ctx context.Context, tx *types.Transaction) error {
 	return w.ethclient.SendTransaction(ctx, tx)
 }
