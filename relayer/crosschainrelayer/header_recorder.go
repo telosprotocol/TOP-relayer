@@ -4,9 +4,9 @@
 package crosschainrelayer
 
 import (
-	"toprelayer/types"
+	"toprelayer/util"
 )
 
-func doWithHeader(header types.TopHeader) bool {
+func doWithHeader(header util.TopHeader) bool {
 	return true
 }

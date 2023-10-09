@@ -3,7 +3,7 @@ package openalliance_rpc
 import (
 	"context"
 	"math/big"
-	"toprelayer/types"
+	"toprelayer/util"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -41,8 +41,8 @@ func toBlockNumArg(number *big.Int) string {
 	return hexutil.EncodeBig(number)
 }
 
-func (c *OpenAllianceRpc) HeaderByNumber(ctx context.Context, number *big.Int) (*types.TopHeader, error) {
-	var head *types.TopHeader
+func (c *OpenAllianceRpc) HeaderByNumber(ctx context.Context, number *big.Int) (*util.TopHeader, error) {
+	var head *util.TopHeader
 	err := c.rpc.CallContext(ctx, &head, "topRelay_getBlockByNumber", toBlockNumArg(number))
 	if err == nil && head == nil {
 		err = ethereum.NotFound

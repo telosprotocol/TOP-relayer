@@ -12,7 +12,7 @@ import (
 	"toprelayer/config"
 	"toprelayer/contract/eth/topclient"
 	"toprelayer/relayer/monitor"
-	top "toprelayer/types"
+	top "toprelayer/util"
 	"toprelayer/wallet"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -161,7 +161,7 @@ func (te *CrossChainRelayer) submitTopHeader(headers []byte) error {
 	return nil
 }
 
-//callback function to sign tx before send.
+// callback function to sign tx before send.
 func (te *CrossChainRelayer) signTransaction(addr common.Address, tx *types.Transaction) (*types.Transaction, error) {
 	acc := te.wallet.Address()
 	if strings.EqualFold(acc.Hex(), addr.Hex()) {

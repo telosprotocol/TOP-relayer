@@ -1,4 +1,4 @@
-package types
+package util
 
 type BlockList struct {
 	Hash  string `json:"blockHash"`
