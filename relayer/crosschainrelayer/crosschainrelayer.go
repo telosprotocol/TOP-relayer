@@ -12,7 +12,7 @@ import (
 	"toprelayer/config"
 	"toprelayer/contract/eth/topclient"
 	"toprelayer/relayer/monitor"
-	top "toprelayer/types"
+	top "toprelayer/util"
 	"toprelayer/wallet"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"

@@ -4,8 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-
-	top "toprelayer/types"
+	top "toprelayer/util"
 
 	"github.com/wonderivan/logger"
 
