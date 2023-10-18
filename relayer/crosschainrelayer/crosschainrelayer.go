@@ -53,7 +53,7 @@ type VerifyResp struct {
 	Message    string `json:"message"`
 	Name       string `json:"name"`
 	Result     bool   `json:"result"`
-	Servertime string `json:"servertime"`
+	Servertime uint64 `json:"servertime"`
 }
 
 type CrossChainRelayer struct {
