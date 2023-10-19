@@ -550,7 +550,7 @@ func (relayer *Eth2TopRelayerV2) isEnoughBlocksForLightClientUpdate(lastFinalize
 	//	}
 	//}
 	if lastPeriodOnEth == lastPeriodOnTop {
-		if (lastFinalizedEthSlot - lastFinalizedTopSlot) < beaconrpc.ONE_EPOCH_IN_SLOTS*3 {
+		if (lastFinalizedEthSlot - lastFinalizedTopSlot) < beaconrpc.ONE_EPOCH_IN_SLOTS*5 {
 			return false
 		}
 		submitFinalizedSlot, err := relayer.beaconrpcclient.GetLastFinalizedLightClientUpdateV2FinalizedSlot()
