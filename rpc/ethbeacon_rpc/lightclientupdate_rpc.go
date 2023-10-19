@@ -99,8 +99,8 @@ func (c *BeaconGrpcClient) getNextSyncCommitteeUpdateByFinalized(finalizedSlot u
 }
 
 func (c *BeaconGrpcClient) GetAttestedSlot(lastFinalizedSlotOnNear uint64) (uint64, error) {
-	attestedSlot := getAttestationSlot(lastFinalizedSlotOnNear)
-	header, err := c.GetNonEmptyBeaconBlockHeader(attestedSlot)
+	//attestedSlot := getAttestationSlot(lastFinalizedSlotOnNear)
+	header, err := c.GetNonEmptyBeaconBlockHeader(lastFinalizedSlotOnNear)
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 GetNonEmptyBeaconBlockHeader error:", err)
 		return 0, err
