@@ -212,10 +212,23 @@ func (te *CrossChainRelayer) queryBlocks(lo, hi uint64) (uint64, uint64, error) 
 	return lastSubHeight, lastUnsubHeight, nil
 }
 
+func hexString2Uint64(s string) uint64 {
+	if len(s) < 2 {
+		return 0
+	}
+	s = s[2:]
+	ret, err := strconv.ParseUint(s, 16, 64)
+	if err != nil {
+		return 0
+	}
+	return ret
+}
+
 func (te *CrossChainRelayer) verifyAndSendTransaction(toHeight uint64) {
 	if te.blockList.Len() == 0 {
 		return
 	}
+
 	element := te.blockList.Front()
 	if element == nil {
 		logger.Error("txList get front nil")
@@ -226,10 +239,9 @@ func (te *CrossChainRelayer) verifyAndSendTransaction(toHeight uint64) {
 		logger.Error("txList get front error")
 		return
 	}
-	logger.Info("CrossChainRelayer verifyAndSendTransaction currHeight ", header.Number, ",hash: ", header.Hash)
-	currHeight, err := strconv.ParseUint(header.Number, 10, 64)
+	currHeight := hexString2Uint64(header.Number)
 	if currHeight <= toHeight {
-		logger.Info("CrossChainRelayer currHeight:%d, toHeight:%d", currHeight, toHeight)
+		logger.Info("CrossChainRelayer verifyAndSendTransaction currHash:%s,currHeight:%d, toHeight:%d", header.Hash, currHeight, toHeight)
 		te.blockList.Remove(element)
 		return
 	}
