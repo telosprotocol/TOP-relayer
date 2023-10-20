@@ -212,7 +212,7 @@ func (te *CrossChainRelayer) queryBlocks(lo, hi uint64) (uint64, uint64, error) 
 	return lastSubHeight, lastUnsubHeight, nil
 }
 
-func (te *CrossChainRelayer) verifyAndSendTransaction() {
+func (te *CrossChainRelayer) verifyAndSendTransaction(toHeight uint64) {
 	if te.blockList.Len() == 0 {
 		return
 	}
@@ -224,6 +224,13 @@ func (te *CrossChainRelayer) verifyAndSendTransaction() {
 	header, ok := element.Value.(top.TopHeader)
 	if !ok {
 		logger.Error("txList get front error")
+		return
+	}
+	logger.Info("CrossChainRelayer verifyAndSendTransaction currHeight ", header.Number, ",hash: ", header.Hash)
+	currHeight, err := strconv.ParseUint(header.Number, 10, 64)
+	if currHeight <= toHeight {
+		logger.Info("CrossChainRelayer currHeight:%d, toHeight:%d", currHeight, toHeight)
+		te.blockList.Remove(element)
 		return
 	}
 	if res := doWithHeader(header); res == false {
@@ -288,7 +295,7 @@ func (te *CrossChainRelayer) StartRelayer(wg *sync.WaitGroup) error {
 				logger.Info("CrossChainRelayer", te.name, "dest eth Height:", toHeight)
 				if te.blockList.Len() > 0 {
 					logger.Debug("CrossChainRelayer", te.name, "find block to verify")
-					te.verifyAndSendTransaction()
+					te.verifyAndSendTransaction(toHeight)
 					delay = time.Duration(WAITDELAY)
 					break
 				}
