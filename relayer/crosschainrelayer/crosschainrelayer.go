@@ -239,9 +239,14 @@ func (te *CrossChainRelayer) verifyAndSendTransaction(toHeight uint64) {
 		logger.Error("txList get front error")
 		return
 	}
+	logger.Info("verifyAndSendTransaction header:%+v", header)
+	for _, block := range header.RelatedList {
+		logger.Info("verifyAndSendTransaction headerRelatedList:%+v", block)
+	}
 	currHeight := hexString2Uint64(header.Number)
+	logger.Info("CrossChainRelayer verifyAndSendTransaction currHash:%s,currHeight:%d, toHeight:%d", header.Hash, currHeight, toHeight)
 	if currHeight <= toHeight {
-		logger.Info("CrossChainRelayer verifyAndSendTransaction currHash:%s,currHeight:%d, toHeight:%d", header.Hash, currHeight, toHeight)
+		logger.Info("CrossChainRelayer verifyAndSendTransaction remove currHeight:%d,hash:%s", currHeight, header.Hash)
 		te.blockList.Remove(element)
 		return
 	}
