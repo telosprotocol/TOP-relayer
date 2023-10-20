@@ -245,11 +245,11 @@ func (te *CrossChainRelayer) verifyAndSendTransaction(toHeight uint64) {
 	}
 	currHeight := hexString2Uint64(header.Number)
 	logger.Info("CrossChainRelayer verifyAndSendTransaction currHash:%s,currHeight:%d, toHeight:%d", header.Hash, currHeight, toHeight)
-	if currHeight <= toHeight {
-		logger.Info("CrossChainRelayer verifyAndSendTransaction remove currHeight:%d,hash:%s", currHeight, header.Hash)
-		te.blockList.Remove(element)
-		return
-	}
+	//if currHeight <= toHeight {
+	//	logger.Info("CrossChainRelayer verifyAndSendTransaction remove currHeight:%d,hash:%s", currHeight, header.Hash)
+	//	te.blockList.Remove(element)
+	//	return
+	//}
 	if res := doWithHeader(header); res == false {
 		logger.Info("do with header not ok:", header.Hash)
 		return
@@ -346,11 +346,11 @@ func (te *CrossChainRelayer) StartRelayer(wg *sync.WaitGroup) error {
 					delay = time.Duration(ERRDELAY)
 					break
 				}
-				if subHeight > lastSubHeight {
+				if subHeight > lastSubHeight { //7
 					logger.Info("CrossChainRelayer %v lastSubHeight: %v=>%v", te.name, lastSubHeight, subHeight)
 					lastSubHeight = subHeight
 				}
-				if unsubHeight > lastUnsubHeight {
+				if unsubHeight > lastUnsubHeight { //6
 					logger.Info("CrossChainRelayer %v lastUnsubHeight: %v=>%v", te.name, lastUnsubHeight, unsubHeight)
 					lastUnsubHeight = unsubHeight
 				}
