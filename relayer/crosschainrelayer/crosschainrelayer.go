@@ -185,7 +185,7 @@ func (te *CrossChainRelayer) queryBlocks(lo, hi uint64) (uint64, uint64, error) 
 			logger.Error("CrossChainRelayer", te.name, "GetTopElectBlockHeadByHeight error:", err)
 			break
 		}
-		logger.Debug("Top block, height: %v, type: %v, chainbits: %v", block.Number, block.BlockType, block.ChainBits)
+		logger.Info("Top block, height: %v, type: %v, chainbits: %v", block.Number, block.BlockType, block.ChainBits)
 		submit := false
 		if block.BlockType == ELECTION_BLOCK {
 			submit = true
@@ -346,11 +346,11 @@ func (te *CrossChainRelayer) StartRelayer(wg *sync.WaitGroup) error {
 					delay = time.Duration(ERRDELAY)
 					break
 				}
-				if subHeight > lastSubHeight { //7
+				if subHeight > lastSubHeight {
 					logger.Info("CrossChainRelayer %v lastSubHeight: %v=>%v", te.name, lastSubHeight, subHeight)
 					lastSubHeight = subHeight
 				}
-				if unsubHeight > lastUnsubHeight { //6
+				if unsubHeight > lastUnsubHeight {
 					logger.Info("CrossChainRelayer %v lastUnsubHeight: %v=>%v", te.name, lastUnsubHeight, unsubHeight)
 					lastUnsubHeight = unsubHeight
 				}
