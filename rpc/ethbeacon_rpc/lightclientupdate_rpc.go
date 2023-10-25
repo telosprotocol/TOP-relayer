@@ -108,16 +108,16 @@ func (c *BeaconGrpcClient) GetAttestedSlot(lastFinalizedSlot uint64) (uint64, er
 	return uint64(header.Slot), nil
 }
 
-func (c *BeaconGrpcClient) getAttestedSlotBeforeFinalizedSlot(finalizedSlot uint64) (uint64, error) {
-	// the range of attestedSlot is [finalizedSlot - 32, finalizedSlot]
-	attestedSlot := finalizedSlot - ONE_EPOCH_IN_SLOTS
-	header, err := c.GetNonEmptyBeaconBlockHeader(attestedSlot)
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 GetNonEmptyBeaconBlockHeader error:", err)
-		return 0, err
-	}
-	return uint64(header.Slot), nil
-}
+//func (c *BeaconGrpcClient) getAttestedSlotBeforeFinalizedSlot(finalizedSlot uint64) (uint64, error) {
+//	// the range of attestedSlot is [finalizedSlot - 32, finalizedSlot]
+//	attestedSlot := finalizedSlot - ONE_EPOCH_IN_SLOTS
+//	header, err := c.GetNonEmptyBeaconBlockHeader(attestedSlot)
+//	if err != nil {
+//		logger.Error("Eth2TopRelayerV2 GetNonEmptyBeaconBlockHeader error:", err)
+//		return 0, err
+//	}
+//	return uint64(header.Slot), nil
+//}
 
 func (c *BeaconGrpcClient) getAttestedSlotWithEnoughSyncCommitteeBitsSum(attestedSlot uint64) (uint64, uint64, error) {
 	currentAttestedSlot := attestedSlot
