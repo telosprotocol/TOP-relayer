@@ -22,12 +22,17 @@ func (c *BeaconGrpcClient) GetLastFinalizedLightClientUpdateV2FinalizedSlot() (u
 	return getBeforeSlotInSamePeriod(finalizedSlot)
 }
 
-func (c *BeaconGrpcClient) GetLastFinalizedLightClientUpdateV2WithNextSyncCommitteeByTopSlot(lastFinalizedTopSlot uint64) (*LightClientUpdate, error) {
-	return c.getLightClientUpdateByFinalizedSlot(lastFinalizedTopSlot, true)
+func (c *BeaconGrpcClient) GetLastFinalizedLightClientUpdateV2WithNextSyncCommitteeByEthSlot(lastFinalizedEthSlot uint64) (*LightClientUpdate, error) {
+	finalizedSlot, _ := getBeforeSlotInSamePeriod(lastFinalizedEthSlot)
+	return c.getLightClientUpdateByFinalizedSlot(finalizedSlot, true)
 }
 
-func (c *BeaconGrpcClient) GetFinalizedLightClientUpdateByTopSlot(lastFinalizedTopSlot uint64) (*LightClientUpdate, error) {
-	return c.getLightClientUpdateByFinalizedSlot(lastFinalizedTopSlot, false)
+func (c *BeaconGrpcClient) GetFinalizedLightClientUpdateByEthSlot(lastFinalizedEthSlot uint64) (*LightClientUpdate, error) {
+	finalizedSlot, err := getBeforeSlotInSamePeriod(lastFinalizedEthSlot)
+	if err != nil {
+		return nil, err
+	}
+	return c.getLightClientUpdateByFinalizedSlot(finalizedSlot, false)
 }
 
 func (c *BeaconGrpcClient) GetLastFinalizedLightClientUpdateV2WithNextSyncCommittee() (*LightClientUpdate, error) {

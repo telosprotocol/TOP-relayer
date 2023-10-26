@@ -287,13 +287,13 @@ func (relayer *Eth2TopRelayerV2) sendRegularLightClientUpdate(lastFinalizedTopSl
 	var data *beaconrpc.LightClientUpdate
 	var err error
 	if lastPeriodOnTOP == lastPeriodOnEth {
-		data, err = relayer.beaconrpcclient.GetFinalizedLightClientUpdateByTopSlot(lastFinalizedTopSlot)
+		data, err = relayer.beaconrpcclient.GetFinalizedLightClientUpdateByEthSlot(lastFinalizedEthSlot)
 		if err != nil {
 			logger.Error("Eth2TopRelayerV2 GetLightClientUpdate at same period error:", err)
 			return err
 		}
 	} else if lastPeriodOnTOP+1 == lastPeriodOnEth {
-		data, err = relayer.beaconrpcclient.GetLastFinalizedLightClientUpdateV2WithNextSyncCommitteeByTopSlot(lastFinalizedTopSlot)
+		data, err = relayer.beaconrpcclient.GetLastFinalizedLightClientUpdateV2WithNextSyncCommitteeByEthSlot(lastFinalizedEthSlot)
 		if err != nil {
 			logger.Error("Eth2TopRelayerV2 GetLightClientUpdate at next period error:", err)
 			return err
