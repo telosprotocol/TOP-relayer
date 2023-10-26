@@ -151,13 +151,13 @@ func (c *BeaconGrpcClient) GetCheckpointRoot(id string) (*v1.Checkpoint, error) 
 }
 
 func (c *BeaconGrpcClient) GetNonEmptyBeaconBlockHeader(startSlot uint64) (*eth.BeaconBlockHeader, error) {
-	finalizedSlot, err := c.GetLastFinalizedSlotNumber()
+	lastSlot, err := c.GetLastSlotNumber()
 	if err != nil {
 		logger.Error("GetLastFinalizedSlotNumber error:", err)
 		return nil, err
 	}
 
-	for slot := startSlot; slot <= finalizedSlot+1; slot++ {
+	for slot := startSlot; slot <= lastSlot; slot++ {
 		if h, err := c.GetBeaconBlockHeaderForBlockId(strconv.FormatUint(slot, 10)); err != nil {
 			if IsErrorNoBlockForSlot(err) {
 				logger.Info("GetBeaconBlockHeaderForBlockId slot(%d) error:%s", slot, err.Error())
@@ -170,7 +170,7 @@ func (c *BeaconGrpcClient) GetNonEmptyBeaconBlockHeader(startSlot uint64) (*eth.
 			return h, nil
 		}
 	}
-	return nil, fmt.Errorf("unable to get non empty beacon block in range [%d, %d)", startSlot, finalizedSlot)
+	return nil, fmt.Errorf("unable to get non empty beacon block in range [%d, %d)", startSlot, lastSlot)
 }
 
 func (c *BeaconGrpcClient) GetNonEmptyBeaconBlockHeaderLimitRange(startSlot, finalizedSlot uint64) (*eth.BeaconBlockHeader, error) {
