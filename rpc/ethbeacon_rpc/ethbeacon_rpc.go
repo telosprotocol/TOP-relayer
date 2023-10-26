@@ -157,7 +157,7 @@ func (c *BeaconGrpcClient) GetNonEmptyBeaconBlockHeader(startSlot uint64) (*eth.
 		return nil, err
 	}
 
-	for slot := startSlot; slot < finalizedSlot; slot++ {
+	for slot := startSlot; slot <= finalizedSlot+1; slot++ {
 		if h, err := c.GetBeaconBlockHeaderForBlockId(strconv.FormatUint(slot, 10)); err != nil {
 			if IsErrorNoBlockForSlot(err) {
 				logger.Info("GetBeaconBlockHeaderForBlockId slot(%d) error:%s", slot, err.Error())

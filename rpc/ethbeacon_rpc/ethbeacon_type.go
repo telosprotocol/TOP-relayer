@@ -336,7 +336,7 @@ func addHexPrefix(hex string) string {
 }
 
 func getBeforeSlotInSamePeriod(finalizedSlot uint64) (uint64, error) {
-	slot := finalizedSlot - 1*ONE_EPOCH_IN_SLOTS
+	slot := finalizedSlot - 3*ONE_EPOCH_IN_SLOTS
 	//period, epoch, _ := SplitSlot(slot)
 	//if epoch > 245 {
 	//	slot = period*EPOCHS_PER_PERIOD*SLOTS_PER_EPOCH + 245*SLOTS_PER_EPOCH
@@ -347,10 +347,9 @@ func getBeforeSlotInSamePeriod(finalizedSlot uint64) (uint64, error) {
 	return slot, nil
 }
 
-func getAttestationSlot(lastFinalizedSlotOnNear uint64) uint64 {
-	//nextFinalizedSlot := lastFinalizedSlotOnNear + ONE_EPOCH_IN_SLOTS
-	//return nextFinalizedSlot + 2*ONE_EPOCH_IN_SLOTS
-	return lastFinalizedSlotOnNear
+func getAttestationSlot(lastFinalizedSlotOnTop uint64) uint64 {
+	nextFinalizedSlot := lastFinalizedSlotOnTop + ONE_EPOCH_IN_SLOTS
+	return nextFinalizedSlot + 2*ONE_EPOCH_IN_SLOTS
 }
 
 const (

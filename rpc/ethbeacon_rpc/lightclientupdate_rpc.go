@@ -22,12 +22,12 @@ func (c *BeaconGrpcClient) GetLastFinalizedLightClientUpdateV2FinalizedSlot() (u
 	return getBeforeSlotInSamePeriod(finalizedSlot)
 }
 
-func (c *BeaconGrpcClient) GetLastFinalizedLightClientUpdateV2() (*LightClientUpdate, error) {
-	finalizedSlot, err := c.GetLastFinalizedLightClientUpdateV2FinalizedSlot()
-	if err != nil {
-		return nil, err
-	}
-	return c.getLightClientUpdateByFinalizedSlot(finalizedSlot, false)
+func (c *BeaconGrpcClient) GetLastFinalizedLightClientUpdateV2WithNextSyncCommitteeByTopSlot(lastFinalizedTopSlot uint64) (*LightClientUpdate, error) {
+	return c.getLightClientUpdateByFinalizedSlot(lastFinalizedTopSlot, true)
+}
+
+func (c *BeaconGrpcClient) GetFinalizedLightClientUpdateByTopSlot(lastFinalizedTopSlot uint64) (*LightClientUpdate, error) {
+	return c.getLightClientUpdateByFinalizedSlot(lastFinalizedTopSlot, false)
 }
 
 func (c *BeaconGrpcClient) GetLastFinalizedLightClientUpdateV2WithNextSyncCommittee() (*LightClientUpdate, error) {
@@ -98,8 +98,8 @@ func (c *BeaconGrpcClient) getNextSyncCommitteeUpdateByFinalized(finalizedSlot u
 	}, nil
 }
 
-func (c *BeaconGrpcClient) GetAttestedSlot(lastFinalizedSlot uint64) (uint64, error) {
-	attestedSlot := getAttestationSlot(lastFinalizedSlot)
+func (c *BeaconGrpcClient) GetAttestedSlot(lastFinalizedTopSlot uint64) (uint64, error) {
+	attestedSlot := getAttestationSlot(lastFinalizedTopSlot)
 	header, err := c.GetNonEmptyBeaconBlockHeader(attestedSlot)
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 GetNonEmptyBeaconBlockHeader error:", err)
