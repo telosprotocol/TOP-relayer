@@ -276,96 +276,105 @@ func (te *CrossChainRelayer) verifyAndSendTransaction(toHeight uint64) {
 func (te *CrossChainRelayer) StartRelayer(wg *sync.WaitGroup) error {
 	logger.Info("Start CrossChainRelayer %v...", te.name)
 	defer wg.Done()
+	//
+	//done := make(chan struct{})
+	//defer close(done)
 
-	done := make(chan struct{})
-	defer close(done)
+	//go func(done chan struct{}) {
+	//	timeoutDuration := time.Duration(FATALTIMEOUT) * time.Hour
+	//	timeout := time.NewTimer(timeoutDuration)
+	//	defer timeout.Stop()
+	logger.Info("CrossChainRelayer %v set timeout: %v hours", te.name, FATALTIMEOUT)
+	var delay time.Duration = time.Duration(1)
 
-	go func(done chan struct{}) {
-		timeoutDuration := time.Duration(FATALTIMEOUT) * time.Hour
-		timeout := time.NewTimer(timeoutDuration)
-		defer timeout.Stop()
-		logger.Info("CrossChainRelayer %v set timeout: %v hours", te.name, FATALTIMEOUT)
-		var delay time.Duration = time.Duration(1)
+	var lastSubHeight uint64 = 0
+	var lastUnsubHeight uint64 = 0
 
-		var lastSubHeight uint64 = 0
-		var lastUnsubHeight uint64 = 0
-
-		for {
-			time.Sleep(time.Second * delay)
-			select {
-			case <-timeout.C:
-				done <- struct{}{}
-				return
-			default:
-				opts := &bind.CallOpts{
-					Pending:     false,
-					From:        te.wallet.Address(),
-					BlockNumber: nil,
-					Context:     context.Background(),
-				}
-				toHeight, err := te.caller.MaxMainHeight(opts)
-				if err != nil {
-					logger.Error(err)
-					delay = time.Duration(ERRDELAY)
-					break
-				}
-				logger.Info("CrossChainRelayer", te.name, "dest eth Height:", toHeight)
-				if te.blockList.Len() > 0 {
-					logger.Debug("CrossChainRelayer", te.name, "find block to verify")
-					te.verifyAndSendTransaction(toHeight)
-					delay = time.Duration(WAITDELAY)
-					break
-				}
-				fromHeight, err := te.wallet.TopBlockNumber(context.Background())
-				if err != nil {
-					logger.Error(err)
-					delay = time.Duration(ERRDELAY)
-					break
-				}
-				logger.Info("CrossChainRelayer", te.name, "src top Height:", fromHeight)
-
-				if lastSubHeight <= toHeight && toHeight < lastUnsubHeight {
-					toHeight = lastUnsubHeight
-				}
-				if toHeight+1 > fromHeight {
-					if set := timeout.Reset(timeoutDuration); !set {
-						logger.Error("CrossChainRelayer", te.name, "reset timeout falied!")
-						delay = time.Duration(ERRDELAY)
-						break
-					}
-					logger.Debug("CrossChainRelayer", te.name, "wait src top update, delay")
-					delay = time.Duration(WAITDELAY)
-					break
-				}
-				syncStartHeight := toHeight + 1
-				limitEndHeight := fromHeight
-
-				subHeight, unsubHeight, err := te.queryBlocks(syncStartHeight, limitEndHeight)
-				if err != nil {
-					logger.Error("CrossChainRelayer", te.name, "signAndSendTransactions failed:", err)
-					delay = time.Duration(ERRDELAY)
-					break
-				}
-				if subHeight > lastSubHeight {
-					logger.Info("CrossChainRelayer %v lastSubHeight: %v=>%v", te.name, lastSubHeight, subHeight)
-					lastSubHeight = subHeight
-				}
-				if unsubHeight > lastUnsubHeight {
-					logger.Info("CrossChainRelayer %v lastUnsubHeight: %v=>%v", te.name, lastUnsubHeight, unsubHeight)
-					lastUnsubHeight = unsubHeight
-				}
-				if set := timeout.Reset(timeoutDuration); !set {
-					logger.Error("CrossChainRelayer", te.name, "reset timeout falied!")
-					delay = time.Duration(ERRDELAY)
-					break
-				}
-				delay = time.Duration(SUCCESSDELAY)
-				break
-			}
+	for {
+		time.Sleep(time.Second * delay)
+		logger.Info("CrossChainRelayer [top -> %s] ===================== New Cycle Start =====================", te.name)
+		//select {
+		//case <-timeout.C:
+		//	done <- struct{}{}
+		//	return
+		//default:
+		opts := &bind.CallOpts{
+			Pending:     false,
+			From:        te.wallet.Address(),
+			BlockNumber: nil,
+			Context:     context.Background(),
 		}
-	}(done)
+		toHeight, err := te.caller.MaxMainHeight(opts)
+		if err != nil {
+			logger.Error(err)
+			delay = time.Duration(ERRDELAY)
+			//break
+			continue
+		}
+		logger.Info("CrossChainRelayer", te.name, "dest eth Height:", toHeight)
+		if te.blockList.Len() > 0 {
+			logger.Debug("CrossChainRelayer", te.name, "find block to verify")
+			te.verifyAndSendTransaction(toHeight)
+			delay = time.Duration(WAITDELAY)
+			//break
+			continue
+		}
+		fromHeight, err := te.wallet.TopBlockNumber(context.Background())
+		if err != nil {
+			logger.Error(err)
+			delay = time.Duration(ERRDELAY)
+			//break
+			continue
+		}
+		logger.Info("CrossChainRelayer", te.name, "src top Height:", fromHeight)
 
-	<-done
-	logger.Error("relayer [%v] timeout", te.name)
-	return nil
+		if lastSubHeight <= toHeight && toHeight < lastUnsubHeight {
+			toHeight = lastUnsubHeight
+		}
+		//if toHeight+1 > fromHeight {
+		//	if set := timeout.Reset(timeoutDuration); !set {
+		//		logger.Error("CrossChainRelayer", te.name, "reset timeout falied!")
+		//		delay = time.Duration(ERRDELAY)
+		//		break
+		//	} else {
+		//		logger.Info("CrossChainRelayer", te.name, "reset timeout success!")
+		//	}
+		//	logger.Debug("CrossChainRelayer", te.name, "wait src top update, delay")
+		//	delay = time.Duration(WAITDELAY)
+		//	break
+		//}
+		syncStartHeight := toHeight + 1
+		limitEndHeight := fromHeight
+
+		subHeight, unsubHeight, err := te.queryBlocks(syncStartHeight, limitEndHeight)
+		if err != nil {
+			logger.Error("CrossChainRelayer", te.name, "signAndSendTransactions failed:", err)
+			delay = time.Duration(ERRDELAY)
+			//break
+			continue
+		}
+		if subHeight > lastSubHeight {
+			logger.Info("CrossChainRelayer %v lastSubHeight: %v=>%v", te.name, lastSubHeight, subHeight)
+			lastSubHeight = subHeight
+		}
+		if unsubHeight > lastUnsubHeight {
+			logger.Info("CrossChainRelayer %v lastUnsubHeight: %v=>%v", te.name, lastUnsubHeight, unsubHeight)
+			lastUnsubHeight = unsubHeight
+		}
+		//if set := timeout.Reset(timeoutDuration); !set {
+		//	logger.Error("CrossChainRelayer", te.name, "reset timeout falied!")
+		//	delay = time.Duration(ERRDELAY)
+		//	break
+		//} else {
+		//	logger.Info("CrossChainRelayer", te.name, "reset timeout success!")
+		//}
+		delay = time.Duration(SUCCESSDELAY)
+		//break
+		continue
+	}
+	//	}
+	//}(done)
+
+	//<-done
+	//logger.Error("relayer [%v] timeout", te.name)
 }
