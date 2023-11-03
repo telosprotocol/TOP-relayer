@@ -287,15 +287,21 @@ func (relayer *Eth2TopRelayerV2) sendRegularLightClientUpdate(lastFinalizedTopSl
 	var data *beaconrpc.LightClientUpdate
 	var err error
 	if lastPeriodOnTOP == lastPeriodOnEth {
-		data, err = relayer.beaconrpcclient.GetLastFinalizedLightClientUpdateV2()
+		data, err = relayer.beaconrpcclient.GetFinalizedLightClientUpdateByEthSlot(lastFinalizedEthSlot)
 		if err != nil {
-			logger.Error("Eth2TopRelayerV2 GetLightClientUpdate error:", err)
+			logger.Error("Eth2TopRelayerV2 GetLightClientUpdate at same period error:", err)
+			return err
+		}
+	} else if lastPeriodOnTOP+1 == lastPeriodOnEth {
+		data, err = relayer.beaconrpcclient.GetLastFinalizedLightClientUpdateV2WithNextSyncCommitteeByEthSlot(lastFinalizedEthSlot)
+		if err != nil {
+			logger.Error("Eth2TopRelayerV2 GetLightClientUpdate at next period error:", err)
 			return err
 		}
 	} else {
 		data, err = relayer.beaconrpcclient.GetLightClientUpdateV2(lastPeriodOnTOP + 1)
 		if err != nil {
-			logger.Error("Eth2TopRelayerV2 GetLightClientUpdate error:", err)
+			logger.Error("Eth2TopRelayerV2 GetLightClientUpdate at near period error:", err)
 			return err
 		}
 	}
@@ -544,23 +550,23 @@ func (relayer *Eth2TopRelayerV2) isEnoughBlocksForLightClientUpdate(lastFinalize
 	}
 	lastPeriodOnEth := beaconrpc.GetPeriodForSlot(lastFinalizedEthSlot)
 	lastPeriodOnTop := beaconrpc.GetPeriodForSlot(lastFinalizedTopSlot)
-	if lastPeriodOnEth == lastPeriodOnTop+1 {
-		if beaconrpc.GetFinalizedSlotForPeriod(lastPeriodOnEth) >= lastFinalizedEthSlot {
-			return false
-		}
-	}
+	//if lastPeriodOnEth == lastPeriodOnTop+1 {
+	//	if beaconrpc.GetFinalizedSlotForPeriod(lastPeriodOnEth) >= lastFinalizedEthSlot {
+	//		return false
+	//	}
+	//}
 	if lastPeriodOnEth == lastPeriodOnTop {
 		if (lastFinalizedEthSlot - lastFinalizedTopSlot) < beaconrpc.ONE_EPOCH_IN_SLOTS*3 {
 			return false
 		}
-		submitFinalizedSlot, err := relayer.beaconrpcclient.GetLastFinalizedLightClientUpdateV2FinalizedSlot()
-		if err != nil {
-			return false
-		}
-		if lastFinalizedTopSlot >= submitFinalizedSlot {
-			logger.Warn("must : lastFinalizedTopSlot(%d) < submitFinalizedSlot:(%d)", lastFinalizedTopSlot, submitFinalizedSlot)
-			return false
-		}
+		//submitFinalizedSlot, err := relayer.beaconrpcclient.GetLastFinalizedLightClientUpdateV2FinalizedSlot()
+		//if err != nil {
+		//	return false
+		//}
+		//if lastFinalizedTopSlot >= submitFinalizedSlot+32 {
+		//	logger.Warn("must : lastFinalizedTopSlot(%d) < submitFinalizedSlot:(%d)", lastFinalizedTopSlot, submitFinalizedSlot)
+		//	return false
+		//}
 	}
 	return true
 }

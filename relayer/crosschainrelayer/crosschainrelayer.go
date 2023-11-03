@@ -185,7 +185,7 @@ func (te *CrossChainRelayer) queryBlocks(lo, hi uint64) (uint64, uint64, error) 
 			logger.Error("CrossChainRelayer", te.name, "GetTopElectBlockHeadByHeight error:", err)
 			break
 		}
-		logger.Debug("Top block, height: %v, type: %v, chainbits: %v", block.Number, block.BlockType, block.ChainBits)
+		logger.Info("Top block, height: %v, type: %v, chainbits: %v", block.Number, block.BlockType, block.ChainBits)
 		submit := false
 		if block.BlockType == ELECTION_BLOCK {
 			submit = true
@@ -212,23 +212,48 @@ func (te *CrossChainRelayer) queryBlocks(lo, hi uint64) (uint64, uint64, error) 
 	return lastSubHeight, lastUnsubHeight, nil
 }
 
-func (te *CrossChainRelayer) verifyAndSendTransaction() {
-	if te.blockList.Len() == 0 {
-		return
+func hexString2Uint64(s string) uint64 {
+	if len(s) < 2 {
+		return 0
 	}
+	s = s[2:]
+	ret, err := strconv.ParseUint(s, 16, 64)
+	if err != nil {
+		return 0
+	}
+	return ret
+}
+
+func (te *CrossChainRelayer) verifyAndSendTransaction(toHeight uint64) error {
+	if te.blockList.Len() == 0 {
+		return nil
+	}
+
 	element := te.blockList.Front()
 	if element == nil {
 		logger.Error("txList get front nil")
-		return
+		return nil
 	}
 	header, ok := element.Value.(top.TopHeader)
 	if !ok {
-		logger.Error("txList get front error")
-		return
+		err := fmt.Errorf("txList get front error")
+		logger.Error(err)
+		return err
+	}
+	logger.Info("verifyAndSendTransaction header:%+v", header)
+	for _, block := range header.RelatedList {
+		logger.Info("verifyAndSendTransaction headerRelatedList:%+v", block)
+	}
+	currHeight := hexString2Uint64(header.Number)
+	logger.Info("CrossChainRelayer verifyAndSendTransaction currHash:%s,currHeight:%d, toHeight:%d", header.Hash, currHeight, toHeight)
+	if currHeight <= toHeight {
+		logger.Info("CrossChainRelayer verifyAndSendTransaction remove currHeight:%d,hash:%s", currHeight, header.Hash)
+		te.blockList.Remove(element)
+		return nil
 	}
 	if res := doWithHeader(header); res == false {
 		logger.Info("do with header not ok:", header.Hash)
-		return
+		return nil
 	}
 	logger.Info("do with header ok:", header.Hash)
 
@@ -236,23 +261,26 @@ func (te *CrossChainRelayer) verifyAndSendTransaction() {
 	batchHeaders = append(batchHeaders, common.Hex2Bytes(header.Header[2:]))
 	data, err := rlp.EncodeToBytes(batchHeaders)
 	if err != nil {
-		logger.Error("CrossChainRelayer", te.name, "EncodeHeaders failed:", err)
-		return
+		err = fmt.Errorf("CrossChainRelayer", te.name, "EncodeHeaders failed:", err)
+		logger.Error(err)
+		return err
 	}
 	err = te.submitTopHeader(data)
 	if err != nil {
-		logger.Error("CrossChainRelayer", te.name, "submitHeaders failed:", err)
-		return
+		err = fmt.Errorf("CrossChainRelayer", te.name, "submitHeaders failed:", err)
+		logger.Error(err)
+		return err
 	}
 
 	// clear list
 	te.blockList.Remove(element)
+	return nil
 }
 
 func (te *CrossChainRelayer) StartRelayer(wg *sync.WaitGroup) error {
 	logger.Info("Start CrossChainRelayer %v...", te.name)
 	defer wg.Done()
-
+	//
 	done := make(chan struct{})
 	defer close(done)
 
@@ -268,6 +296,7 @@ func (te *CrossChainRelayer) StartRelayer(wg *sync.WaitGroup) error {
 
 		for {
 			time.Sleep(time.Second * delay)
+			logger.Info("CrossChainRelayer [top -> %s] ===================== New Cycle Start =====================", te.name)
 			select {
 			case <-timeout.C:
 				done <- struct{}{}
@@ -288,7 +317,14 @@ func (te *CrossChainRelayer) StartRelayer(wg *sync.WaitGroup) error {
 				logger.Info("CrossChainRelayer", te.name, "dest eth Height:", toHeight)
 				if te.blockList.Len() > 0 {
 					logger.Debug("CrossChainRelayer", te.name, "find block to verify")
-					te.verifyAndSendTransaction()
+					if err := te.verifyAndSendTransaction(toHeight); err == nil {
+						if set := timeout.Reset(timeoutDuration); !set {
+							logger.Error("CrossChainRelayer", te.name, "reset timeout falied!")
+							delay = time.Duration(ERRDELAY)
+						} else {
+							logger.Info("CrossChainRelayer", te.name, "reset timeout success!")
+						}
+					}
 					delay = time.Duration(WAITDELAY)
 					break
 				}
@@ -308,6 +344,8 @@ func (te *CrossChainRelayer) StartRelayer(wg *sync.WaitGroup) error {
 						logger.Error("CrossChainRelayer", te.name, "reset timeout falied!")
 						delay = time.Duration(ERRDELAY)
 						break
+					} else {
+						logger.Info("CrossChainRelayer", te.name, "reset timeout success!")
 					}
 					logger.Debug("CrossChainRelayer", te.name, "wait src top update, delay")
 					delay = time.Duration(WAITDELAY)
@@ -334,6 +372,8 @@ func (te *CrossChainRelayer) StartRelayer(wg *sync.WaitGroup) error {
 					logger.Error("CrossChainRelayer", te.name, "reset timeout falied!")
 					delay = time.Duration(ERRDELAY)
 					break
+				} else {
+					logger.Info("CrossChainRelayer", te.name, "reset timeout success!")
 				}
 				delay = time.Duration(SUCCESSDELAY)
 				break
