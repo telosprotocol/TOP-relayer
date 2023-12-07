@@ -783,7 +783,6 @@ func (relayer *Eth2TopRelayerV2) GetInitData() ([]byte, error) {
 	initParam.FinalizedBeaconHeader = finalizedHeader
 	initParam.NextSyncCommittee = lastUpdate.NextSyncCommitteeUpdate.NextSyncCommittee
 	initParam.CurrentSyncCommittee = prevUpdate.NextSyncCommittee
-
 	bytes, err := initParam.Encode()
 	if err != nil {
 		logger.Error("initParam.Encode error:", err)

@@ -155,8 +155,9 @@ func getEthInitData(eth1, prysm string) ([]byte, error) {
 	initParam.FinalizedBeaconHeader = finalizedHeader
 	initParam.NextSyncCommittee = lastUpdate.NextSyncCommitteeUpdate.NextSyncCommittee
 	initParam.CurrentSyncCommittee = prevUpdate.NextSyncCommittee
-	// 2203865 2203776
-	// d15331da6463ec89f54bbaeda39d6dd20f575dd990ecd92bd5f98121767862c6
+
+	printEthHeaderInfo(initParam)
+
 	h := common.Bytes2Hex(initParam.FinalizedExecutionHeader.Hash().Bytes())
 	fmt.Println("eth header hash:", h)
 	ExecutionBlockHash := common.Bytes2Hex(initParam.FinalizedBeaconHeader.ExecutionBlockHash)
@@ -233,6 +234,8 @@ func getEthInitDataWithHeight(eth1, prysm, slot string) ([]byte, error) {
 	initParam.FinalizedBeaconHeader = finalizedHeader
 	initParam.NextSyncCommittee = lastUpdate.NextSyncCommitteeUpdate.NextSyncCommittee
 	initParam.CurrentSyncCommittee = prevUpdate.NextSyncCommittee
+
+	printEthHeaderInfo(initParam)
 
 	bytes, err := initParam.Encode()
 	if err != nil {
@@ -402,4 +405,19 @@ func getBscInitDataWithHeight(url, h string) ([]byte, error) {
 	}
 
 	return batch, nil
+}
+
+func printEthHeaderInfo(initParam *InitInput) {
+	fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ETH Data <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+	fmt.Printf("FinalizedExecutionHeader: %+v \n", *initParam.FinalizedExecutionHeader)
+	fmt.Printf("FinalizedExecutionHeader.Bloom: %+v \n", common.Bytes2Hex(initParam.FinalizedExecutionHeader.Bloom[:]))
+	fmt.Printf("FinalizedExecutionHeader.Extra: %+v \n", common.Bytes2Hex(initParam.FinalizedExecutionHeader.Extra))
+	fmt.Printf("FinalizedBeaconHeader.Header.Slot: %+v \n", initParam.FinalizedBeaconHeader.Header.Slot)
+	fmt.Printf("FinalizedBeaconHeader.Header.ProposerIndex: %+v \n", initParam.FinalizedBeaconHeader.Header.ProposerIndex)
+	fmt.Printf("FinalizedBeaconHeader.Header.ParentRoot: %+v \n", common.Bytes2Hex(initParam.FinalizedBeaconHeader.Header.ParentRoot))
+	fmt.Printf("FinalizedBeaconHeader.Header.StateRoot: %+v \n", common.Bytes2Hex(initParam.FinalizedBeaconHeader.Header.StateRoot))
+	fmt.Printf("FinalizedBeaconHeader.Header.BodyRoot: %+v \n", common.Bytes2Hex(initParam.FinalizedBeaconHeader.Header.BodyRoot))
+	fmt.Printf("FinalizedBeaconHeader.BeaconBlockRoot: %+v \n", common.Bytes2Hex(initParam.FinalizedBeaconHeader.BeaconBlockRoot))
+	fmt.Printf("FinalizedBeaconHeader.ExecutionBlockHash: %+v \n", common.Bytes2Hex(initParam.FinalizedBeaconHeader.ExecutionBlockHash))
+	fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ETH Data <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
 }

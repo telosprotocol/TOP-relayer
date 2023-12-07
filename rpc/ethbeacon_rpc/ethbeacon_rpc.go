@@ -29,7 +29,7 @@ func NewBeaconGrpcClient(grpcUrl string) (*BeaconGrpcClient, error) {
 		return nil, err
 	}
 
-	grpcBigData, err := grpc.Dial(grpcUrl, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(104857600)))
+	grpcBigData, err := grpc.Dial(grpcUrl, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(200000000)))
 	if err != nil {
 		logger.Error("create grpcBigData error:", err)
 		return nil, err
