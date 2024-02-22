@@ -15,10 +15,11 @@ import (
 
 var (
 	topRelayers = map[string]IChainRelayer{
-		config.ETH_CHAIN:     new(toprelayer.Eth2TopRelayerV2),
-		config.BSC_CHAIN:     new(toprelayer.Bsc2TopRelayer),
-		config.HECO_CHAIN:    new(toprelayer.Heco2TopRelayer),
-		config.OPEN_ALLIANCE: new(toprelayer.OpenAlliance2TopRelayer)}
+		config.ETH_CHAIN: new(toprelayer.Eth2TopRelayerV2),
+		//config.BSC_CHAIN:     new(toprelayer.Bsc2TopRelayer),
+		//config.HECO_CHAIN:    new(toprelayer.Heco2TopRelayer),
+		//config.OPEN_ALLIANCE: new(toprelayer.OpenAlliance2TopRelayer)
+	}
 
 	crossChainRelayer = new(crosschainrelayer.CrossChainRelayer)
 )
@@ -81,7 +82,7 @@ func StartRelayer(cfg *config.Config, pass string, wg *sync.WaitGroup) error {
 	if !exist {
 		return fmt.Errorf("not found TOP chain config")
 	}
-	RelayerConfig, exist := cfg.RelayerConfig[cfg.RelayerToRun]
+	relayerConfig, exist := cfg.RelayerConfig[cfg.RelayerToRun]
 	if !exist {
 		return fmt.Errorf("not found config of RelayerToRun")
 	}
@@ -107,7 +108,7 @@ func StartRelayer(cfg *config.Config, pass string, wg *sync.WaitGroup) error {
 			}
 		}
 	case config.HECO_CHAIN, config.BSC_CHAIN, config.ETH_CHAIN, config.OPEN_ALLIANCE:
-		err := startCrossChainRelayer(crossChainRelayer, cfg.RelayerToRun, RelayerConfig, topConfig.Url[0], pass, wg)
+		err := startCrossChainRelayer(crossChainRelayer, cfg.RelayerToRun, relayerConfig, topConfig.Url[0], pass, wg)
 		if err != nil {
 			logger.Error("StartRelayer error:", err)
 			return err

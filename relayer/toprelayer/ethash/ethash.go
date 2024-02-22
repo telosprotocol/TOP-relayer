@@ -38,7 +38,6 @@ import (
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/metrics"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/hashicorp/golang-lru/simplelru"
 )
@@ -444,10 +443,10 @@ type Ethash struct {
 	datasets *lru // In memory datasets to avoid regenerating too often
 
 	// Mining related fields
-	rand     *rand.Rand    // Properly seeded random source for nonces
-	threads  int           // Number of threads to mine on if mining
-	update   chan struct{} // Notification channel to update mining parameters
-	hashrate metrics.Meter // Meter tracking the average hashrate
+	rand    *rand.Rand    // Properly seeded random source for nonces
+	threads int           // Number of threads to mine on if mining
+	update  chan struct{} // Notification channel to update mining parameters
+	// hashrate metrics.Meter // Meter tracking the average hashrate
 
 	// Remote sealer related fields
 	workCh       chan *sealTask   // Notification channel to push new work and relative result channel to remote sealer
@@ -481,11 +480,11 @@ func New(config Config, notify []string, noverify bool) *Ethash {
 		log.Info("Disk storage enabled for ethash DAGs", "dir", config.DatasetDir, "count", config.DatasetsOnDisk)
 	}
 	ethash := &Ethash{
-		config:       config,
-		caches:       newlru("cache", config.CachesInMem, newCache),
-		datasets:     newlru("dataset", config.DatasetsInMem, newDataset),
-		update:       make(chan struct{}),
-		hashrate:     metrics.NewMeterForced(),
+		config:   config,
+		caches:   newlru("cache", config.CachesInMem, newCache),
+		datasets: newlru("dataset", config.DatasetsInMem, newDataset),
+		update:   make(chan struct{}),
+		// hashrate:     metrics.NewMeterForced(),
 		workCh:       make(chan *sealTask),
 		fetchWorkCh:  make(chan *sealWork),
 		submitWorkCh: make(chan *mineResult),
@@ -501,11 +500,11 @@ func New(config Config, notify []string, noverify bool) *Ethash {
 // purposes.
 func NewTester(notify []string, noverify bool) *Ethash {
 	ethash := &Ethash{
-		config:       Config{PowMode: ModeTest},
-		caches:       newlru("cache", 1, newCache),
-		datasets:     newlru("dataset", 1, newDataset),
-		update:       make(chan struct{}),
-		hashrate:     metrics.NewMeterForced(),
+		config:   Config{PowMode: ModeTest},
+		caches:   newlru("cache", 1, newCache),
+		datasets: newlru("dataset", 1, newDataset),
+		update:   make(chan struct{}),
+		// hashrate:     metrics.NewMeterForced(),
 		workCh:       make(chan *sealTask),
 		fetchWorkCh:  make(chan *sealWork),
 		submitWorkCh: make(chan *mineResult),
@@ -675,7 +674,8 @@ func (ethash *Ethash) SetThreads(threads int) {
 func (ethash *Ethash) Hashrate() float64 {
 	// Short circuit if we are run the ethash in normal/test mode.
 	if ethash.config.PowMode != ModeNormal && ethash.config.PowMode != ModeTest {
-		return ethash.hashrate.Rate1()
+		// return ethash.hashrate.Rate1()
+		return 0.0
 	}
 	var res = make(chan uint64, 1)
 
@@ -683,11 +683,12 @@ func (ethash *Ethash) Hashrate() float64 {
 	case ethash.fetchRateCh <- res:
 	case <-ethash.exitCh:
 		// Return local hashrate only if ethash is stopped.
-		return ethash.hashrate.Rate1()
+		// return ethash.hashrate.Rate1()
+		return 0.0
 	}
 
 	// Gather total submitted hash rate of remote sealers.
-	return ethash.hashrate.Rate1() + float64(<-res)
+	return /*ethash.hashrate.Rate1() +*/ float64(<-res)
 }
 
 // APIs implements consensus.Engine, returning the user facing RPC APIs.

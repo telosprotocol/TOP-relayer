@@ -2,14 +2,12 @@ package ethash
 
 import (
 	"encoding/binary"
-	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
 	"runtime"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/consensus/ethash"
 	"github.com/ethereum/go-ethereum/crypto"
 	"golang.org/x/crypto/sha3"
 )
@@ -109,10 +107,11 @@ func MakeDAG(block uint64, dir string) {
 }
 
 func PathToDAG(epoch uint64, dir string) string {
-	seed := ethash.SeedHash(epoch*epochLength + 1)
-	var endian string
-	if !isLittleEndian() {
-		endian = ".be"
-	}
-	return filepath.Join(dir, fmt.Sprintf("full-R%d-%x%s", 23, seed[:8], endian))
+	return ""
+	//seed := ethash.SeedHash(epoch*epochLength + 1)
+	//var endian string
+	//if !isLittleEndian() {
+	//	endian = ".be"
+	//}
+	//return filepath.Join(dir, fmt.Sprintf("full-R%d-%x%s", 23, seed[:8], endian))
 }

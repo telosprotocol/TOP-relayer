@@ -12,6 +12,8 @@ import (
 
 var relayer *Eth2TopRelayerV2
 
+const defaultPass = "asd123"
+
 func init() {
 	var keyPath = "../../.relayer/wallet/top"
 
@@ -84,7 +86,7 @@ func TestReset(t *testing.T) {
 }
 
 func TestEthClient(t *testing.T) {
-	b, err := relayer.beaconrpcclient.GetLastSlotNumber()
+	b, err := relayer.beaconClient.GetLastSlotNumber()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +116,7 @@ func TestGetClientMode(t *testing.T) {
 }
 
 func TestLCU(t *testing.T) {
-	v2, err := relayer.beaconrpcclient.GetLightClientUpdateV2(289)
+	v2, err := relayer.beaconClient.GetLightClientUpdateV2(289)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -151,14 +151,14 @@ search:
 		case <-abort:
 			// Mining terminated, update stats and abort
 			logger.Trace("Ethash nonce search aborted", "attempts", nonce-seed)
-			ethash.hashrate.Mark(attempts)
+			//ethash.hashrate.Mark(attempts)
 			break search
 
 		default:
 			// We don't have to update hash rate on every nonce, so update after after 2^X nonces
 			attempts++
 			if (attempts % (1 << 15)) == 0 {
-				ethash.hashrate.Mark(attempts)
+				//ethash.hashrate.Mark(attempts)
 				attempts = 0
 			}
 			// Compute the PoW value of this nonce
@@ -223,7 +223,7 @@ func (ethash *Ethash) remote(notify []string, noverify bool) {
 				if err != nil {
 					log.Warn("Failed to notify remote miner", "err", err)
 				} else {
-					log.Trace("Notified remote miner", "miner", url, "hash", log.Lazy{Fn: func() common.Hash { return common.HexToHash(work[0]) }}, "target", work[2])
+					//log.Trace("Notified remote miner", "miner", url, "hash", log.Lazy{Fn: func() common.Hash { return common.HexToHash(work[0]) }}, "target", work[2])
 					res.Body.Close()
 				}
 			}(notifyReqs[i], url)

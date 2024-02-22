@@ -5,7 +5,6 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	ssz "github.com/prysmaticlabs/fastssz"
 	v11 "github.com/prysmaticlabs/prysm/v4/proto/engine/v1"
-	pb "github.com/prysmaticlabs/prysm/v4/proto/eth/service"
 	v2 "github.com/prysmaticlabs/prysm/v4/proto/eth/v2"
 	eth "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
 	"net/http"
@@ -24,8 +23,8 @@ const (
 )
 
 type BeaconGrpcClient struct {
-	client      pb.BeaconChainClient
-	debugclient pb.BeaconDebugClient
+	client      eth.BeaconChainClient
+	debugclient eth.DebugClient
 
 	httpclient *http.Client
 	httpurl    string
@@ -467,7 +466,7 @@ func specialFieldTransactionsHashTreeRoot(transactions [][]byte) ([32]byte, erro
 	return root, err
 }
 
-func BeaconBlockBodyMerkleTreeNew(b *v2.BeaconBlockBodyCapella) (MerkleTreeNode, error) {
+func BeaconBlockBodyMerkleTreeNew(b *v2.BeaconBlockBodyDeneb) (MerkleTreeNode, error) {
 	leaves := make([][32]byte, 11)
 	// field 0
 	if hashRoot, err := BytesHashTreeRoot(b.RandaoReveal, 96, "RandaoReveal"); err != nil {
@@ -571,7 +570,7 @@ func BeaconBlockBodyMerkleTreeNew(b *v2.BeaconBlockBodyCapella) (MerkleTreeNode,
 	return create(leaves, BeaconBlockBodyTreeDepth), nil
 }
 
-func ExecutionPayloadMerkleTreeNew(b *v11.ExecutionPayloadCapella) (MerkleTreeNode, error) {
+func ExecutionPayloadMerkleTreeNew(b *v11.ExecutionPayloadDeneb) (MerkleTreeNode, error) {
 
 	leaves := make([][32]byte, 15)
 	// field 0

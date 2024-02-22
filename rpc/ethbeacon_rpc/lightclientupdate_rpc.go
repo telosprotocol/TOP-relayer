@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	state_native "github.com/prysmaticlabs/prysm/v4/beacon-chain/state/state-native"
+	"github.com/prysmaticlabs/prysm/v4/consensus-types/primitives"
 	v2 "github.com/prysmaticlabs/prysm/v4/proto/eth/v2"
 	eth "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
 	"github.com/wonderivan/logger"
@@ -87,7 +88,7 @@ func (c *BeaconGrpcClient) getNextSyncCommitteeUpdateByFinalized(finalizedSlot u
 		return nil, err
 	}
 	logger.Info("GetNextSyncCommitteeUpdateV2 attestedSlot:%d, signatureSlot:%d", attestedSlot, signatureSlot)
-	beaconState, err := c.getBeaconState(strconv.FormatUint(attestedSlot, 10))
+	beaconState, err := c.getBeaconState(primitives.Slot(attestedSlot))
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 getBeaconState error:", err)
 		return nil, err
@@ -166,12 +167,12 @@ func (c *BeaconGrpcClient) getAttestedSlotWithEnoughSyncCommitteeBitsSum(atteste
 	}
 }
 
-func (c *BeaconGrpcClient) getNextSyncCommittee(beaconState *eth.BeaconStateCapella) (*ethtypes.SyncCommitteeUpdate, error) {
+func (c *BeaconGrpcClient) getNextSyncCommittee(beaconState *eth.BeaconStateDeneb) (*ethtypes.SyncCommitteeUpdate, error) {
 	if beaconState.NextSyncCommittee == nil {
 		logger.Error("Eth2TopRelayerV2 NextSyncCommittee nil")
 		return nil, errors.New("NextSyncCommittee nil")
 	}
-	var state, err = state_native.InitializeFromProtoCapella(beaconState)
+	var state, err = state_native.InitializeFromProtoDeneb(beaconState)
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 InitializeFromProtoUnsafeBellatrix error:", err)
 		return nil, err
@@ -188,7 +189,7 @@ func (c *BeaconGrpcClient) getNextSyncCommittee(beaconState *eth.BeaconStateCape
 	return update, nil
 }
 
-func (c *BeaconGrpcClient) constructFromBeaconBlockBody(beaconBlockBody *v2.BeaconBlockBodyCapella) (*ethtypes.ExecutionBlockProof, error) {
+func (c *BeaconGrpcClient) constructFromBeaconBlockBody(beaconBlockBody *v2.BeaconBlockBodyDeneb) (*ethtypes.ExecutionBlockProof, error) {
 	blockHash := beaconBlockBody.ExecutionPayload.GetBlockHash()
 	var finalizedBlockBodyHash common.Hash
 	copy(finalizedBlockBodyHash[:], blockHash[:])
@@ -209,7 +210,7 @@ func (c *BeaconGrpcClient) constructFromBeaconBlockBody(beaconBlockBody *v2.Beac
 	}, nil
 }
 
-func (c *BeaconGrpcClient) getFinalityLightClientUpdateForState(attestedSlot, signatureSlot uint64, beaconState, finalityBeaconState *eth.BeaconStateCapella) (*ethtypes.LightClientUpdate, error) {
+func (c *BeaconGrpcClient) getFinalityLightClientUpdateForState(attestedSlot, signatureSlot uint64, beaconState, finalityBeaconState *eth.BeaconStateDeneb) (*ethtypes.LightClientUpdate, error) {
 	signatureBeaconBody, err := c.GetBeaconBlockBodyForBlockId(strconv.FormatUint(signatureSlot, 10))
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 GetBeaconBlockBodyForBlockId error:", err)
@@ -244,7 +245,7 @@ func (c *BeaconGrpcClient) getFinalityLightClientUpdateForState(attestedSlot, si
 		logger.Error("Eth2TopRelayerV2 finalizedBlockBody hash error:", err)
 		return nil, err
 	}
-	state, err := state_native.InitializeFromProtoUnsafeCapella(beaconState)
+	state, err := state_native.InitializeFromProtoUnsafeDeneb(beaconState)
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 InitializeFromProtoUnsafeBellatrix error:", err)
 		return nil, err
@@ -287,12 +288,12 @@ func (c *BeaconGrpcClient) getFinalityLightClientUpdate(attestedSlot uint64, use
 		return nil, err
 	}
 	logger.Info("GetFinalityLightClientUpdate attestedSlot:%d, signatureSlot:%d", attestedSlot, signatureSlot)
-	beaconState, err := c.getBeaconState(strconv.FormatUint(attestedSlot, 10))
+	beaconState, err := c.getBeaconState(primitives.Slot(attestedSlot))
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 getBeaconState error:", err)
 		return nil, err
 	}
-	var finalityBeaconState *eth.BeaconStateCapella = nil
+	var finalityBeaconState *eth.BeaconStateDeneb = nil
 	if useNextSyncCommittee == true {
 		finalityBeaconState = beaconState
 	}
