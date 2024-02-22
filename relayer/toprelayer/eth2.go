@@ -25,7 +25,6 @@ import (
 	"time"
 	"toprelayer/config"
 	eth2bridge "toprelayer/contract/top/eth2client"
-	"toprelayer/relayer/toprelayer/ethashapp"
 	"toprelayer/relayer/toprelayer/ethtypes"
 	beaconrpc "toprelayer/rpc/ethbeacon_rpc"
 	"toprelayer/rpc/ethereum"
@@ -184,7 +183,7 @@ func (relayer *Eth2TopRelayerV2) linearSearchForward(slot, maxSlot uint64) (uint
 		}
 		known, err := relayer.blockKnownOnTop(slot + 1)
 		if err != nil {
-			if beaconrpc.IsErrorNoBlockForSlot(err) {
+			if ethereum.IsErrorNoBlockForSlot(err) {
 				slot += 1
 				continue
 			} else {
@@ -516,6 +515,14 @@ func (relayer *Eth2TopRelayerV2) getExecutionBlocksBetweenByNumber(low, height u
 	return headers, nil
 }
 
+type Output struct {
+	HeaderRLP    string   `json:"header_rlp"`
+	MerkleRoot   string   `json:"merkle_root"`
+	Elements     []string `json:"elements"`
+	MerkleProofs []string `json:"merkle_proofs"`
+	ProofLength  uint64   `json:"proof_length"`
+}
+
 func (relayer *Eth2TopRelayerV2) encodeEthHeaders(headers []*types.Header) ([]byte, error) {
 	var encodedHeaders []byte
 	for _, header := range headers {
@@ -524,7 +531,7 @@ func (relayer *Eth2TopRelayerV2) encodeEthHeaders(headers []*types.Header) ([]by
 			logger.Error("rlp encode error: ", err)
 			return nil, err
 		}
-		if outBytes, err := rlp.EncodeToBytes(ethashapp.Output{
+		if outBytes, err := rlp.EncodeToBytes(Output{
 			HeaderRLP: string(rlpBytes),
 		}); err != nil {
 			logger.Error("Eth2TopRelayerV2 Output rlp encode error: ", err)
