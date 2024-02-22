@@ -39,12 +39,16 @@ func NewBeaconChainClient(httpUrl string) (*BeaconChainClient, error) {
 func (c *BeaconChainClient) GetSignedBeaconBlock(blockId beacon.StateOrBlockId) (interfaces.ReadOnlySignedBeaconBlock, error) {
 	signedBeaconBlockSsz, err := c.GetBlock(context.Background(), blockId)
 	if err != nil {
+		logger.Error("GetBlock error:%s", err.Error())
 		return nil, err
 	}
+
+	logger.Info("GetSignedBeaconBlock blockId:%s,signedBeaconBlockSsz:%s", blockId, common.Bytes2Hex(signedBeaconBlockSsz))
 
 	var signedBeaconBlock blocks.SignedBeaconBlock
 	err = signedBeaconBlock.UnmarshalSSZ(signedBeaconBlockSsz)
 	if err != nil {
+		logger.Error("UnmarshalSSZ error:%s", err.Error())
 		return nil, err
 	}
 
@@ -85,7 +89,7 @@ func (c *BeaconChainClient) GetBeaconBlockHeader(blockId beacon.StateOrBlockId) 
 func (c *BeaconChainClient) GetLastSlotNumber() (primitives.Slot, error) {
 	beaconBlockHeader, err := c.GetBeaconBlockHeader("head")
 	if err != nil {
-		logger.Error("GetBeaconBlockHeaderForBlockId error:", err)
+		logger.Error("GetBeaconBlockHeader error:", err)
 		return 0, err
 	}
 
@@ -95,7 +99,7 @@ func (c *BeaconChainClient) GetLastSlotNumber() (primitives.Slot, error) {
 func (c *BeaconChainClient) GetLastFinalizedSlotNumber() (primitives.Slot, error) {
 	h, err := c.GetBeaconBlockHeader("finalized")
 	if err != nil {
-		logger.Error("GetBeaconBlockHeaderForBlockId error:", err)
+		logger.Error("GetBeaconBlockHeader error:", err)
 		return 0, err
 	}
 	return h.GetSlot(), nil
@@ -124,7 +128,7 @@ func (c *BeaconChainClient) getBeaconState(id primitives.Slot) (*eth.BeaconState
 
 	sszBeaconState, err := c.GetState(context.Background(), beacon.StateOrBlockId(strconv.FormatUint(uint64(id), 10)))
 	if err != nil {
-		logger.Error("GetBeaconStateV2 error:", err)
+		logger.Error("GetState error:", err)
 		return nil, err
 	}
 

@@ -56,6 +56,7 @@ type Eth2TopRelayerV2 struct {
 
 func (relayer *Eth2TopRelayerV2) Init(cfg *config.Relayer, listenUrl []string, pass string) error {
 	w, err := wallet.NewTopWallet(cfg.Url[0], cfg.KeyPath, pass)
+	logger.Info("Eth2TopRelayerV2 TOP wallet url:", cfg.Url[0])
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 NewWallet error:", err)
 		return err
@@ -106,6 +107,8 @@ func (relayer *Eth2TopRelayerV2) Init(cfg *config.Relayer, listenUrl []string, p
 		logger.Error("Eth2TopRelayerV2 New monitor error", err)
 		return err
 	}
+
+	logger.Info("Eth2TopRelayerV2 init eth1 url:%s eth2 url:%s TOP eth1 url:%s ethHeaderSyncContractAddr:%s", listenUrl[0], listenUrl[1], cfg.Url[0], eth2ClientSystemContract.Hex())
 	return nil
 }
 
