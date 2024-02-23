@@ -43,12 +43,18 @@ func (c *BeaconChainClient) GetSignedBeaconBlock(blockId beacon.StateOrBlockId) 
 		return nil, err
 	}
 
-	logger.Info("GetSignedBeaconBlock blockId:%s,signedBeaconBlockSsz:%s", blockId, common.Bytes2Hex(signedBeaconBlockSsz))
+	//logger.Info("GetSignedBeaconBlock blockId:%s,signedBeaconBlockSsz:%s", blockId, common.Bytes2Hex(signedBeaconBlockSsz))
 
-	var signedBeaconBlock blocks.SignedBeaconBlock
-	err = signedBeaconBlock.UnmarshalSSZ(signedBeaconBlockSsz)
+	var signedBeaconBlockPb eth.SignedBeaconBlockDeneb
+	err = signedBeaconBlockPb.UnmarshalSSZ(signedBeaconBlockSsz)
 	if err != nil {
 		logger.Error("UnmarshalSSZ error:%s", err.Error())
+		return nil, err
+	}
+
+	signedBeaconBlock, err := blocks.NewSignedBeaconBlock(&signedBeaconBlockPb)
+	if err != nil {
+		logger.Error("NewSignedBeaconBlock error:%s", err.Error())
 		return nil, err
 	}
 
@@ -117,7 +123,7 @@ func (c *BeaconChainClient) GetBlockNumberForSlot(slot primitives.Slot) (uint64,
 	return executionPayload.BlockNumber(), nil
 }
 
-func (c *BeaconChainClient) getBeaconState(id primitives.Slot) (*eth.BeaconState, error) {
+func (c *BeaconChainClient) getBeaconState(id primitives.Slot) (*eth.BeaconStateDeneb, error) {
 	start := time.Now()
 	defer func() {
 		logger.Info("Slot:%s,getBeaconState time:%v", id, time.Since(start))
@@ -132,11 +138,12 @@ func (c *BeaconChainClient) getBeaconState(id primitives.Slot) (*eth.BeaconState
 		return nil, err
 	}
 
-	var state eth.BeaconState
+	var state eth.BeaconStateDeneb
 	if err = state.UnmarshalSSZ(sszBeaconState); err != nil {
 		logger.Error("UnmarshalSSZ error:", err)
 		return nil, err
 	}
+	//return proto.Clone(&state).(*eth.BeaconState), nil
 	return &state, nil
 }
 
@@ -420,7 +427,7 @@ func (c *BeaconChainClient) constructFromBeaconBlockBody(beaconBlockBody interfa
 	}, nil
 }
 
-func (c *BeaconChainClient) getNextSyncCommittee(beaconState *eth.BeaconState) (*ethtypes.SyncCommitteeUpdate, error) {
+func (c *BeaconChainClient) getNextSyncCommittee(beaconState *eth.BeaconStateDeneb) (*ethtypes.SyncCommitteeUpdate, error) {
 	beaconStateDeneb := proto.Clone(beaconState).(*eth.BeaconStateDeneb)
 
 	if beaconStateDeneb == nil {
@@ -448,7 +455,7 @@ func (c *BeaconChainClient) getNextSyncCommittee(beaconState *eth.BeaconState) (
 	return update, nil
 }
 
-func (c *BeaconChainClient) getFinalityLightClientUpdateForState(attestedSlot, signatureSlot primitives.Slot, beaconState, finalityBeaconState *eth.BeaconState) (*ethtypes.LightClientUpdate, error) {
+func (c *BeaconChainClient) getFinalityLightClientUpdateForState(attestedSlot, signatureSlot primitives.Slot, beaconState, finalityBeaconState *eth.BeaconStateDeneb) (*ethtypes.LightClientUpdate, error) {
 	beaconBody, err := c.GetBeaconBlockBody(beacon.StateOrBlockId(strconv.FormatUint(uint64(signatureSlot), 10)))
 	if err != nil {
 		logger.Error("BeaconChainClient GetBeaconBlockBodyForBlockId error:", err)
@@ -534,7 +541,7 @@ func (c *BeaconChainClient) getFinalityLightClientUpdate(attestedSlot primitives
 		logger.Error("BeaconChainClient getBeaconState error:", err)
 		return nil, err
 	}
-	var finalityBeaconState *eth.BeaconState = nil
+	var finalityBeaconState *eth.BeaconStateDeneb = nil
 	if useNextSyncCommittee == true {
 		finalityBeaconState = beaconState
 	}
