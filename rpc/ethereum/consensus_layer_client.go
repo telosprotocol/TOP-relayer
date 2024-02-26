@@ -36,7 +36,7 @@ func NewBeaconChainClient(httpUrl string) (*BeaconChainClient, error) {
 	return &BeaconChainClient{c}, nil
 }
 
-func (c *BeaconChainClient) GetSignedBeaconBlock(blockId beacon.StateOrBlockId) (interfaces.ReadOnlySignedBeaconBlock, error) {
+func (c *BeaconChainClient) GetBlindedSignedBeaconBlock(blockId beacon.StateOrBlockId) (interfaces.ReadOnlySignedBeaconBlock, error) {
 	signedBeaconBlockSsz, err := c.GetBlock(context.Background(), blockId)
 	if err != nil {
 		logger.Error("GetBlock error:%s", err.Error())
@@ -61,8 +61,33 @@ func (c *BeaconChainClient) GetSignedBeaconBlock(blockId beacon.StateOrBlockId) 
 	return signedBeaconBlock.ToBlinded()
 }
 
+func (c *BeaconChainClient) GetSignedBeaconBlock(blockId beacon.StateOrBlockId) (interfaces.SignedBeaconBlock, error) {
+	signedBeaconBlockSsz, err := c.GetBlock(context.Background(), blockId)
+	if err != nil {
+		logger.Error("GetBlock error:%s", err.Error())
+		return nil, err
+	}
+
+	//logger.Info("GetSignedBeaconBlock blockId:%s,signedBeaconBlockSsz:%s", blockId, common.Bytes2Hex(signedBeaconBlockSsz))
+
+	var signedBeaconBlockPb eth.SignedBeaconBlockDeneb
+	err = signedBeaconBlockPb.UnmarshalSSZ(signedBeaconBlockSsz)
+	if err != nil {
+		logger.Error("UnmarshalSSZ error:%s", err.Error())
+		return nil, err
+	}
+
+	signedBeaconBlock, err := blocks.NewSignedBeaconBlock(&signedBeaconBlockPb)
+	if err != nil {
+		logger.Error("NewSignedBeaconBlock error:%s", err.Error())
+		return nil, err
+	}
+
+	return signedBeaconBlock, nil
+}
+
 func (c *BeaconChainClient) GetBeaconBlockBody(blockId beacon.StateOrBlockId) (interfaces.ReadOnlyBeaconBlockBody, error) {
-	signedBeaconBlock, err := c.GetSignedBeaconBlock(blockId)
+	signedBeaconBlock, err := c.GetBlindedSignedBeaconBlock(blockId)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +104,7 @@ func (c *BeaconChainClient) GetBeaconBlockBodyFromBeaconBlock(beaconBlock interf
 }
 
 func (c *BeaconChainClient) GetBeaconBlockHeader(blockId beacon.StateOrBlockId) (*eth.BeaconBlockHeader, error) {
-	signedBeaconBlock, err := c.GetSignedBeaconBlock(blockId)
+	signedBeaconBlock, err := c.GetBlindedSignedBeaconBlock(blockId)
 	if err != nil {
 		return nil, err
 	}
@@ -360,7 +385,7 @@ func (c *BeaconChainClient) getAttestedSlotWithEnoughSyncCommitteeBitsSum(attest
 			return 0, 0, err
 		}
 
-		signedBeaconBlock, err := c.GetSignedBeaconBlock(beacon.StateOrBlockId(strconv.FormatUint(uint64(h.Slot), 10)))
+		signedBeaconBlock, err := c.GetBlindedSignedBeaconBlock(beacon.StateOrBlockId(strconv.FormatUint(uint64(h.Slot), 10)))
 		if err != nil {
 			logger.Error("BeaconChainClient GetBeaconBlock error:", err)
 			return 0, 0, err
@@ -404,6 +429,7 @@ func (c *BeaconChainClient) getAttestedSlotWithEnoughSyncCommitteeBitsSum(attest
 func (c *BeaconChainClient) constructFromBeaconBlockBody(beaconBlockBody interfaces.ReadOnlyBeaconBlockBody) (*ethtypes.ExecutionBlockProof, error) {
 	executionPayload, err := beaconBlockBody.Execution()
 	if err != nil {
+		logger.Error("BeaconChainClient GetBeaconBlockBody error:", err)
 		return nil, err
 	}
 
@@ -474,16 +500,21 @@ func (c *BeaconChainClient) getFinalityLightClientUpdateForState(attestedSlot, s
 		return nil, err
 	}
 	finalityHash := beaconState.FinalizedCheckpoint.Root
-	finalityHeader, err := c.GetBeaconBlockHeader(beacon.StateOrBlockId(finalityHash))
+	signedBeaconBlock, err := c.GetSignedBeaconBlock(beacon.StateOrBlockId(finalityHash))
+	if err != nil {
+		logger.Error("BeaconChainClient GetSignedBeaconBlock error:", err)
+		return nil, err
+	}
+	finalityHeader, err := signedBeaconBlock.Header()
 	if err != nil {
 		logger.Error("BeaconChainClient GetBeaconBlockHeader error:", err)
 		return nil, err
 	}
-	finalizedBlockBody, err := c.GetBeaconBlockBody(beacon.StateOrBlockId(finalityHash))
-	if err != nil {
-		logger.Error("BeaconChainClient GetBeaconBlockBody error:", err)
-		return nil, err
-	}
+	finalizedBlockBody := signedBeaconBlock.Block().Body()
+	//if err != nil {
+	//	logger.Error("BeaconChainClient GetBeaconBlockBody error:", err)
+	//	return nil, err
+	//}
 	executionBlockProof, err := c.constructFromBeaconBlockBody(finalizedBlockBody)
 	if err != nil {
 		logger.Error("BeaconChainClient constructFromBeaconBlockBody hash error:", err)
@@ -513,7 +544,7 @@ func (c *BeaconChainClient) getFinalityLightClientUpdateForState(attestedSlot, s
 	}
 	update.FinalizedUpdate = &ethtypes.FinalizedHeaderUpdate{
 		HeaderUpdate: &ethtypes.HeaderUpdate{
-			BeaconHeader:        finalityHeader,
+			BeaconHeader:        finalityHeader.GetHeader(),
 			ExecutionBlockHash:  executionBlockProof.BlockHash,
 			ExecutionHashBranch: executionBlockProof.Proof,
 		},
