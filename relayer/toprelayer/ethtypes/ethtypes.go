@@ -1,6 +1,7 @@
 package ethtypes
 
 import (
+	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/prysmaticlabs/prysm/v4/encoding/bytesutil"
 	eth "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
@@ -38,12 +39,12 @@ type HeaderUpdate struct {
 
 type FinalizedHeaderUpdate struct {
 	HeaderUpdate   *HeaderUpdate
-	FinalityBranch [][]byte
+	FinalityBranch [][common.HashLength]byte
 }
 
 type SyncCommitteeUpdate struct {
 	NextSyncCommittee       *eth.SyncCommittee
-	NextSyncCommitteeBranch [][]byte
+	NextSyncCommitteeBranch [][common.HashLength]byte
 }
 
 type LightClientUpdate struct {
@@ -71,6 +72,26 @@ func ConvertSliceHash2Bytes(hash []common.Hash) [][]byte {
 		res[i] = hash[i][:]
 	}
 	return res
+}
+
+func ConvertSliceHash2SliceBytes32(hash []common.Hash) [][common.HashLength]byte {
+	res := make([][common.HashLength]byte, len(hash))
+	for i := range hash {
+		res[i] = hash[i]
+	}
+	return res
+}
+
+func ConvertSliceBytes2SliceBytes32(bytes [][]byte) ([][common.HashLength]byte, error) {
+	res := make([][common.HashLength]byte, len(bytes))
+	for i, b := range bytes {
+		if len(b) != common.HashLength {
+			err := fmt.Errorf("invalid hash length:%d, index:%d", len(b), i)
+			return nil, err
+		}
+		res[i] = [common.HashLength]byte(b)
+	}
+	return res, nil
 }
 
 func ConvertSliceBytes2Hash(bytes [][32]byte) []common.Hash {

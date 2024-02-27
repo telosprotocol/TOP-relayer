@@ -170,7 +170,7 @@ func (update *HeaderUpdate) Encode() ([]byte, error) {
 
 type FinalizedHeaderUpdate struct {
 	HeaderUpdate   *HeaderUpdate
-	FinalityBranch [][]byte
+	FinalityBranch [][32]byte
 }
 
 func (update *FinalizedHeaderUpdate) Encode() ([]byte, error) {
@@ -194,7 +194,7 @@ func (update *FinalizedHeaderUpdate) Encode() ([]byte, error) {
 
 type SyncCommitteeUpdate struct {
 	NextSyncCommittee       *eth.SyncCommittee
-	NextSyncCommitteeBranch [][]byte
+	NextSyncCommitteeBranch [][32]byte
 }
 
 func (update *SyncCommitteeUpdate) Encode() ([]byte, error) {

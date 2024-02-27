@@ -182,9 +182,14 @@ func (c *BeaconGrpcClient) getNextSyncCommittee(beaconState *eth.BeaconStateDene
 		logger.Error("Eth2TopRelayerV2 NextSyncCommitteeProof error:", err)
 		return nil, err
 	}
+	nextSyncCommitteeProof, err := ethtypes.ConvertSliceBytes2SliceBytes32(nscp)
+	if err != nil {
+		logger.Error("Eth2TopRelayerV2 ConvertSliceBytes2SliceBytes32 error", err)
+		return nil, err
+	}
 	update := &ethtypes.SyncCommitteeUpdate{
 		NextSyncCommittee:       beaconState.NextSyncCommittee,
-		NextSyncCommitteeBranch: nscp,
+		NextSyncCommitteeBranch: nextSyncCommitteeProof,
 	}
 	return update, nil
 }
@@ -250,11 +255,6 @@ func (c *BeaconGrpcClient) getFinalityLightClientUpdateForState(attestedSlot, si
 		logger.Error("Eth2TopRelayerV2 InitializeFromProtoUnsafeBellatrix error:", err)
 		return nil, err
 	}
-	proof, err := state.FinalizedRootProof(context.Background())
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 FinalizedRootProof error:", err)
-		return nil, err
-	}
 	update := &ethtypes.LightClientUpdate{
 		AttestedBeaconHeader: attestedHeader,
 		SyncAggregate: &eth.SyncAggregate{
@@ -262,6 +262,16 @@ func (c *BeaconGrpcClient) getFinalityLightClientUpdateForState(attestedSlot, si
 			SyncCommitteeSignature: signatureBeaconBody.SyncAggregate.SyncCommitteeSignature,
 		},
 		SignatureSlot: signatureSlot,
+	}
+	proofData, err := state.FinalizedRootProof(context.Background())
+	if err != nil {
+		logger.Error("Eth2TopRelayerV2 FinalizedRootProof error:", err)
+		return nil, err
+	}
+	proof, err := ethtypes.ConvertSliceBytes2SliceBytes32(proofData)
+	if err != nil {
+		logger.Error("Eth2TopRelayerV2 ConvertSliceHash2SliceBytes32 error:", err)
+		return nil, err
 	}
 	update.FinalizedUpdate = &ethtypes.FinalizedHeaderUpdate{
 		HeaderUpdate: &ethtypes.HeaderUpdate{

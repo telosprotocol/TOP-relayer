@@ -3,6 +3,7 @@ package ethereum
 import (
 	"fmt"
 	ssz "github.com/prysmaticlabs/fastssz"
+	fieldparams "github.com/prysmaticlabs/prysm/v4/config/fieldparams"
 	"github.com/prysmaticlabs/prysm/v4/consensus-types/interfaces"
 	"github.com/prysmaticlabs/prysm/v4/consensus-types/primitives"
 	eth "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
@@ -33,7 +34,7 @@ const (
 )
 
 func GetPeriodForSlot(slot primitives.Slot) uint64 {
-	return (uint64(slot) / (SLOTS_PER_EPOCH * EPOCHS_PER_PERIOD))
+	return uint64(slot) / (SLOTS_PER_EPOCH * EPOCHS_PER_PERIOD)
 }
 
 func epochInPeriodForPeriod(period uint64) primitives.Epoch {
@@ -424,18 +425,23 @@ func beaconBlockHeaderConvert(header *eth.BeaconBlockHeader) *light_client.Beaco
 }
 
 func convertEth2LightClientUpdate(lcu *ethtypes.LightClientUpdate) *light_client.LightClientUpdate {
+	var executionHashBranch = make([][fieldparams.RootLength]byte, len(lcu.FinalizedUpdate.HeaderUpdate.ExecutionHashBranch))
+	for i, v := range lcu.FinalizedUpdate.HeaderUpdate.ExecutionHashBranch {
+		executionHashBranch[i] = v
+	}
+
 	ret := &light_client.LightClientUpdate{
 		AttestedBeaconHeader: beaconBlockHeaderConvert(lcu.AttestedBeaconHeader),
 		SyncAggregate: &light_client.SyncAggregate{
-			SyncCommitteeBits:      lcu.SyncAggregate.SyncCommitteeBits,
-			SyncCommitteeSignature: lcu.SyncAggregate.SyncCommitteeSignature,
+			SyncCommitteeBits:      [fieldparams.SyncAggregateSyncCommitteeBytesLength]byte(lcu.SyncAggregate.SyncCommitteeBits),
+			SyncCommitteeSignature: [fieldparams.BLSSignatureLength]byte(lcu.SyncAggregate.SyncCommitteeSignature),
 		},
 		SignatureSlot: primitives.Slot(lcu.SignatureSlot),
-		FinalizedUpdate: &light_client.FinalizedHeaderUpdate{
+		FinalityUpdate: &light_client.FinalizedHeaderUpdate{
 			HeaderUpdate: &light_client.HeaderUpdate{
 				BeaconHeader:        beaconBlockHeaderConvert(lcu.FinalizedUpdate.HeaderUpdate.BeaconHeader),
-				ExecutionBlockHash:  lcu.FinalizedUpdate.HeaderUpdate.ExecutionBlockHash[:],
-				ExecutionHashBranch: ethtypes.ConvertSliceHash2Bytes(lcu.FinalizedUpdate.HeaderUpdate.ExecutionHashBranch),
+				ExecutionBlockHash:  lcu.FinalizedUpdate.HeaderUpdate.ExecutionBlockHash,
+				ExecutionHashBranch: executionHashBranch,
 			},
 			FinalityBranch: lcu.FinalizedUpdate.FinalityBranch,
 		},

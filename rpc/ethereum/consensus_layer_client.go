@@ -223,7 +223,7 @@ func (c *BeaconChainClient) BeaconHeaderConvert(data *light_client.BeaconBlockHe
 func (c *BeaconChainClient) SyncAggregateConvert(data *light_client.SyncAggregateData) (*light_client.SyncAggregate, error) {
 	aggregate := new(light_client.SyncAggregate)
 	//aggregate.SyncCommitteeBits = data.SyncCommitteeBits
-	aggregate.SyncCommitteeSignature = common.Hex2Bytes(data.SyncCommitteeSignature[2:])
+	aggregate.SyncCommitteeSignature = [fieldparams.BLSSignatureLength]byte(common.Hex2Bytes(data.SyncCommitteeSignature[2:]))
 	return aggregate, nil
 }
 
@@ -238,16 +238,38 @@ func (c *BeaconChainClient) CommitteeConvert(committee *light_client.SyncCommitt
 	committeeUpdate.NextSyncCommittee = nextCommittee
 
 	for _, s := range branch {
-		committeeUpdate.NextSyncCommitteeBranch = append(committeeUpdate.NextSyncCommitteeBranch, common.Hex2Bytes(s[2:]))
+		committeeUpdate.NextSyncCommitteeBranch = append(committeeUpdate.NextSyncCommitteeBranch, [fieldparams.RootLength]byte(common.Hex2Bytes(s[2:])))
 	}
 	return committeeUpdate, nil
 }
 
 func (c *BeaconChainClient) FinalizedUpdateConvert(header *light_client.BeaconBlockHeaderData, branch []string) (*light_client.FinalizedHeaderUpdate, error) {
+	if len(header.ExecutionData.BlockHash) != len("0x")+fieldparams.RootLength*2 {
+		err := fmt.Errorf("invalid execution block hash. hash:%s", header.ExecutionData.BlockHash)
+		logger.Error("invalid execution hash:", err)
+		return nil, err
+	}
+
+	for i, s := range header.ExecutionBranch {
+		if len(s) != len("0x")+fieldparams.RootLength*2 {
+			err := fmt.Errorf("invalid execution branch hash. index:%d hash:%s", i, s)
+			logger.Error("invalid execution branch hash:", err)
+			return nil, err
+		}
+	}
+
+	for i, s := range branch {
+		if len(s) != len("0x")+fieldparams.RootLength*2 {
+			err := fmt.Errorf("invalid finality branch hash. index:%d hash:%s", i, s)
+			logger.Error("invalid finality branch hash:", err)
+			return nil, err
+		}
+	}
+
 	update := new(light_client.FinalizedHeaderUpdate)
 
 	for _, s := range branch {
-		update.FinalityBranch = append(update.FinalityBranch, common.Hex2Bytes(s[2:]))
+		update.FinalityBranch = append(update.FinalityBranch, [fieldparams.RootLength]byte(common.Hex2Bytes(s[2:])))
 	}
 
 	headerUpdate := new(light_client.HeaderUpdate)
@@ -256,20 +278,24 @@ func (c *BeaconChainClient) FinalizedUpdateConvert(header *light_client.BeaconBl
 		logger.Error("BeaconHeaderConvert error:", err)
 		return nil, err
 	}
-	body, err := c.GetBeaconBlockBody(beacon.StateOrBlockId(strconv.FormatUint(uint64(h.Slot), 10)))
-	if err != nil {
-		logger.Error("GetBeaconBlockBodyForBlockId error:", err)
-		return nil, err
-	}
-
-	executionPayload, err := body.Execution()
-	if err != nil {
-		logger.Error("GetBeaconBlockBodyForBlockId error:", err)
-		return nil, err
-	}
+	//body, err := c.GetBeaconBlockBody(beacon.StateOrBlockId(strconv.FormatUint(uint64(h.Slot), 10)))
+	//if err != nil {
+	//	logger.Error("GetBeaconBlockBodyForBlockId error:", err)
+	//	return nil, err
+	//}
+	//
+	//executionPayload, err := body.Execution()
+	//if err != nil {
+	//	logger.Error("GetBeaconBlockBodyForBlockId error:", err)
+	//	return nil, err
+	//}
 
 	headerUpdate.BeaconHeader = h
-	headerUpdate.ExecutionBlockHash = executionPayload.BlockHash()
+	headerUpdate.ExecutionBlockHash = [fieldparams.RootLength]byte(common.Hex2Bytes(header.ExecutionData.BlockHash[2:]))
+	headerUpdate.ExecutionHashBranch = make([][fieldparams.RootLength]byte, len(header.ExecutionBranch))
+	for i, s := range header.ExecutionBranch {
+		headerUpdate.ExecutionHashBranch[i] = [fieldparams.RootLength]byte(common.Hex2Bytes(s[2:]))
+	}
 
 	update.HeaderUpdate = headerUpdate
 	return update, nil
@@ -305,7 +331,7 @@ func (c *BeaconChainClient) LightClientUpdateConvert(data *light_client.LightCli
 	update.AttestedBeaconHeader = attestedHeader
 	update.SyncAggregate = aggregate
 	update.NextSyncCommitteeUpdate = committeeUpdate
-	update.FinalizedUpdate = finalizedUpdate
+	update.FinalityUpdate = finalizedUpdate
 	update.SignatureSlot = primitives.Slot(slotVal)
 	return update, nil
 }
@@ -361,7 +387,7 @@ func (c *BeaconChainClient) LightClientUpdateConvertNoCommitteeConvert(data *lig
 	update.AttestedBeaconHeader = attestedHeader
 	update.SyncAggregate = aggregate
 	update.NextSyncCommitteeUpdate = nil
-	update.FinalizedUpdate = finalizedUpdate
+	update.FinalityUpdate = finalizedUpdate
 	update.SignatureSlot = primitives.Slot(slotVal)
 	return update, nil
 }
@@ -469,14 +495,21 @@ func (c *BeaconChainClient) getNextSyncCommittee(beaconState *eth.BeaconStateDen
 		logger.Error("BeaconChainClient InitializeFromProtoUnsafeBellatrix error:", err)
 		return nil, err
 	}
-	nscp, err := state.NextSyncCommitteeProof(context.Background())
+	nextSyncCommitteeProofData, err := state.NextSyncCommitteeProof(context.Background())
 	if err != nil {
 		logger.Error("BeaconChainClient NextSyncCommitteeProof error:", err)
 		return nil, err
 	}
+
+	nextSyncCommitteeProof, err := ethtypes.ConvertSliceBytes2SliceBytes32(nextSyncCommitteeProofData)
+	if err != nil {
+		logger.Error("BeaconChainClient ConvertSliceBytes2SliceBytes32 error:", err)
+		return nil, err
+	}
+
 	update := &ethtypes.SyncCommitteeUpdate{
 		NextSyncCommittee:       beaconStateDeneb.NextSyncCommittee,
-		NextSyncCommitteeBranch: nscp,
+		NextSyncCommitteeBranch: nextSyncCommitteeProof,
 	}
 	return update, nil
 }
@@ -529,11 +562,7 @@ func (c *BeaconChainClient) getFinalityLightClientUpdateForState(attestedSlot, s
 		logger.Error("BeaconChainClient InitializeFromProtoUnsafeBellatrix error:", err)
 		return nil, err
 	}
-	proof, err := state.FinalizedRootProof(context.Background())
-	if err != nil {
-		logger.Error("BeaconChainClient FinalizedRootProof error:", err)
-		return nil, err
-	}
+
 	update := &ethtypes.LightClientUpdate{
 		AttestedBeaconHeader: attestedHeader,
 		SyncAggregate: &eth.SyncAggregate{
@@ -541,6 +570,16 @@ func (c *BeaconChainClient) getFinalityLightClientUpdateForState(attestedSlot, s
 			SyncCommitteeSignature: syncAggregate.SyncCommitteeSignature,
 		},
 		SignatureSlot: uint64(signatureSlot),
+	}
+	proofData, err := state.FinalizedRootProof(context.Background())
+	if err != nil {
+		logger.Error("BeaconChainClient FinalizedRootProof error:", err)
+		return nil, err
+	}
+	proof, err := ethtypes.ConvertSliceBytes2SliceBytes32(proofData)
+	if err != nil {
+		logger.Error("BeaconChainClient ConvertSliceBytes2SliceBytes32 error:", err)
+		return nil, err
 	}
 	update.FinalizedUpdate = &ethtypes.FinalizedHeaderUpdate{
 		HeaderUpdate: &ethtypes.HeaderUpdate{

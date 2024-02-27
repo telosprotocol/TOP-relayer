@@ -324,7 +324,7 @@ func (c *BeaconGrpcClient) CommitteeConvert(committee *SyncCommitteeData, branch
 	committeeUpdate.NextSyncCommittee = nextCommittee
 
 	for _, s := range branch {
-		committeeUpdate.NextSyncCommitteeBranch = append(committeeUpdate.NextSyncCommitteeBranch, common.Hex2Bytes(s[2:]))
+		committeeUpdate.NextSyncCommitteeBranch = append(committeeUpdate.NextSyncCommitteeBranch, [32]byte(common.Hex2Bytes(s[2:])))
 	}
 	return committeeUpdate, nil
 }
@@ -333,7 +333,7 @@ func (c *BeaconGrpcClient) FinalizedUpdateConvert(header *BeaconBlockHeaderData,
 	update := new(FinalizedHeaderUpdate)
 
 	for _, s := range branch {
-		update.FinalityBranch = append(update.FinalityBranch, common.Hex2Bytes(s[2:]))
+		update.FinalityBranch = append(update.FinalityBranch, [32]byte(common.Hex2Bytes(s[2:])))
 	}
 
 	headerUpdate := new(HeaderUpdate)

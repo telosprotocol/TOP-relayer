@@ -2,7 +2,7 @@ package light_client
 
 import (
 	"github.com/ethereum/go-ethereum/rlp"
-	field_params "github.com/prysmaticlabs/prysm/v4/config/fieldparams"
+	fieldparams "github.com/prysmaticlabs/prysm/v4/config/fieldparams"
 	"github.com/prysmaticlabs/prysm/v4/consensus-types/primitives"
 	eth "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
 )
@@ -10,9 +10,9 @@ import (
 type BeaconBlockHeader struct {
 	Slot          primitives.Slot
 	ProposerIndex primitives.ValidatorIndex
-	ParentRoot    [field_params.RootLength]byte
-	StateRoot     [field_params.RootLength]byte
-	BodyRoot      [field_params.RootLength]byte
+	ParentRoot    [fieldparams.RootLength]byte
+	StateRoot     [fieldparams.RootLength]byte
+	BodyRoot      [fieldparams.RootLength]byte
 }
 
 func (h *BeaconBlockHeader) Encode() ([]byte, error) {
@@ -46,8 +46,8 @@ func (h *BeaconBlockHeader) Encode() ([]byte, error) {
 }
 
 type SyncAggregate struct {
-	SyncCommitteeBits      []byte
-	SyncCommitteeSignature []byte
+	SyncCommitteeBits      [fieldparams.SyncAggregateSyncCommitteeBytesLength]byte
+	SyncCommitteeSignature [fieldparams.BLSSignatureLength]byte
 }
 
 func (s *SyncAggregate) Encode() ([]byte, error) {
@@ -67,8 +67,8 @@ func (s *SyncAggregate) Encode() ([]byte, error) {
 
 type HeaderUpdate struct {
 	BeaconHeader        *BeaconBlockHeader
-	ExecutionBlockHash  []byte
-	ExecutionHashBranch [][]byte
+	ExecutionBlockHash  [fieldparams.RootLength]byte
+	ExecutionHashBranch [][fieldparams.RootLength]byte
 }
 
 func (update *HeaderUpdate) Encode() ([]byte, error) {
@@ -97,7 +97,7 @@ func (update *HeaderUpdate) Encode() ([]byte, error) {
 
 type FinalizedHeaderUpdate struct {
 	HeaderUpdate   *HeaderUpdate
-	FinalityBranch [][]byte
+	FinalityBranch [][fieldparams.RootLength]byte
 }
 
 func (update *FinalizedHeaderUpdate) Encode() ([]byte, error) {
@@ -121,7 +121,7 @@ func (update *FinalizedHeaderUpdate) Encode() ([]byte, error) {
 
 type SyncCommitteeUpdate struct {
 	NextSyncCommittee       *eth.SyncCommittee
-	NextSyncCommitteeBranch [][]byte
+	NextSyncCommitteeBranch [][fieldparams.RootLength]byte
 }
 
 func (update *SyncCommitteeUpdate) Encode() ([]byte, error) {
@@ -147,7 +147,7 @@ type LightClientUpdate struct {
 	AttestedBeaconHeader    *BeaconBlockHeader
 	SyncAggregate           *SyncAggregate
 	SignatureSlot           primitives.Slot
-	FinalizedUpdate         *FinalizedHeaderUpdate
+	FinalityUpdate          *FinalizedHeaderUpdate
 	NextSyncCommitteeUpdate *SyncCommitteeUpdate
 }
 
@@ -172,7 +172,7 @@ func (h *LightClientUpdate) Encode() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	finalizedHeader, err := h.FinalizedUpdate.Encode()
+	finalizedHeader, err := h.FinalityUpdate.Encode()
 	if err != nil {
 		return nil, err
 	}
@@ -208,6 +208,24 @@ type BeaconBlockHeaderData struct {
 		StateRoot     string `json:"state_root"`
 		BodyRoot      string `json:"body_root"`
 	} `json:"beacon"`
+	ExecutionData struct {
+		ParentHash       string `json:"parent_hash"`
+		FeeRecipient     string `json:"fee_recipient"`
+		StateRoot        string `json:"state_root"`
+		ReceiptsRoot     string `json:"receipts_root"`
+		LogsBloom        string `json:"logs_bloom"`
+		PrevRandao       string `json:"prev_randao"`
+		BlockNumber      string `json:"block_number"`
+		GasLimit         string `json:"gas_limit"`
+		GasUsed          string `json:"gas_used"`
+		Timestamp        string `json:"timestamp"`
+		ExtraData        string `json:"extra_data"`
+		BaseFeePerGas    string `json:"base_fee_per_gas"`
+		BlockHash        string `json:"block_hash"`
+		TransactionsRoot string `json:"transactions_root"`
+		WithdrawalsRoot  string `json:"withdrawals_root"`
+	} `json:"execution"`
+	ExecutionBranch []string `json:"execution_branch"`
 }
 
 type SyncAggregateData struct {
