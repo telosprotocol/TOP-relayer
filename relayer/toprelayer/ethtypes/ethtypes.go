@@ -101,3 +101,27 @@ func ConvertSliceBytes2Hash(bytes [][32]byte) []common.Hash {
 	}
 	return res
 }
+
+func ConvertHash2BytesSlice(hash common.Hash) []byte {
+	return hash[:]
+}
+
+func ConvertBytes32ToBytesSlice(hash [32]byte) []byte {
+	return hash[:]
+}
+
+func ConvertBytesSlice2Hash(bytes []byte) (common.Hash, error) {
+	if len(bytes) != common.HashLength {
+		err := fmt.Errorf("invalid hash length:%d", len(bytes))
+		return common.Hash{}, err
+	}
+	return common.Hash(bytes), nil
+}
+
+func ConvertBytesSlice2Bytes32(bytes []byte) ([common.HashLength]byte, error) {
+	if len(bytes) != common.HashLength {
+		err := fmt.Errorf("invalid hash length:%d", len(bytes))
+		return [32]byte{}, err
+	}
+	return [32]byte(bytes), nil
+}

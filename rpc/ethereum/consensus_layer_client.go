@@ -685,3 +685,55 @@ func (c *BeaconChainClient) GetNextSyncCommitteeUpdate(period uint64) (*light_cl
 	}
 	return committeeUpdate, nil
 }
+
+func (c *BeaconChainClient) GetLastFinalizedLightClientUpdateV2FinalizedSlot() (primitives.Slot, error) {
+	finalizedSlot, err := c.GetLastFinalizedSlotNumber()
+	if err != nil {
+		return 0, err
+	}
+	return getBeforeSlotInSamePeriod(finalizedSlot)
+}
+
+func (c *BeaconChainClient) GetLastFinalizedLightClientUpdateV2WithNextSyncCommittee() (*light_client.LightClientUpdate, error) {
+	finalizedSlot, err := c.GetLastFinalizedLightClientUpdateV2FinalizedSlot()
+	if err != nil {
+		return nil, err
+	}
+	return c.getLightClientUpdateByFinalizedSlot(finalizedSlot, true)
+}
+
+func (c *BeaconChainClient) getNextSyncCommitteeUpdateByFinalized(finalizedSlot primitives.Slot) (*light_client.SyncCommitteeUpdate, error) {
+	attestedSlot, err := c.GetAttestedSlot(finalizedSlot)
+	if err != nil {
+		logger.Error("Eth2TopRelayerV2 getAttestedSlotWithEnoughSyncCommitteeBitsSum error:", err)
+		return nil, err
+	}
+	if GetPeriodForSlot(attestedSlot) != GetPeriodForSlot(finalizedSlot) {
+		return nil, fmt.Errorf("Eth2TopRelayerV2 GetNextSyncCommitteeUpdateV2 attestedSlot(%d) and finalizedSlot(%d) not in same period", attestedSlot, finalizedSlot)
+	}
+	attestedSlot, signatureSlot, err := c.getAttestedSlotWithEnoughSyncCommitteeBitsSum(attestedSlot)
+	if err != nil {
+		logger.Error("Eth2TopRelayerV2 getAttestedSlotWithEnoughSyncCommitteeBitsSum error:", err)
+		return nil, err
+	}
+	logger.Info("GetNextSyncCommitteeUpdateV2 attestedSlot:%d, signatureSlot:%d", attestedSlot, signatureSlot)
+	beaconState, err := c.getBeaconState(primitives.Slot(attestedSlot))
+	if err != nil {
+		logger.Error("Eth2TopRelayerV2 getBeaconState error:", err)
+		return nil, err
+	}
+	cu, err := c.getNextSyncCommittee(beaconState)
+	if err != nil {
+		logger.Error("Eth2TopRelayerV2 getNextSyncCommittee error:", err)
+		return nil, err
+	}
+	return &light_client.SyncCommitteeUpdate{
+		NextSyncCommittee:       cu.NextSyncCommittee,
+		NextSyncCommitteeBranch: cu.NextSyncCommitteeBranch,
+	}, nil
+}
+
+func (c *BeaconChainClient) GetNextSyncCommitteeUpdateV2(period uint64) (*light_client.SyncCommitteeUpdate, error) {
+	currFinalizedSlot := GetFinalizedSlotForPeriod(period)
+	return c.getNextSyncCommitteeUpdateByFinalized(currFinalizedSlot)
+}

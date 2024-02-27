@@ -23,7 +23,6 @@ import (
 	"time"
 	"toprelayer/config"
 	eth2bridge "toprelayer/contract/top/eth2client"
-	beaconrpc "toprelayer/rpc/ethbeacon_rpc"
 	"toprelayer/rpc/ethereum"
 	"toprelayer/rpc/ethereum/light_client"
 	"toprelayer/wallet"
@@ -389,7 +388,7 @@ func (relayer *Eth2TopRelayerV2) submitHeaders() error {
 		return err
 	}
 	logger.Info("Eth2TopRelayerV2 lastBlockNumberOnTop Finalized:%v, Tail:%v", lastFinalizedBlockNumber, currentBlockNumber+1)
-	minBlockNumberInBatch := math.Max(lastFinalizedBlockNumber+1, currentBlockNumber-beaconrpc.HEADER_BATCH_SIZE+1)
+	minBlockNumberInBatch := math.Max(lastFinalizedBlockNumber+1, currentBlockNumber-ethereum.HEADER_BATCH_SIZE+1)
 	headers, err := relayer.getExecutionBlocksBetweenByNumber(minBlockNumberInBatch, currentBlockNumber)
 	if err != nil {
 		return err
@@ -504,7 +503,7 @@ func (relayer *Eth2TopRelayerV2) getExecutionBlocksBetweenByNumber(low, height u
 		header, err := relayer.getExecutionBlockByNumber(curNumber)
 		curNumber += 1
 		if err != nil {
-			if beaconrpc.IsErrorNoBlockForSlot(err) {
+			if ethereum.IsErrorNoBlockForSlot(err) {
 				continue
 			}
 			logger.Error("Eth2TopRelayerV2 getExecutionBlockBySlot error", err)
