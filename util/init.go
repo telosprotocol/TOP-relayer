@@ -98,32 +98,32 @@ func (init *InitInput) Encode() ([]byte, error) {
 }
 
 func getEthInitData(eth1, prysm string) ([]byte, error) {
-	beaconrpcclient, err := ethereum.NewBeaconChainClient(prysm)
+	consensusLayerClient, err := ethereum.NewBeaconClient(prysm)
 	if err != nil {
 		logger.Error("getEthInitData NewBeaconGrpcClient error:", err)
 		return nil, err
 	}
-	ethrpcclient, err := ethclient.Dial(eth1)
+	executionLayerClient, err := ethclient.Dial(eth1)
 	if err != nil {
 		logger.Error("getEthInitData ethclient.Dial error:", err)
 		return nil, err
 	}
-	lastUpdate, err := beaconrpcclient.GetLastFinalizedLightClientUpdateV2WithNextSyncCommittee()
+	lastUpdate, err := consensusLayerClient.GetLastFinalizedLightClientUpdateV2WithNextSyncCommittee()
 	if err != nil {
 		logger.Error("getEthInitData GetLightClientUpdate error:", err)
 		return nil, err
 	}
 	lastSlot := lastUpdate.FinalityUpdate.HeaderUpdate.BeaconHeader.Slot
 	lastPeriod := ethereum.GetPeriodForSlot(lastSlot)
-	prevUpdate, err := beaconrpcclient.GetNextSyncCommitteeUpdateV2(lastPeriod - 1)
+	prevUpdate, err := consensusLayerClient.GetNextSyncCommitteeUpdateV2(lastPeriod - 1)
 	if err != nil {
 		logger.Error(fmt.Sprintf("getEthInitData GetNextSyncCommitteeUpdate lastSlot:%d ，err：%s", lastSlot, err.Error()))
 		return nil, err
 	}
 
 	var beaconHeader eth.BeaconBlockHeader
-	beaconHeader.Slot = primitives.Slot(lastUpdate.FinalityUpdate.HeaderUpdate.BeaconHeader.Slot)
-	beaconHeader.ProposerIndex = primitives.ValidatorIndex(lastUpdate.FinalityUpdate.HeaderUpdate.BeaconHeader.ProposerIndex)
+	beaconHeader.Slot = lastUpdate.FinalityUpdate.HeaderUpdate.BeaconHeader.Slot
+	beaconHeader.ProposerIndex = lastUpdate.FinalityUpdate.HeaderUpdate.BeaconHeader.ProposerIndex
 	beaconHeader.BodyRoot = ethtypes.ConvertBytes32ToBytesSlice(lastUpdate.FinalityUpdate.HeaderUpdate.BeaconHeader.BodyRoot)
 	beaconHeader.ParentRoot = ethtypes.ConvertBytes32ToBytesSlice(lastUpdate.FinalityUpdate.HeaderUpdate.BeaconHeader.ParentRoot)
 	beaconHeader.StateRoot = ethtypes.ConvertBytes32ToBytesSlice(lastUpdate.FinalityUpdate.HeaderUpdate.BeaconHeader.StateRoot)
@@ -138,7 +138,7 @@ func getEthInitData(eth1, prysm string) ([]byte, error) {
 	finalizedHeader.ExecutionBlockHash = ethtypes.ConvertBytes32ToBytesSlice(lastUpdate.FinalityUpdate.HeaderUpdate.ExecutionBlockHash)
 
 	finalitySlot := lastUpdate.FinalityUpdate.HeaderUpdate.BeaconHeader.Slot
-	finalizeBody, err := beaconrpcclient.GetBeaconBlockBody(beacon.StateOrBlockId(strconv.FormatUint(uint64(finalitySlot), 10)))
+	finalizeBody, err := consensusLayerClient.GetBeaconBlockBody(beacon.StateOrBlockId(strconv.FormatUint(uint64(finalitySlot), 10)))
 	if err != nil {
 		logger.Error("getEthInitData GetBeaconBlockBodyForBlockId error:", err)
 		return nil, err
@@ -150,7 +150,7 @@ func getEthInitData(eth1, prysm string) ([]byte, error) {
 	}
 	number := executionPayload.BlockNumber()
 
-	header, err := ethrpcclient.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(number))
+	header, err := executionLayerClient.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(number))
 	if err != nil {
 		logger.Error("getEthInitData HeaderByNumber error:", err)
 		return nil, err
@@ -177,12 +177,12 @@ func getEthInitData(eth1, prysm string) ([]byte, error) {
 }
 
 func getEthInitDataWithHeight(eth1, prysm, slot string) ([]byte, error) {
-	beaconrpcclient, err := beaconrpc.NewBeaconChainClient(prysm)
+	consensusLayerClient, err := beaconrpc.NewBeaconClient(prysm)
 	if err != nil {
 		logger.Error("getEthInitData NewBeaconGrpcClient error:", err)
 		return nil, err
 	}
-	ethrpcclient, err := ethclient.Dial(eth1)
+	executionLayerClient, err := ethclient.Dial(eth1)
 	if err != nil {
 		logger.Error("getEthInitData ethclient.Dial error:", err)
 		return nil, err
@@ -194,12 +194,12 @@ func getEthInitDataWithHeight(eth1, prysm, slot string) ([]byte, error) {
 	}
 	lastPeriod := beaconrpc.GetPeriodForSlot(primitives.Slot(lastSlot))
 	// 269 2203865
-	lastUpdate, err := beaconrpcclient.GetLightClientUpdateV2(lastPeriod)
+	lastUpdate, err := consensusLayerClient.GetLightClientUpdateV2(lastPeriod)
 	if err != nil {
 		logger.Error("getEthInitData GetLightClientUpdate error:", err)
 		return nil, err
 	}
-	prevUpdate, err := beaconrpcclient.GetNextSyncCommitteeUpdateV2(lastPeriod - 1)
+	prevUpdate, err := consensusLayerClient.GetNextSyncCommitteeUpdateV2(lastPeriod - 1)
 	if err != nil {
 		logger.Error("getEthInitData GetNextSyncCommitteeUpdate error:", err)
 		return nil, err
@@ -222,7 +222,7 @@ func getEthInitDataWithHeight(eth1, prysm, slot string) ([]byte, error) {
 	finalizedHeader.ExecutionBlockHash = ethtypes.ConvertBytes32ToBytesSlice(lastUpdate.FinalityUpdate.HeaderUpdate.ExecutionBlockHash)
 
 	finalitySlot := lastUpdate.FinalityUpdate.HeaderUpdate.BeaconHeader.Slot
-	finalizeBody, err := beaconrpcclient.GetBeaconBlockBody(beacon.StateOrBlockId(strconv.FormatUint(uint64(finalitySlot), 10)))
+	finalizeBody, err := consensusLayerClient.GetBeaconBlockBody(beacon.StateOrBlockId(strconv.FormatUint(uint64(finalitySlot), 10)))
 	if err != nil {
 		logger.Error("getEthInitData GetBeaconBlockBody error:", err)
 		return nil, err
@@ -234,7 +234,7 @@ func getEthInitDataWithHeight(eth1, prysm, slot string) ([]byte, error) {
 	}
 	number := executionData.BlockNumber()
 
-	header, err := ethrpcclient.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(number))
+	header, err := executionLayerClient.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(number))
 	if err != nil {
 		logger.Error("getEthInitData HeaderByNumber error:", err)
 		return nil, err

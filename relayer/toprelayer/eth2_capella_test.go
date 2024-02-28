@@ -86,7 +86,7 @@ func TestReset(t *testing.T) {
 }
 
 func TestEthClient(t *testing.T) {
-	b, err := relayer.beaconClient.GetLastSlotNumber()
+	b, err := relayer.consensusLayerClient.GetLastSlotNumber()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +116,7 @@ func TestGetClientMode(t *testing.T) {
 }
 
 func TestLCU(t *testing.T) {
-	v2, err := relayer.beaconClient.GetLightClientUpdateV2(289)
+	v2, err := relayer.consensusLayerClient.GetLightClientUpdateV2(289)
 	if err != nil {
 		t.Fatal(err)
 	}
