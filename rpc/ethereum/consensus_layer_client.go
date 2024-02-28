@@ -15,6 +15,7 @@ import (
 	"github.com/prysmaticlabs/prysm/v4/consensus-types/interfaces"
 	"github.com/prysmaticlabs/prysm/v4/consensus-types/primitives"
 	eth "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
+	"github.com/prysmaticlabs/prysm/v4/runtime/version"
 	"github.com/wonderivan/logger"
 	"google.golang.org/protobuf/proto"
 	"io"
@@ -204,14 +205,14 @@ func (c *BeaconClient) GetNonEmptyBeaconBlockHeader(startSlot primitives.Slot) (
 	return nil, fmt.Errorf("unable to get non empty beacon block in range [%d, %d)", startSlot, lastSlot)
 }
 
-func (c *BeaconClient) BeaconHeaderConvert(data *light_client.BeaconBlockHeaderData) (*light_client.BeaconBlockHeader, error) {
-	slotVal, err := strconv.ParseUint(data.Beacon.Slot, 0, 64)
+func (c *BeaconClient) BeaconHeaderConvert(data *light_client.BeaconBlockHeaderJson) (*light_client.BeaconBlockHeader, error) {
+	slotVal, err := strconv.ParseUint(data.BeaconJson.Slot, 0, 64)
 	if err != nil {
 		logger.Error("ParseInt error:", err)
 		return nil, err
 	}
 
-	indexVal, err := strconv.ParseUint(data.Beacon.ProposerIndex, 0, 64)
+	indexVal, err := strconv.ParseUint(data.BeaconJson.ProposerIndex, 0, 64)
 	if err != nil {
 		logger.Error("ParseInt error:", err)
 		return nil, err
@@ -223,13 +224,13 @@ func (c *BeaconClient) BeaconHeaderConvert(data *light_client.BeaconBlockHeaderD
 	h := new(light_client.BeaconBlockHeader)
 	h.Slot = slot
 	h.ProposerIndex = index
-	h.BodyRoot = [fieldparams.RootLength]byte(common.Hex2Bytes(data.Beacon.BodyRoot[2:]))
-	h.ParentRoot = [fieldparams.RootLength]byte(common.Hex2Bytes(data.Beacon.ParentRoot[2:]))
-	h.StateRoot = [fieldparams.RootLength]byte(common.Hex2Bytes(data.Beacon.StateRoot[2:]))
+	h.BodyRoot = [fieldparams.RootLength]byte(common.Hex2Bytes(data.BeaconJson.BodyRoot[2:]))
+	h.ParentRoot = [fieldparams.RootLength]byte(common.Hex2Bytes(data.BeaconJson.ParentRoot[2:]))
+	h.StateRoot = [fieldparams.RootLength]byte(common.Hex2Bytes(data.BeaconJson.StateRoot[2:]))
 	return h, nil
 }
 
-func (c *BeaconClient) BeaconLightClientUpdateHeaderConvert(data *light_client.BeaconLightClientUpdateHeaderData) (*light_client.BeaconBlockHeader, error) {
+func (c *BeaconClient) PrysmBeaconBlockHeaderConvert(data *light_client.PrysmBeaconBlockHeaderJson) (*light_client.BeaconBlockHeader, error) {
 	slotVal, err := strconv.ParseUint(data.Slot, 0, 64)
 	if err != nil {
 		logger.Error("ParseInt error:", err)
@@ -254,14 +255,14 @@ func (c *BeaconClient) BeaconLightClientUpdateHeaderConvert(data *light_client.B
 	return h, nil
 }
 
-func (c *BeaconClient) SyncAggregateConvert(data *light_client.SyncAggregateData) (*light_client.SyncAggregate, error) {
+func (c *BeaconClient) SyncAggregateConvert(data *light_client.SyncAggregateJson) (*light_client.SyncAggregate, error) {
 	aggregate := new(light_client.SyncAggregate)
 	//aggregate.SyncCommitteeBits = data.SyncCommitteeBits
 	aggregate.SyncCommitteeSignature = [fieldparams.BLSSignatureLength]byte(common.Hex2Bytes(data.SyncCommitteeSignature[2:]))
 	return aggregate, nil
 }
 
-func (c *BeaconClient) CommitteeConvert(committee *light_client.SyncCommitteeData, branch []string) (*light_client.SyncCommitteeUpdate, error) {
+func (c *BeaconClient) CommitteeConvert(committee *light_client.SyncCommitteeJson, branch []string) (*light_client.SyncCommitteeUpdate, error) {
 	committeeUpdate := new(light_client.SyncCommitteeUpdate)
 
 	nextCommittee := new(eth.SyncCommittee)
@@ -277,9 +278,9 @@ func (c *BeaconClient) CommitteeConvert(committee *light_client.SyncCommitteeDat
 	return committeeUpdate, nil
 }
 
-func (c *BeaconClient) FinalizedUpdateConvert(header *light_client.BeaconBlockHeaderData, branch []string) (*light_client.FinalizedHeaderUpdate, error) {
-	if len(header.ExecutionData.BlockHash) != len("0x")+fieldparams.RootLength*2 {
-		err := fmt.Errorf("invalid execution block hash. hash:%s", header.ExecutionData.BlockHash)
+func (c *BeaconClient) FinalizedUpdateConvert(header *light_client.BeaconBlockHeaderJson, branch []string) (*light_client.FinalizedHeaderUpdate, error) {
+	if len(header.ExecutionJson.BlockHash) != len("0x")+fieldparams.RootLength*2 {
+		err := fmt.Errorf("invalid execution block hash. hash:%s", header.ExecutionJson.BlockHash)
 		logger.Error("invalid execution hash:", err)
 		return nil, err
 	}
@@ -325,7 +326,7 @@ func (c *BeaconClient) FinalizedUpdateConvert(header *light_client.BeaconBlockHe
 	//}
 
 	headerUpdate.BeaconHeader = h
-	headerUpdate.ExecutionBlockHash = [fieldparams.RootLength]byte(common.Hex2Bytes(header.ExecutionData.BlockHash[2:]))
+	headerUpdate.ExecutionBlockHash = [fieldparams.RootLength]byte(common.Hex2Bytes(header.ExecutionJson.BlockHash[2:]))
 	headerUpdate.ExecutionHashBranch = make([][fieldparams.RootLength]byte, len(header.ExecutionBranch))
 	for i, s := range header.ExecutionBranch {
 		headerUpdate.ExecutionHashBranch[i] = [fieldparams.RootLength]byte(common.Hex2Bytes(s[2:]))
@@ -335,7 +336,7 @@ func (c *BeaconClient) FinalizedUpdateConvert(header *light_client.BeaconBlockHe
 	return update, nil
 }
 
-func (c *BeaconClient) BeaconLightClientUpdateFinalityConvert(header *light_client.BeaconLightClientUpdateHeaderData, branch []string) (*light_client.FinalizedHeaderUpdate, error) {
+func (c *BeaconClient) PrysmFianlityUpdateConvert(header *light_client.PrysmBeaconBlockHeaderJson, branch []string) (*light_client.FinalizedHeaderUpdate, error) {
 	for i, s := range branch {
 		if len(s) != len("0x")+fieldparams.RootLength*2 {
 			err := fmt.Errorf("invalid finality branch hash. index:%d hash:%s", i, s)
@@ -351,41 +352,34 @@ func (c *BeaconClient) BeaconLightClientUpdateFinalityConvert(header *light_clie
 	}
 
 	headerUpdate := new(light_client.HeaderUpdate)
-	h, err := c.BeaconLightClientUpdateHeaderConvert(header)
+	finalizedHeader, err := c.PrysmBeaconBlockHeaderConvert(header)
 	if err != nil {
 		logger.Error("BeaconHeaderConvert error:", err)
 		return nil, err
 	}
-	body, err := c.GetBeaconBlockBody(beacon.StateOrBlockId(strconv.FormatUint(uint64(h.Slot), 10)))
+
+	finalizedBlockBody, err := c.GetBeaconBlockBody(beacon.StateOrBlockId(strconv.FormatUint(uint64(finalizedHeader.Slot), 10)))
 	if err != nil {
 		logger.Error("GetBeaconBlockBody error:", err)
 		return nil, err
 	}
 
-	executionPayload, err := body.Execution()
+	finalizedBlockExeuctionDataProof, err := c.constructFromBeaconBlockBody(finalizedBlockBody)
 	if err != nil {
-		logger.Error("Execution error:", err)
-		return nil, err
-	}
-	if len(executionPayload.BlockHash()) != fieldparams.RootLength {
-		err := fmt.Errorf("invalid execution block hash. length:%d hash:%s", len(executionPayload.BlockHash()), common.Bytes2Hex(executionPayload.BlockHash()))
-		logger.Error("invalid execution hash:", err)
+		logger.Error("constructFromBeaconBlockBody error:", err)
 		return nil, err
 	}
 
-	headerUpdate.BeaconHeader = h
-	headerUpdate.ExecutionBlockHash = [fieldparams.RootLength]byte(executionPayload.BlockHash())
-	// headerUpdate.ExecutionHashBranch = make([][fieldparams.RootLength]byte, len(header.ExecutionBranch))
-	//for i, s := range header.ExecutionBranch {
-	//	headerUpdate.ExecutionHashBranch[i] = [fieldparams.RootLength]byte(common.Hex2Bytes(s[2:]))
-	//}
+	headerUpdate.BeaconHeader = finalizedHeader
+	headerUpdate.ExecutionBlockHash = finalizedBlockExeuctionDataProof.BlockHash
+	headerUpdate.ExecutionHashBranch = ethtypes.ConvertSliceHash2SliceBytes32(finalizedBlockExeuctionDataProof.Proof)
 
 	update.HeaderUpdate = headerUpdate
 	return update, nil
 }
 
-func (c *BeaconClient) BeaconLightClientUpdateConvert(data *light_client.LightClientUpdateData) (*light_client.BeaconLightClientUpdate, error) {
-	attestedHeader, err := c.BeaconLightClientUpdateHeaderConvert(data.AttestedHeader)
+func (c *BeaconClient) PrysmLightClientUpdateDataConvert(data *light_client.PrysmLightClientUpdateDataJson) (*light_client.LightClientUpdate, error) {
+	attestedHeader, err := c.PrysmBeaconBlockHeaderConvert(data.AttestedHeader)
 	if err != nil {
 		logger.Error("BeaconHeaderConvert error:", err)
 		return nil, err
@@ -400,7 +394,7 @@ func (c *BeaconClient) BeaconLightClientUpdateConvert(data *light_client.LightCl
 		logger.Error("CommitteeConvert error:", err)
 		return nil, err
 	}
-	finalizedUpdate, err := c.BeaconLightClientUpdateFinalityConvert(data.FinalizedHeader, data.FinalityBranch)
+	finalizedUpdate, err := c.PrysmFianlityUpdateConvert(data.FinalizedHeader, data.FinalityBranch)
 	if err != nil {
 		logger.Error("FinalizedUpdateConvert error:", err)
 		return nil, err
@@ -410,7 +404,7 @@ func (c *BeaconClient) BeaconLightClientUpdateConvert(data *light_client.LightCl
 		logger.Error("ParseUint error:", err)
 		return nil, err
 	}
-	update := new(light_client.BeaconLightClientUpdate)
+	update := new(light_client.LightClientUpdate)
 	update.AttestedBeaconHeader = attestedHeader
 	update.SyncAggregate = aggregate
 	update.NextSyncCommitteeUpdate = committeeUpdate
@@ -419,14 +413,20 @@ func (c *BeaconClient) BeaconLightClientUpdateConvert(data *light_client.LightCl
 	return update, nil
 }
 
-func (c *BeaconClient) GetBeaconLightClientUpdate(period uint64) (*light_client.BeaconLightClientUpdate, error) {
+func (c *BeaconClient) GetPrysmLightClientUpdate(period uint64) (*light_client.LightClientUpdate, error) {
 	str := fmt.Sprintf("%s/eth/v1/beacon/light_client/updates?start_period=%d&count=1", c.Client.NodeURL(), period)
 	resp, err := c.httpClient.Get(str)
 	if err != nil {
 		logger.Error("http Get error:", err)
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			logger.Error("close http error:", err)
+		}
+	}(resp.Body)
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		logger.Error("io.ReadAll error:", err)
@@ -436,7 +436,7 @@ func (c *BeaconClient) GetBeaconLightClientUpdate(period uint64) (*light_client.
 		logger.Error("body empty")
 		return nil, errors.New("http body empty")
 	}
-	var result []light_client.LightClientUpdateMsg
+	var result []light_client.PrysmLightClientUpdateJson
 	if err = json.Unmarshal(body, &result); err != nil {
 		err = fmt.Errorf("unmarshal error:%s body: %s", err.Error(), string(body))
 		logger.Error(err)
@@ -447,33 +447,40 @@ func (c *BeaconClient) GetBeaconLightClientUpdate(period uint64) (*light_client.
 		logger.Error("Unmarshal error:", err)
 		return nil, err
 	}
-	return c.BeaconLightClientUpdateConvert(&result[0].Data)
+	return c.PrysmLightClientUpdateDataConvert(&result[0].Data)
 }
 
-func (c *BeaconClient) GetFinalityLightClientUpdate() (*light_client.BeaconLightClientUpdate, error) {
-	str := fmt.Sprintf("/eth/v1/beacon/light_client/finality_update")
-	resp, err := c.Get(context.Background(), str)
+func (c *BeaconClient) GetPrysmFinalityLightClientUpdate() (*light_client.LightClientUpdate, error) {
+	str := fmt.Sprintf("%s/eth/v1/beacon/light_client/finality_update", c.Client.NodeURL())
+	resp, err := c.httpClient.Get(str)
 	if err != nil {
 		logger.Error("http Get error:", err)
 		return nil, err
 	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			logger.Error("close http error:", err)
+		}
+	}(resp.Body)
 
-	var result []light_client.LightClientUpdateMsg
-	if len(resp) == 0 {
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		logger.Error("io.ReadAll error:", err)
+		return nil, err
+	}
+	if len(body) == 0 {
 		logger.Error("body empty")
 		return nil, errors.New("http body empty")
 	}
-	if err = json.Unmarshal(resp, &result); err != nil {
-		err = fmt.Errorf("unmarshal error:%s body: %s", err.Error(), string(resp))
+
+	var result light_client.PrysmLightClientUpdateJson
+	if err = json.Unmarshal(body, &result); err != nil {
+		err = fmt.Errorf("unmarshal error:%s body: %s", err.Error(), string(body))
 		logger.Error(err)
 		return nil, err
 	}
-	if len(result) != 1 {
-		err = fmt.Errorf("LightClientUpdateMsg size is not equal to 1")
-		logger.Error("Unmarshal error:", err)
-		return nil, err
-	}
-	return c.BeaconLightClientUpdateConvert(&result[0].Data)
+	return c.PrysmLightClientUpdateDataConvert(&result.Data)
 }
 
 //func (c *BeaconClient) LightClientUpdateConvertNoCommitteeConvert(data *light_client.LightClientUpdateDataNoCommittee) (*light_client.LightClientUpdate, error) {
@@ -567,6 +574,11 @@ func (c *BeaconClient) getAttestedSlotWithEnoughSyncCommitteeBitsSum(attestedSlo
 }
 
 func (c *BeaconClient) constructFromBeaconBlockBody(beaconBlockBody interfaces.ReadOnlyBeaconBlockBody) (*ethtypes.ExecutionBlockProof, error) {
+	var l2ExecutionPayloadProofSize uint64 = 4
+	if beaconBlockBody.Version() >= version.Deneb {
+		l2ExecutionPayloadProofSize = 5
+	}
+
 	executionPayload, err := beaconBlockBody.Execution()
 	if err != nil {
 		logger.Error("BeaconChainClient GetBeaconBlockBody error:", err)
@@ -584,12 +596,12 @@ func (c *BeaconClient) constructFromBeaconBlockBody(beaconBlockBody interfaces.R
 	if executionPayloadMerkleTree, err = ExecutionPayloadMerkleTreeNew(executionPayload); err != nil {
 		return nil, err
 	}
-	_, proof1 := generateProof(beaconBlockMerkleTree, L1BeaconBlockBodyTreeExecutionPayloadIndex, L1BeaconBlockBodyProofSize)
-	_, proof2 := generateProof(executionPayloadMerkleTree, L2ExecutionPayloadTreeExecutionBlockIndex, L2ExecutionPayloadProofSize)
-	proof2 = append(proof2, proof1...)
+	_, l1ExecutionPayloadProof := generateProof(beaconBlockMerkleTree, L1BeaconBlockBodyTreeExecutionPayloadIndex, L1BeaconBlockBodyProofSize)
+	_, blockProof := generateProof(executionPayloadMerkleTree, L2ExecutionPayloadTreeExecutionBlockIndex, l2ExecutionPayloadProofSize)
+	blockProof = append(blockProof, l1ExecutionPayloadProof...)
 	return &ethtypes.ExecutionBlockProof{
 		BlockHash: finalizedBlockBodyHash,
-		Proof:     ethtypes.ConvertSliceBytes2Hash(proof2),
+		Proof:     ethtypes.ConvertSliceBytes2Hash(blockProof),
 	}, nil
 }
 
@@ -732,7 +744,7 @@ func (c *BeaconClient) getFinalityLightClientUpdate(attestedSlot primitives.Slot
 	return c.getFinalityLightClientUpdateForState(attestedSlot, signatureSlot, beaconState, finalityBeaconState)
 }
 
-func (c *BeaconClient) getLightClientUpdateByFinalizedSlot(finalizedSlot primitives.Slot, useNextSyncCommittee bool) (*light_client.BeaconLightClientUpdate, error) {
+func (c *BeaconClient) getLightClientUpdateByFinalizedSlot(finalizedSlot primitives.Slot, useNextSyncCommittee bool) (*light_client.LightClientUpdate, error) {
 	attestedSlot, err := c.GetAttestedSlot(finalizedSlot)
 	if err != nil {
 		logger.Error("BeaconChainClient GetNonEmptyBeaconBlockHeader error:", err)
@@ -764,7 +776,7 @@ func (c *BeaconClient) getLightClientUpdateByFinalizedSlot(finalizedSlot primiti
 //	return c.getLightClientUpdateByFinalizedSlot(finalizedSlot, true)
 //}
 
-func (c *BeaconClient) GetLightClientUpdateV2(period uint64) (*light_client.BeaconLightClientUpdate, error) {
+func (c *BeaconClient) GetLightClientUpdateV2(period uint64) (*light_client.LightClientUpdate, error) {
 	currFinalizedSlot := GetFinalizedSlotForPeriod(period)
 	return c.getLightClientUpdateByFinalizedSlot(currFinalizedSlot, true)
 }
@@ -808,7 +820,7 @@ func (c *BeaconClient) GetLastFinalizedLightClientUpdateV2FinalizedSlot() (primi
 	return getBeforeSlotInSamePeriod(finalizedSlot)
 }
 
-func (c *BeaconClient) GetLastFinalizedLightClientUpdateV2WithNextSyncCommittee() (*light_client.BeaconLightClientUpdate, error) {
+func (c *BeaconClient) GetLastFinalizedLightClientUpdateV2WithNextSyncCommittee() (*light_client.LightClientUpdate, error) {
 	finalizedSlot, err := c.GetLastFinalizedLightClientUpdateV2FinalizedSlot()
 	if err != nil {
 		return nil, err

@@ -143,7 +143,7 @@ func (update *SyncCommitteeUpdate) Encode() ([]byte, error) {
 	return rlpBytes, nil
 }
 
-type BeaconLightClientUpdate struct {
+type LightClientUpdate struct {
 	AttestedBeaconHeader    *BeaconBlockHeader
 	SyncAggregate           *SyncAggregate
 	SignatureSlot           primitives.Slot
@@ -151,7 +151,7 @@ type BeaconLightClientUpdate struct {
 	NextSyncCommitteeUpdate *SyncCommitteeUpdate
 }
 
-func (h *BeaconLightClientUpdate) Encode() ([]byte, error) {
+func (h *LightClientUpdate) Encode() ([]byte, error) {
 	attestedHeader, err := h.AttestedBeaconHeader.Encode()
 	if err != nil {
 		return nil, err
@@ -208,15 +208,15 @@ type BeaconLightClientUpdateHeaderData struct {
 	BodyRoot      string `json:"body_root"`
 }
 
-type BeaconBlockHeaderData struct {
-	Beacon struct {
+type BeaconBlockHeaderJson struct {
+	BeaconJson struct {
 		Slot          string `json:"slot"`
 		ProposerIndex string `json:"proposer_index"`
 		ParentRoot    string `json:"parent_root"`
 		StateRoot     string `json:"state_root"`
 		BodyRoot      string `json:"body_root"`
 	} `json:"beacon"`
-	ExecutionData struct {
+	ExecutionJson struct {
 		ParentHash       string `json:"parent_hash"`
 		FeeRecipient     string `json:"fee_recipient"`
 		StateRoot        string `json:"state_root"`
@@ -236,12 +236,12 @@ type BeaconBlockHeaderData struct {
 	ExecutionBranch []string `json:"execution_branch"`
 }
 
-type SyncAggregateData struct {
+type SyncAggregateJson struct {
 	SyncCommitteeBits      string `json:"sync_committee_bits"`
 	SyncCommitteeSignature string `json:"sync_committee_signature"`
 }
 
-type SyncCommitteeData struct {
+type SyncCommitteeJson struct {
 	Pubkeys         []string `json:"pubkeys"`
 	AggregatePubkey string   `json:"aggregate_pubkey"`
 }
@@ -249,11 +249,11 @@ type SyncCommitteeData struct {
 type LightClientUpdateData struct {
 	AttestedHeader          *BeaconLightClientUpdateHeaderData `json:"attested_header"`
 	FinalizedHeader         *BeaconLightClientUpdateHeaderData `json:"finalized_header"`
-	FinalityBranch          []string               `json:"finality_branch"`
-	SyncAggregate           *SyncAggregateData     `json:"sync_aggregate"`
-	NextSyncCommittee       *SyncCommitteeData     `json:"next_sync_committee"`
-	NextSyncCommitteeBranch []string               `json:"next_sync_committee_branch"`
-	SignatureSlot           string                 `json:"signature_slot"`
+	FinalityBranch          []string                           `json:"finality_branch"`
+	SyncAggregate           *SyncAggregateJson                 `json:"sync_aggregate"`
+	NextSyncCommittee       *SyncCommitteeJson                 `json:"next_sync_committee"`
+	NextSyncCommitteeBranch []string                           `json:"next_sync_committee_branch"`
+	SignatureSlot           string                             `json:"signature_slot"`
 }
 
 type LightClientUpdateMsg struct {
@@ -261,10 +261,32 @@ type LightClientUpdateMsg struct {
 }
 
 type LightClientUpdateDataNoCommittee struct {
-	AttestedHeader  *BeaconBlockHeaderData `json:"attested_header"`
-	FinalizedHeader *BeaconBlockHeaderData `json:"finalized_header"`
+	AttestedHeader  *BeaconBlockHeaderJson `json:"attested_header"`
+	FinalizedHeader *BeaconBlockHeaderJson `json:"finalized_header"`
 	FinalityBranch  []string               `json:"finality_branch"`
-	SyncAggregate   *SyncAggregateData     `json:"sync_aggregate"`
+	SyncAggregate   *SyncAggregateJson     `json:"sync_aggregate"`
 	SignatureSlot   string                 `json:"signature_slot"`
 }
 
+type PrysmBeaconBlockHeaderJson struct {
+	Slot          string `json:"slot"`
+	ProposerIndex string `json:"proposer_index"`
+	ParentRoot    string `json:"parent_root"`
+	StateRoot     string `json:"state_root"`
+	BodyRoot      string `json:"body_root"`
+}
+
+type PrysmLightClientUpdateDataJson struct {
+	AttestedHeader          *PrysmBeaconBlockHeaderJson `json:"attested_header"`
+	FinalizedHeader         *PrysmBeaconBlockHeaderJson `json:"finalized_header"`
+	FinalityBranch          []string                    `json:"finality_branch"`
+	SyncAggregate           *SyncAggregateJson          `json:"sync_aggregate"`
+	NextSyncCommittee       *SyncCommitteeJson          `json:"next_sync_committee"`
+	NextSyncCommitteeBranch []string                    `json:"next_sync_committee_branch"`
+	SignatureSlot           string                      `json:"signature_slot"`
+}
+
+type PrysmLightClientUpdateJson struct {
+	Version string                         `json:"version"`
+	Data    PrysmLightClientUpdateDataJson `json:"data"`
+}
