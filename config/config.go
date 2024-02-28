@@ -36,8 +36,8 @@ const (
 )
 
 const (
-	TOP_CHAIN     string = "TOP"
-	ETH_CHAIN     string = "ETH"
+	TOP_CHAIN  string = "TOP"
+	ETH_CHAIN  string = "ETH"
 	LOG_DIR    string = "log"
 	LOG_CONFIG string = `{
 		"TimeFormat":"2006-01-02 15:04:05",

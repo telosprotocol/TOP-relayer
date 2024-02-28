@@ -36,7 +36,7 @@ const (
 
 var (
 	sendFlag = map[string]uint64{
-		config.ETH_CHAIN:     0x1,
+		config.ETH_CHAIN: 0x1,
 	}
 )
 

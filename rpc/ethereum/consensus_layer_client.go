@@ -3,6 +3,7 @@ package ethereum
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,6 +17,8 @@ import (
 	eth "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
 	"github.com/wonderivan/logger"
 	"google.golang.org/protobuf/proto"
+	"io"
+	"net/http"
 	"net/http/httptest"
 	"sort"
 	"strconv"
@@ -26,6 +29,7 @@ import (
 
 type BeaconClient struct {
 	*beacon.Client
+	httpClient *http.Client
 }
 
 func NewBeaconClient(httpUrl string) (*BeaconClient, error) {
@@ -33,7 +37,12 @@ func NewBeaconClient(httpUrl string) (*BeaconClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &BeaconClient{c}, nil
+	return &BeaconClient{
+		c,
+		&http.Client{Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}},
+	}, nil
 }
 
 func (c *BeaconClient) GetBlindedSignedBeaconBlock(blockId beacon.StateOrBlockId) (interfaces.ReadOnlySignedBeaconBlock, error) {
@@ -337,20 +346,25 @@ func (c *BeaconClient) LightClientUpdateConvert(data *light_client.LightClientUp
 }
 
 func (c *BeaconClient) GetLightClientUpdate(period uint64) (*light_client.LightClientUpdate, error) {
-	str := fmt.Sprintf("/eth/v1/beacon/light_client/updates?start_period=%d&count=1", period)
-	resp, err := c.Get(context.Background(), str)
+	str := fmt.Sprintf("%s/eth/v1/beacon/light_client/updates?start_period=%d&count=1", c.Client.NodeURL(), period)
+	resp, err := c.httpClient.Get(str)
 	if err != nil {
 		logger.Error("http Get error:", err)
 		return nil, err
 	}
-
-	var result []light_client.LightClientUpdateMsg
-	if len(resp) == 0 {
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		logger.Error("io.ReadAll error:", err)
+		return nil, err
+	}
+	if len(body) == 0 {
 		logger.Error("body empty")
 		return nil, errors.New("http body empty")
 	}
-	if err = json.Unmarshal(resp, &result); err != nil {
-		err = fmt.Errorf("unmarshal error:%s body: %s", err.Error(), string(resp))
+	var result []light_client.LightClientUpdateMsg
+	if err = json.Unmarshal(body, &result); err != nil {
+		err = fmt.Errorf("unmarshal error:%s body: %s", err.Error(), string(body))
 		logger.Error(err)
 		return nil, err
 	}
