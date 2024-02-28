@@ -97,7 +97,7 @@ func (c *BeaconClient) GetSignedBeaconBlock(blockId beacon.StateOrBlockId) (inte
 }
 
 func (c *BeaconClient) GetBeaconBlockBody(blockId beacon.StateOrBlockId) (interfaces.ReadOnlyBeaconBlockBody, error) {
-	signedBeaconBlock, err := c.GetBlindedSignedBeaconBlock(blockId)
+	signedBeaconBlock, err := c.GetSignedBeaconBlock(blockId)
 	if err != nil {
 		return nil, err
 	}
@@ -257,7 +257,7 @@ func (c *BeaconClient) PrysmBeaconBlockHeaderConvert(data *light_client.PrysmBea
 
 func (c *BeaconClient) SyncAggregateConvert(data *light_client.SyncAggregateJson) (*light_client.SyncAggregate, error) {
 	aggregate := new(light_client.SyncAggregate)
-	//aggregate.SyncCommitteeBits = data.SyncCommitteeBits
+	aggregate.SyncCommitteeBits = [fieldparams.SyncAggregateSyncCommitteeBytesLength]byte(common.Hex2Bytes(data.SyncCommitteeBits[2:]))
 	aggregate.SyncCommitteeSignature = [fieldparams.BLSSignatureLength]byte(common.Hex2Bytes(data.SyncCommitteeSignature[2:]))
 	return aggregate, nil
 }

@@ -456,20 +456,24 @@ func ExecutionPayloadMerkleTreeNew(executionData interfaces.ExecutionData) (Merk
 	logger.Info("1")
 	// Field (13) 'Transactions'
 	transactions, err := executionData.Transactions()
+	leaves[13] = [32]byte{}
 	if err != nil {
-		return nil, err
-	}
-	if hashRoot, err := specialFieldTransactionsHashTreeRoot(transactions); err != nil {
-		logger.Error("ExecutionPayloadMerkleTreeNew specialFieldTransactionsHashTreeRoot(transactions) error ", err)
-		return nil, err
+		logger.Error("ExecutionPayloadMerkleTreeNew BytesHashTreeRoot(blockHash) error ", err)
 	} else {
-		leaves[13] = hashRoot
+		if hashRoot, err := specialFieldTransactionsHashTreeRoot(transactions); err != nil {
+			logger.Error("ExecutionPayloadMerkleTreeNew specialFieldTransactionsHashTreeRoot(transactions) error ", err)
+		} else {
+			leaves[13] = hashRoot
+		}
 	}
 
 	logger.Info("1")
 	// Field (14) 'Withdrawals'
 	leaves[14] = [32]byte{0}
-	if withdrawals, err := executionData.Withdrawals(); err == nil {
+	withdrawals, err := executionData.Withdrawals()
+	if err != nil {
+		logger.Error("executionData doesn't support Withdrawals")
+	} else {
 		hrs := make([]ssz.HashRoot, len(withdrawals))
 		for i, v := range withdrawals {
 			hrs[i] = v
@@ -477,29 +481,30 @@ func ExecutionPayloadMerkleTreeNew(executionData interfaces.ExecutionData) (Merk
 		if hashRoot, err := VecObjectHashTreeRoot(hrs, 16); err == nil {
 			leaves[14] = hashRoot
 		}
-	} else {
-		logger.Error("ExecutionPayloadMerkleTreeNew executionData.Withdrawals() error: ", err)
 	}
 
 	logger.Info("1")
 	// Field (15) 'BlobGasUsed'
-	if blobGasUsed, err := executionData.BlobGasUsed(); err == nil {
+	blobGasUsed, err := executionData.BlobGasUsed()
+	if err != nil {
+		logger.Error("executionData doesn't support BlobGasUsed")
+	} else {
+		logger.Error("ExecutionPayloadMerkleTreeNew executionData.BlobGasUsed() error: ", err)
 		if hashRoot, err := Uint64HashTreeRoot(blobGasUsed); err == nil {
 			depth += 1
 			leaves = append(leaves, hashRoot)
 		}
-	} else {
-		logger.Error("ExecutionPayloadMerkleTreeNew executionData.BlobGasUsed() error: ", err)
 	}
 
 	logger.Info("1")
 	// Field (16) 'ExcessBlobGas'
-	if excessBlobGas, err := executionData.ExcessBlobGas(); err == nil {
+	excessBlobGas, err := executionData.ExcessBlobGas()
+	if err != nil {
+		logger.Error("ExecutionPayloadMerkleTreeNew executionData.ExcessBlobGas() error: ", err)
+	} else {
 		if hashRoot, err := Uint64HashTreeRoot(excessBlobGas); err == nil {
 			leaves = append(leaves, hashRoot)
 		}
-	} else {
-		logger.Error("ExecutionPayloadMerkleTreeNew executionData.ExcessBlobGas() error: ", err)
 	}
 
 	logger.Info("1")
