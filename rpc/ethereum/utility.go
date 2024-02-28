@@ -432,13 +432,13 @@ func beaconBlockHeaderConvert(header *eth.BeaconBlockHeader) *light_client.Beaco
 	}
 }
 
-func convertEth2LightClientUpdate(lcu *ethtypes.LightClientUpdate) *light_client.LightClientUpdate {
+func convertEth2LightClientUpdate(lcu *ethtypes.LightClientUpdate) *light_client.BeaconLightClientUpdate {
 	var executionHashBranch = make([][fieldparams.RootLength]byte, len(lcu.FinalizedUpdate.HeaderUpdate.ExecutionHashBranch))
 	for i, v := range lcu.FinalizedUpdate.HeaderUpdate.ExecutionHashBranch {
 		executionHashBranch[i] = v
 	}
 
-	ret := &light_client.LightClientUpdate{
+	ret := &light_client.BeaconLightClientUpdate{
 		AttestedBeaconHeader: beaconBlockHeaderConvert(lcu.AttestedBeaconHeader),
 		SyncAggregate: &light_client.SyncAggregate{
 			SyncCommitteeBits:      [fieldparams.SyncAggregateSyncCommitteeBytesLength]byte(lcu.SyncAggregate.SyncCommitteeBits),

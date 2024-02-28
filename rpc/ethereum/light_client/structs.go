@@ -143,7 +143,7 @@ func (update *SyncCommitteeUpdate) Encode() ([]byte, error) {
 	return rlpBytes, nil
 }
 
-type LightClientUpdate struct {
+type BeaconLightClientUpdate struct {
 	AttestedBeaconHeader    *BeaconBlockHeader
 	SyncAggregate           *SyncAggregate
 	SignatureSlot           primitives.Slot
@@ -151,7 +151,7 @@ type LightClientUpdate struct {
 	NextSyncCommitteeUpdate *SyncCommitteeUpdate
 }
 
-func (h *LightClientUpdate) Encode() ([]byte, error) {
+func (h *BeaconLightClientUpdate) Encode() ([]byte, error) {
 	attestedHeader, err := h.AttestedBeaconHeader.Encode()
 	if err != nil {
 		return nil, err
@@ -200,6 +200,14 @@ func (h *LightClientUpdate) Encode() ([]byte, error) {
 	return rlpBytes, nil
 }
 
+type BeaconLightClientUpdateHeaderData struct {
+	Slot          string `json:"slot"`
+	ProposerIndex string `json:"proposer_index"`
+	ParentRoot    string `json:"parent_root"`
+	StateRoot     string `json:"state_root"`
+	BodyRoot      string `json:"body_root"`
+}
+
 type BeaconBlockHeaderData struct {
 	Beacon struct {
 		Slot          string `json:"slot"`
@@ -239,8 +247,8 @@ type SyncCommitteeData struct {
 }
 
 type LightClientUpdateData struct {
-	AttestedHeader          *BeaconBlockHeaderData `json:"attested_header"`
-	FinalizedHeader         *BeaconBlockHeaderData `json:"finalized_header"`
+	AttestedHeader          *BeaconLightClientUpdateHeaderData `json:"attested_header"`
+	FinalizedHeader         *BeaconLightClientUpdateHeaderData `json:"finalized_header"`
 	FinalityBranch          []string               `json:"finality_branch"`
 	SyncAggregate           *SyncAggregateData     `json:"sync_aggregate"`
 	NextSyncCommittee       *SyncCommitteeData     `json:"next_sync_committee"`
@@ -259,3 +267,4 @@ type LightClientUpdateDataNoCommittee struct {
 	SyncAggregate   *SyncAggregateData     `json:"sync_aggregate"`
 	SignatureSlot   string                 `json:"signature_slot"`
 }
+

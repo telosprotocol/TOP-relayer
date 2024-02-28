@@ -296,7 +296,7 @@ func (relayer *Eth2TopRelayerV2) getLastFinalizedSlotOnEth() (primitives.Slot, e
 
 func (relayer *Eth2TopRelayerV2) sendRegularLightClientUpdate(lastFinalizedTopSlot, lastFinalizedEthSlot primitives.Slot) error {
 	lastPeriodOnTOP, lastPeriodOnEth := ethereum.GetPeriodForSlot(lastFinalizedTopSlot), ethereum.GetPeriodForSlot(lastFinalizedEthSlot)
-	var data *light_client.LightClientUpdate
+	var data *light_client.BeaconLightClientUpdate
 	var err error
 	if lastPeriodOnTOP == lastPeriodOnEth {
 		data, err = relayer.consensusLayerClient.GetFinalityLightClientUpdate()
@@ -305,7 +305,7 @@ func (relayer *Eth2TopRelayerV2) sendRegularLightClientUpdate(lastFinalizedTopSl
 			return err
 		}
 	} else {
-		data, err = relayer.consensusLayerClient.GetLightClientUpdate(lastPeriodOnTOP + 1)
+		data, err = relayer.consensusLayerClient.GetLightClientUpdateV2(lastPeriodOnTOP + 1)
 		if err != nil {
 			logger.Error("Eth2TopRelayerV2 GetLightClientUpdate at near period error:", err)
 			return err
@@ -751,7 +751,7 @@ func (relayer *Eth2TopRelayerV2) GetInitData() ([]byte, error) {
 		return nil, err
 	}
 	lastPeriod := ethereum.GetPeriodForSlot(lastSlot)
-	lastUpdate, err := relayer.consensusLayerClient.GetLightClientUpdate(lastPeriod)
+	lastUpdate, err := relayer.consensusLayerClient.GetBeaconLightClientUpdate(lastPeriod)
 	if err != nil {
 		logger.Error("GetLightClientUpdate error:", err)
 		return nil, err
