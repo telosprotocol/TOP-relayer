@@ -37,6 +37,14 @@ func GetPeriodForSlot(slot primitives.Slot) uint64 {
 	return uint64(slot) / (SLOTS_PER_EPOCH * EPOCHS_PER_PERIOD)
 }
 
+func GetEpochForSlot(slot primitives.Slot) primitives.Epoch {
+	return primitives.Epoch(uint64(slot) / SLOTS_PER_EPOCH)
+}
+
+func GetPeriodForEpoch(epoch primitives.Epoch) uint64 {
+	return uint64(epoch) / EPOCHS_PER_PERIOD
+}
+
 func epochInPeriodForPeriod(period uint64) primitives.Epoch {
 	batch := period * EPOCHS_PER_PERIOD / 154
 	return primitives.Epoch((batch+1)*154 - (period * EPOCHS_PER_PERIOD))

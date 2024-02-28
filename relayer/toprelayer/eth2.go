@@ -299,19 +299,13 @@ func (relayer *Eth2TopRelayerV2) sendRegularLightClientUpdate(lastFinalizedTopSl
 	var data *light_client.LightClientUpdate
 	var err error
 	if lastPeriodOnTOP == lastPeriodOnEth {
-		data, err = relayer.consensusLayerClient.GetFinalizedLightClientUpdateByEthSlot(lastFinalizedEthSlot)
+		data, err = relayer.consensusLayerClient.GetFinalityLightClientUpdate()
 		if err != nil {
 			logger.Error("Eth2TopRelayerV2 GetLightClientUpdate at same period error:", err)
 			return err
 		}
-	} else if lastPeriodOnTOP+1 == lastPeriodOnEth {
-		data, err = relayer.consensusLayerClient.GetLastFinalizedLightClientUpdateV2WithNextSyncCommitteeByEthSlot(lastFinalizedEthSlot)
-		if err != nil {
-			logger.Error("Eth2TopRelayerV2 GetLightClientUpdate at next period error:", err)
-			return err
-		}
 	} else {
-		data, err = relayer.consensusLayerClient.GetLightClientUpdateV2(lastPeriodOnTOP + 1)
+		data, err = relayer.consensusLayerClient.GetLightClientUpdate(lastPeriodOnTOP + 1)
 		if err != nil {
 			logger.Error("Eth2TopRelayerV2 GetLightClientUpdate at near period error:", err)
 			return err
@@ -336,8 +330,9 @@ func (relayer *Eth2TopRelayerV2) sendLightClientUpdatesWithChecks() error {
 		logger.Error("Eth2TopRelayerV2 getLastFinalizedSlotOnEth error:", err)
 		return err
 	}
-	lastPeriodOnTOP, lastPeriodOnEth := ethereum.GetPeriodForSlot(lastFinalizedSlotOnTop), ethereum.GetPeriodForSlot(lastFinalizedSlotOnEth)
-	logger.Info("Eth2TopRelayerV2 lastFinalizedSlot TOP(Period:%d,slot:%d), ETH(period:%d,slot:%d)", lastPeriodOnTOP, lastFinalizedSlotOnTop, lastPeriodOnEth, lastFinalizedSlotOnEth)
+	lastEpochOnTOP, lastEpochOnEth := ethereum.GetEpochForSlot(lastFinalizedSlotOnTop), ethereum.GetEpochForSlot(lastFinalizedSlotOnEth)
+	lastPeriodOnTOP, lastPeriodOnEth := ethereum.GetPeriodForEpoch(lastEpochOnTOP), ethereum.GetPeriodForEpoch(lastEpochOnEth)
+	logger.Info("Eth2TopRelayerV2 lastFinalizedSlot TOP(Period:%d,Epoch:%d,Slot:%d), ETH(Period:%d,Epoch:%d,Slot:%d)", lastPeriodOnTOP, lastEpochOnTOP, lastFinalizedSlotOnTop, lastPeriodOnEth, lastEpochOnEth, lastFinalizedSlotOnEth)
 	if !relayer.isEnoughBlocksForLightClientUpdate(lastFinalizedSlotOnTop, lastFinalizedSlotOnEth) {
 		return errors.New("no need to submit LightClientUpdate")
 	}

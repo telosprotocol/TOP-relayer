@@ -362,35 +362,61 @@ func (c *BeaconClient) GetLightClientUpdate(period uint64) (*light_client.LightC
 	return c.LightClientUpdateConvert(&result[0].Data)
 }
 
-func (c *BeaconClient) LightClientUpdateConvertNoCommitteeConvert(data *light_client.LightClientUpdateDataNoCommittee) (*light_client.LightClientUpdate, error) {
-	attestedHeader, err := c.BeaconHeaderConvert(data.AttestedHeader)
+func (c *BeaconClient) GetFinalityLightClientUpdate() (*light_client.LightClientUpdate, error) {
+	str := fmt.Sprintf("/eth/v1/beacon/light_client/finality_update")
+	resp, err := c.Get(context.Background(), str)
 	if err != nil {
-		logger.Error("BeaconHeaderConvert error:", err)
+		logger.Error("http Get error:", err)
 		return nil, err
 	}
-	aggregate, err := c.SyncAggregateConvert(data.SyncAggregate)
-	if err != nil {
-		logger.Error("SyncAggregateConvert error:", err)
+
+	var result []light_client.LightClientUpdateMsg
+	if len(resp) == 0 {
+		logger.Error("body empty")
+		return nil, errors.New("http body empty")
+	}
+	if err = json.Unmarshal(resp, &result); err != nil {
+		err = fmt.Errorf("unmarshal error:%s body: %s", err.Error(), string(resp))
+		logger.Error(err)
 		return nil, err
 	}
-	finalizedUpdate, err := c.FinalizedUpdateConvert(data.FinalizedHeader, data.FinalityBranch)
-	if err != nil {
-		logger.Error("FinalizedUpdateConvert error:", err)
+	if len(result) != 1 {
+		err = fmt.Errorf("LightClientUpdateMsg size is not equal to 1")
+		logger.Error("Unmarshal error:", err)
 		return nil, err
 	}
-	slotVal, err := strconv.ParseUint(data.SignatureSlot, 0, 64)
-	if err != nil {
-		logger.Error("ParseUint error:", err)
-		return nil, err
-	}
-	update := new(light_client.LightClientUpdate)
-	update.AttestedBeaconHeader = attestedHeader
-	update.SyncAggregate = aggregate
-	update.NextSyncCommitteeUpdate = nil
-	update.FinalityUpdate = finalizedUpdate
-	update.SignatureSlot = primitives.Slot(slotVal)
-	return update, nil
+	return c.LightClientUpdateConvert(&result[0].Data)
 }
+
+//func (c *BeaconClient) LightClientUpdateConvertNoCommitteeConvert(data *light_client.LightClientUpdateDataNoCommittee) (*light_client.LightClientUpdate, error) {
+//	attestedHeader, err := c.BeaconHeaderConvert(data.AttestedHeader)
+//	if err != nil {
+//		logger.Error("BeaconHeaderConvert error:", err)
+//		return nil, err
+//	}
+//	aggregate, err := c.SyncAggregateConvert(data.SyncAggregate)
+//	if err != nil {
+//		logger.Error("SyncAggregateConvert error:", err)
+//		return nil, err
+//	}
+//	finalizedUpdate, err := c.FinalizedUpdateConvert(data.FinalizedHeader, data.FinalityBranch)
+//	if err != nil {
+//		logger.Error("FinalizedUpdateConvert error:", err)
+//		return nil, err
+//	}
+//	slotVal, err := strconv.ParseUint(data.SignatureSlot, 0, 64)
+//	if err != nil {
+//		logger.Error("ParseUint error:", err)
+//		return nil, err
+//	}
+//	update := new(light_client.LightClientUpdate)
+//	update.AttestedBeaconHeader = attestedHeader
+//	update.SyncAggregate = aggregate
+//	update.NextSyncCommitteeUpdate = nil
+//	update.FinalityUpdate = finalizedUpdate
+//	update.SignatureSlot = primitives.Slot(slotVal)
+//	return update, nil
+//}
 
 func (c *BeaconClient) GetAttestedSlot(lastFinalizedTopSlot primitives.Slot) (primitives.Slot, error) {
 	attestedSlot := getAttestationSlot(lastFinalizedTopSlot)
@@ -637,18 +663,18 @@ func (c *BeaconClient) getLightClientUpdateByFinalizedSlot(finalizedSlot primiti
 	return convertEth2LightClientUpdate(lcu), nil
 }
 
-func (c *BeaconClient) GetFinalizedLightClientUpdateByEthSlot(lastFinalizedEthSlot primitives.Slot) (*light_client.LightClientUpdate, error) {
-	finalizedSlot, err := getBeforeSlotInSamePeriod(lastFinalizedEthSlot)
-	if err != nil {
-		return nil, err
-	}
-	return c.getLightClientUpdateByFinalizedSlot(finalizedSlot, false)
-}
+//func (c *BeaconClient) GetFinalizedLightClientUpdateByEthSlot(lastFinalizedEthSlot primitives.Slot) (*light_client.LightClientUpdate, error) {
+//	finalizedSlot, err := getBeforeSlotInSamePeriod(lastFinalizedEthSlot)
+//	if err != nil {
+//		return nil, err
+//	}
+//	return c.getLightClientUpdateByFinalizedSlot(finalizedSlot, false)
+//}
 
-func (c *BeaconClient) GetLastFinalizedLightClientUpdateV2WithNextSyncCommitteeByEthSlot(lastFinalizedEthSlot primitives.Slot) (*light_client.LightClientUpdate, error) {
-	finalizedSlot, _ := getBeforeSlotInSamePeriod(lastFinalizedEthSlot)
-	return c.getLightClientUpdateByFinalizedSlot(finalizedSlot, true)
-}
+//func (c *BeaconClient) GetLastFinalizedLightClientUpdateV2WithNextSyncCommitteeByEthSlot(lastFinalizedEthSlot primitives.Slot) (*light_client.LightClientUpdate, error) {
+//	finalizedSlot, _ := getBeforeSlotInSamePeriod(lastFinalizedEthSlot)
+//	return c.getLightClientUpdateByFinalizedSlot(finalizedSlot, true)
+//}
 
 func (c *BeaconClient) GetLightClientUpdateV2(period uint64) (*light_client.LightClientUpdate, error) {
 	currFinalizedSlot := GetFinalizedSlotForPeriod(period)
