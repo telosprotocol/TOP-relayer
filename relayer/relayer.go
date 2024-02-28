@@ -93,7 +93,7 @@ func StartRelayer(cfg *config.Config, pass string, wg *sync.WaitGroup) error {
 			if name == config.TOP_CHAIN {
 				continue
 			}
-			if name != config.ETH_CHAIN && name != config.BSC_CHAIN && name != config.HECO_CHAIN && name != config.OPEN_ALLIANCE {
+			if name != config.ETH_CHAIN {
 				logger.Warn("TopRelayer not support:", name)
 				continue
 			}
@@ -107,7 +107,7 @@ func StartRelayer(cfg *config.Config, pass string, wg *sync.WaitGroup) error {
 				continue
 			}
 		}
-	case config.HECO_CHAIN, config.BSC_CHAIN, config.ETH_CHAIN, config.OPEN_ALLIANCE:
+	case config.ETH_CHAIN:
 		err := startCrossChainRelayer(crossChainRelayer, cfg.RelayerToRun, relayerConfig, topConfig.Url[0], pass, wg)
 		if err != nil {
 			logger.Error("StartRelayer error:", err)
@@ -126,7 +126,7 @@ func GetInitData(cfg *config.Config, pass, chainName string) ([]byte, error) {
 		logger.Error(err)
 		return nil, err
 	}
-	if chainName != config.ETH_CHAIN && chainName != config.BSC_CHAIN && chainName != config.HECO_CHAIN {
+	if chainName != config.ETH_CHAIN {
 		err := errors.New("chain not support init data")
 		logger.Error(err)
 		return nil, err

@@ -47,30 +47,6 @@ func getInitData(ctx *cli.Context) error {
 		default:
 			return errors.New("invalid arg nums")
 		}
-	case config.BSC_CHAIN:
-		switch argsNum {
-		case 1: // get_init_data BSC
-			bytes, err = getBscInitData(config.BSCAddr)
-		case 2: // get_init_data BSC 123
-			if false == isNumber(ctx.Args().Get(1)) {
-				return errors.New("the height needs to be a number")
-			}
-			bytes, err = getBscInitDataWithHeight(config.BSCAddr, ctx.Args().Get(1))
-		default:
-			return errors.New("invalid arg nums")
-		}
-	case config.HECO_CHAIN:
-		switch argsNum {
-		case 1: // get_init_data HECO
-			bytes, err = getHecoInitData(config.HECOAddr)
-		case 2: // get_init_data HECO 123
-			if false == isNumber(ctx.Args().Get(1)) {
-				return errors.New("the height needs to be a number")
-			}
-			bytes, err = getHecoInitDataWithHeight(config.HECOAddr, ctx.Args().Get(1))
-		default:
-			return errors.New("invalid arg nums")
-		}
 	default:
 		return fmt.Errorf("the %s chain is not supported", chainName)
 	}
