@@ -591,9 +591,11 @@ func (c *BeaconClient) constructFromBeaconBlockBody(beaconBlockBody interfaces.R
 
 	var beaconBlockMerkleTree, executionPayloadMerkleTree MerkleTreeNode
 	if beaconBlockMerkleTree, err = BeaconBlockBodyMerkleTreeNew(beaconBlockBody); err != nil {
+		logger.Error("BeaconClient BeaconBlockBodyMerkleTreeNew error: ", err)
 		return nil, err
 	}
 	if executionPayloadMerkleTree, err = ExecutionPayloadMerkleTreeNew(executionPayload); err != nil {
+		logger.Error("BeaconClient ExecutionPayloadMerkleTreeNew error: ", err)
 		return nil, err
 	}
 	_, l1ExecutionPayloadProof := generateProof(beaconBlockMerkleTree, L1BeaconBlockBodyTreeExecutionPayloadIndex, L1BeaconBlockBodyProofSize)

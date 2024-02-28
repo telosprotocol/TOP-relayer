@@ -7,6 +7,7 @@ import (
 	"github.com/prysmaticlabs/prysm/v4/consensus-types/interfaces"
 	"github.com/prysmaticlabs/prysm/v4/consensus-types/primitives"
 	eth "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
+	"github.com/wonderivan/logger"
 	"strings"
 	"toprelayer/relayer/toprelayer/ethtypes"
 	"toprelayer/rpc/ethereum/light_client"
@@ -330,6 +331,7 @@ func ExecutionPayloadMerkleTreeNew(executionData interfaces.ExecutionData) (Merk
 	// Field (0) 'ParentHash'
 	parentHash := executionData.ParentHash()
 	if hashRoot, err := BytesHashTreeRoot(parentHash, 32, "ParentHash"); err != nil {
+		logger.Error("ExecutionPayloadMerkleTreeNew BytesHashTreeRoot(parentHash) error ", err)
 		return nil, err
 	} else {
 		leaves[0] = hashRoot
@@ -338,6 +340,7 @@ func ExecutionPayloadMerkleTreeNew(executionData interfaces.ExecutionData) (Merk
 	// Field (1) 'FeeRecipient'
 	feeRecipient := executionData.FeeRecipient()
 	if hashRoot, err := BytesHashTreeRoot(feeRecipient, 20, "FeeRecipient"); err != nil {
+		logger.Error("ExecutionPayloadMerkleTreeNew BytesHashTreeRoot(feeRecipient) error ", err)
 		return nil, err
 	} else {
 		leaves[1] = hashRoot
@@ -346,6 +349,7 @@ func ExecutionPayloadMerkleTreeNew(executionData interfaces.ExecutionData) (Merk
 	// Field (2) 'StateRoot'
 	stateRoot := executionData.StateRoot()
 	if hashRoot, err := BytesHashTreeRoot(stateRoot, 32, "StateRoot"); err != nil {
+		logger.Error("ExecutionPayloadMerkleTreeNew BytesHashTreeRoot(stateRoot) error ", err)
 		return nil, err
 	} else {
 		leaves[2] = hashRoot
@@ -354,6 +358,7 @@ func ExecutionPayloadMerkleTreeNew(executionData interfaces.ExecutionData) (Merk
 	// Field (3) 'ReceiptsRoot'
 	receiptsRoot := executionData.ReceiptsRoot()
 	if hashRoot, err := BytesHashTreeRoot(receiptsRoot, 32, "ReceiptsRoot"); err != nil {
+		logger.Error("ExecutionPayloadMerkleTreeNew BytesHashTreeRoot(receiptsRoot) error ", err)
 		return nil, err
 	} else {
 		leaves[3] = hashRoot
@@ -362,6 +367,7 @@ func ExecutionPayloadMerkleTreeNew(executionData interfaces.ExecutionData) (Merk
 	// Field (4) 'LogsBloom'
 	logsBloom := executionData.LogsBloom()
 	if hashRoot, err := BytesHashTreeRoot(logsBloom, 256, "LogsBloom"); err != nil {
+		logger.Error("ExecutionPayloadMerkleTreeNew BytesHashTreeRoot(logsBloom) error ", err)
 		return nil, err
 	} else {
 		leaves[4] = hashRoot
@@ -370,6 +376,7 @@ func ExecutionPayloadMerkleTreeNew(executionData interfaces.ExecutionData) (Merk
 	// Field (5) 'PrevRandao'
 	prevRandao := executionData.PrevRandao()
 	if hashRoot, err := BytesHashTreeRoot(prevRandao, 32, "PrevRandao"); err != nil {
+		logger.Error("ExecutionPayloadMerkleTreeNew BytesHashTreeRoot(prevRandao) error ", err)
 		return nil, err
 	} else {
 		leaves[5] = hashRoot
@@ -377,6 +384,7 @@ func ExecutionPayloadMerkleTreeNew(executionData interfaces.ExecutionData) (Merk
 
 	// Field (6) 'BlockNumber'
 	if hashRoot, err := Uint64HashTreeRoot(executionData.BlockNumber()); err != nil {
+		logger.Error("ExecutionPayloadMerkleTreeNew Uint64HashTreeRoot(executionData.BlockNumber()) error ", err)
 		return nil, err
 	} else {
 		leaves[6] = hashRoot
@@ -384,6 +392,7 @@ func ExecutionPayloadMerkleTreeNew(executionData interfaces.ExecutionData) (Merk
 
 	// Field (7) 'GasLimit'
 	if hashRoot, err := Uint64HashTreeRoot(executionData.GasLimit()); err != nil {
+		logger.Error("ExecutionPayloadMerkleTreeNew Uint64HashTreeRoot(executionData.GasLimit()) error ", err)
 		return nil, err
 	} else {
 		leaves[7] = hashRoot
@@ -391,6 +400,7 @@ func ExecutionPayloadMerkleTreeNew(executionData interfaces.ExecutionData) (Merk
 
 	// Field (8) 'GasUsed'
 	if hashRoot, err := Uint64HashTreeRoot(executionData.GasUsed()); err != nil {
+		logger.Error("ExecutionPayloadMerkleTreeNew Uint64HashTreeRoot(executionData.GasUsed()) error ", err)
 		return nil, err
 	} else {
 		leaves[8] = hashRoot
@@ -398,6 +408,7 @@ func ExecutionPayloadMerkleTreeNew(executionData interfaces.ExecutionData) (Merk
 
 	// Field (9) 'Timestamp'
 	if hashRoot, err := Uint64HashTreeRoot(executionData.Timestamp()); err != nil {
+		logger.Error("ExecutionPayloadMerkleTreeNew Uint64HashTreeRoot(executionData.Timestamp()) error ", err)
 		return nil, err
 	} else {
 		leaves[9] = hashRoot
@@ -405,6 +416,7 @@ func ExecutionPayloadMerkleTreeNew(executionData interfaces.ExecutionData) (Merk
 
 	// Field (10) 'ExtraData'
 	if hashRoot, err := specialFieldExtraDataHashTreeRoot(executionData.ExtraData()); err != nil {
+		logger.Error("ExecutionPayloadMerkleTreeNew specialFieldExtraDataHashTreeRoot(executionData.ExtraData() error ", err)
 		return nil, err
 	} else {
 		leaves[10] = hashRoot
@@ -413,6 +425,7 @@ func ExecutionPayloadMerkleTreeNew(executionData interfaces.ExecutionData) (Merk
 	// Field (11) 'BaseFeePerGas'
 	baseFeePerGas := executionData.BaseFeePerGas()
 	if hashRoot, err := BytesHashTreeRoot(baseFeePerGas, len(baseFeePerGas), "BaseFeePerGas"); err != nil {
+		logger.Error("ExecutionPayloadMerkleTreeNew BytesHashTreeRoot(baseFeePerGas) error ", err)
 		return nil, err
 	} else {
 		leaves[11] = hashRoot
@@ -421,6 +434,7 @@ func ExecutionPayloadMerkleTreeNew(executionData interfaces.ExecutionData) (Merk
 	// Field (12) 'BlockHash'
 	blockHash := executionData.BlockHash()
 	if hashRoot, err := BytesHashTreeRoot(blockHash, len(blockHash), "BlockHash"); err != nil {
+		logger.Error("ExecutionPayloadMerkleTreeNew BytesHashTreeRoot(blockHash) error ", err)
 		return nil, err
 	} else {
 		leaves[12] = hashRoot
@@ -432,6 +446,7 @@ func ExecutionPayloadMerkleTreeNew(executionData interfaces.ExecutionData) (Merk
 		return nil, err
 	}
 	if hashRoot, err := specialFieldTransactionsHashTreeRoot(transactions); err != nil {
+		logger.Error("ExecutionPayloadMerkleTreeNew specialFieldTransactionsHashTreeRoot(transactions) error ", err)
 		return nil, err
 	} else {
 		leaves[13] = hashRoot
@@ -447,6 +462,8 @@ func ExecutionPayloadMerkleTreeNew(executionData interfaces.ExecutionData) (Merk
 		if hashRoot, err := VecObjectHashTreeRoot(hrs, 16); err == nil {
 			leaves[14] = hashRoot
 		}
+	} else {
+		logger.Error("ExecutionPayloadMerkleTreeNew executionData.Withdrawals() error: ", err)
 	}
 
 	// Field (15) 'BlobGasUsed'
@@ -455,6 +472,8 @@ func ExecutionPayloadMerkleTreeNew(executionData interfaces.ExecutionData) (Merk
 			depth += 1
 			leaves = append(leaves, hashRoot)
 		}
+	} else {
+		logger.Error("ExecutionPayloadMerkleTreeNew executionData.BlobGasUsed() error: ", err)
 	}
 
 	// Field (16) 'ExcessBlobGas'
@@ -462,6 +481,8 @@ func ExecutionPayloadMerkleTreeNew(executionData interfaces.ExecutionData) (Merk
 		if hashRoot, err := Uint64HashTreeRoot(excessBlobGas); err == nil {
 			leaves = append(leaves, hashRoot)
 		}
+	} else {
+		logger.Error("ExecutionPayloadMerkleTreeNew executionData.ExcessBlobGas() error: ", err)
 	}
 
 	return create(leaves, depth), nil
