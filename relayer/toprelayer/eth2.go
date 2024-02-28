@@ -305,6 +305,7 @@ func (relayer *Eth2TopRelayerV2) sendRegularLightClientUpdate(lastFinalizedTopSl
 			return err
 		}
 	} else {
+		logger.Info("Eth2TopRelayerV2 calling GetLightClientUpdateV2 with period %d", lastPeriodOnTOP + 1)
 		data, err = relayer.consensusLayerClient.GetLightClientUpdateV2(lastPeriodOnTOP + 1)
 		if err != nil {
 			logger.Error("Eth2TopRelayerV2 GetLightClientUpdate at near period error:", err)
