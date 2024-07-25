@@ -1,4 +1,4 @@
-package ethbeacon_rpc
+package ethereum
 
 import (
 	"github.com/pkg/errors"

@@ -1,6 +1,7 @@
 package ethtypes
 
 import (
+	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/prysmaticlabs/prysm/v4/encoding/bytesutil"
 	eth "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
@@ -38,12 +39,12 @@ type HeaderUpdate struct {
 
 type FinalizedHeaderUpdate struct {
 	HeaderUpdate   *HeaderUpdate
-	FinalityBranch [][]byte
+	FinalityBranch [][common.HashLength]byte
 }
 
 type SyncCommitteeUpdate struct {
 	NextSyncCommittee       *eth.SyncCommittee
-	NextSyncCommitteeBranch [][]byte
+	NextSyncCommitteeBranch [][common.HashLength]byte
 }
 
 type LightClientUpdate struct {
@@ -73,10 +74,54 @@ func ConvertSliceHash2Bytes(hash []common.Hash) [][]byte {
 	return res
 }
 
+func ConvertSliceHash2SliceBytes32(hash []common.Hash) [][common.HashLength]byte {
+	res := make([][common.HashLength]byte, len(hash))
+	for i := range hash {
+		res[i] = hash[i]
+	}
+	return res
+}
+
+func ConvertSliceBytes2SliceBytes32(bytes [][]byte) ([][common.HashLength]byte, error) {
+	res := make([][common.HashLength]byte, len(bytes))
+	for i, b := range bytes {
+		if len(b) != common.HashLength {
+			err := fmt.Errorf("invalid hash length:%d, index:%d", len(b), i)
+			return nil, err
+		}
+		res[i] = [common.HashLength]byte(b)
+	}
+	return res, nil
+}
+
 func ConvertSliceBytes2Hash(bytes [][32]byte) []common.Hash {
 	res := make([]common.Hash, len(bytes))
 	for i, b := range bytes {
 		res[i] = b
 	}
 	return res
+}
+
+func ConvertHash2BytesSlice(hash common.Hash) []byte {
+	return hash[:]
+}
+
+func ConvertBytes32ToBytesSlice(hash [32]byte) []byte {
+	return hash[:]
+}
+
+func ConvertBytesSlice2Hash(bytes []byte) (common.Hash, error) {
+	if len(bytes) != common.HashLength {
+		err := fmt.Errorf("invalid hash length:%d", len(bytes))
+		return common.Hash{}, err
+	}
+	return common.Hash(bytes), nil
+}
+
+func ConvertBytesSlice2Bytes32(bytes []byte) ([common.HashLength]byte, error) {
+	if len(bytes) != common.HashLength {
+		err := fmt.Errorf("invalid hash length:%d", len(bytes))
+		return [32]byte{}, err
+	}
+	return [32]byte(bytes), nil
 }

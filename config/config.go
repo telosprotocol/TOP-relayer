@@ -36,12 +36,8 @@ const (
 )
 
 const (
-	TOP_CHAIN     string = "TOP"
-	ETH_CHAIN     string = "ETH"
-	BSC_CHAIN     string = "BSC"
-	HECO_CHAIN    string = "HECO"
-	OPEN_ALLIANCE string = "OPEN_ALLIANCE"
-
+	TOP_CHAIN  string = "TOP"
+	ETH_CHAIN  string = "ETH"
 	LOG_DIR    string = "log"
 	LOG_CONFIG string = `{
 		"TimeFormat":"2006-01-02 15:04:05",
@@ -106,18 +102,6 @@ func fullConfigInfo(cfg *Config) error {
 		v.Url = make([]string, 1)
 		v.Url[0] = ETHAddr
 		v.Contract = ETHContract
-	case BSC_CHAIN:
-		v.Url = make([]string, 1)
-		v.Url[0] = BSCAddr
-		v.Contract = BSCContract
-	case HECO_CHAIN:
-		v.Url = make([]string, 1)
-		v.Url[0] = HECOAddr
-		v.Contract = HECOContract
-	case OPEN_ALLIANCE:
-		v.Url = make([]string, 1)
-		v.Url[0] = OAAddr
-		v.Contract = OAContract
 	default:
 		return fmt.Errorf("invalid RelayerToRun(%s)", cfg.RelayerToRun)
 	}
@@ -134,15 +118,6 @@ func fullConfigInfo(cfg *Config) error {
 			v.Url = make([]string, 3)
 			v.Url[0] = ETHAddr
 			v.Url[1] = ETHPrysm
-		case BSC_CHAIN:
-			v.Url = make([]string, 1)
-			v.Url[0] = BSCAddr
-		case HECO_CHAIN:
-			v.Url = make([]string, 1)
-			v.Url[0] = HECOAddr
-		case OPEN_ALLIANCE:
-			v.Url = make([]string, 1)
-			v.Url[0] = OAAddr
 		default:
 			return fmt.Errorf("invalid RelayerToRun(%s)", cfg.RelayerToRun)
 		}

@@ -4,8 +4,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/prysmaticlabs/prysm/v4/api/client/beacon"
+	fieldparams "github.com/prysmaticlabs/prysm/v4/config/fieldparams"
+	"github.com/prysmaticlabs/prysm/v4/consensus-types/primitives"
 	"github.com/prysmaticlabs/prysm/v4/container/slice"
 	"github.com/prysmaticlabs/prysm/v4/math"
+	eth "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
+	"github.com/wonderivan/logger"
 	"math/big"
 	"strconv"
 	"strings"
@@ -13,22 +23,9 @@ import (
 	"time"
 	"toprelayer/config"
 	eth2bridge "toprelayer/contract/top/eth2client"
-	"toprelayer/relayer/toprelayer/ethashapp"
-	"toprelayer/relayer/toprelayer/ethtypes"
-	beaconrpc "toprelayer/rpc/ethbeacon_rpc"
+	"toprelayer/rpc/ethereum"
+	"toprelayer/rpc/ethereum/light_client"
 	"toprelayer/wallet"
-
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/prysmaticlabs/prysm/v4/beacon-chain/core/signing"
-	p2pType "github.com/prysmaticlabs/prysm/v4/beacon-chain/p2p/types"
-	primitives "github.com/prysmaticlabs/prysm/v4/consensus-types/primitives"
-	"github.com/prysmaticlabs/prysm/v4/crypto/bls"
-	eth "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
-	"github.com/wonderivan/logger"
 )
 
 var (
@@ -44,16 +41,17 @@ const (
 )
 
 type Eth2TopRelayerV2 struct {
-	wallet          *wallet.Wallet
-	ethrpcclient    *ethclient.Client
-	beaconrpcclient *beaconrpc.BeaconGrpcClient
-	transactor      *eth2bridge.Eth2ClientTransactor
-	callerSession   *eth2bridge.Eth2ClientCallerSession
-	lastSlot        uint64
+	wallet               *wallet.Wallet
+	executionLayerClient *ethclient.Client
+	consensusLayerClient *ethereum.BeaconClient
+	transactor           *eth2bridge.Eth2ClientTransactor
+	callerSession        *eth2bridge.Eth2ClientCallerSession
+	lastSlot             uint64
 }
 
 func (relayer *Eth2TopRelayerV2) Init(cfg *config.Relayer, listenUrl []string, pass string) error {
 	w, err := wallet.NewTopWallet(cfg.Url[0], cfg.KeyPath, pass)
+	logger.Info("Eth2TopRelayerV2 TOP wallet url:", cfg.Url[0])
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 NewWallet error:", err)
 		return err
@@ -65,12 +63,12 @@ func (relayer *Eth2TopRelayerV2) Init(cfg *config.Relayer, listenUrl []string, p
 		logger.Error("Eth2TopRelayerV2 listenUrl error:", err)
 		return err
 	}
-	relayer.ethrpcclient, err = ethclient.Dial(listenUrl[0])
+	relayer.executionLayerClient, err = ethclient.Dial(listenUrl[0])
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 ethclient.Dial error:", err)
 		return err
 	}
-	relayer.beaconrpcclient, err = beaconrpc.NewBeaconGrpcClient(listenUrl[1])
+	relayer.consensusLayerClient, err = ethereum.NewBeaconClient(listenUrl[1])
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 NewBeaconGrpcClient error:", err)
 		return err
@@ -104,6 +102,8 @@ func (relayer *Eth2TopRelayerV2) Init(cfg *config.Relayer, listenUrl []string, p
 		logger.Error("Eth2TopRelayerV2 New monitor error", err)
 		return err
 	}
+
+	logger.Info("Eth2TopRelayerV2 init eth1 url:%s eth2 url:%s TOP eth1 url:%s ethHeaderSyncContractAddr:%s", listenUrl[0], listenUrl[1], cfg.Url[0], eth2ClientSystemContract.Hex())
 	return nil
 }
 
@@ -152,154 +152,161 @@ func (relayer *Eth2TopRelayerV2) StartRelayer(wg *sync.WaitGroup) error {
 	return nil
 }
 
-func (relayer *Eth2TopRelayerV2) blockKnownOnTop(slot uint64) (bool, error) {
-	height, err := relayer.beaconrpcclient.GetBlockNumberForSlot(slot)
-	//logger.Debug("blockKnownOnTop slot %v, height %v", slot, height)
+//func (relayer *Eth2TopRelayerV2) blockKnownOnTop(slot uint64) (bool, error) {
+//	height, err := relayer.beaconClient.GetBlockNumberForSlot(primitives.Slot(slot))
+//	//logger.Debug("blockKnownOnTop slot %v, height %v", slot, height)
+//	if err != nil {
+//		return false, err
+//	}
+//	return relayer.callerSession.IsKnownExecutionHeader(height)
+//}
+
+//func (relayer *Eth2TopRelayerV2) findLeftNonErrorSlot(leftSlot, rightSlot uint64) (uint64, bool) {
+//	slot := leftSlot
+//	for slot != rightSlot {
+//		known, err := relayer.blockKnownOnTop(slot)
+//		if err != nil {
+//			slot += 1
+//		} else {
+//			return slot, known
+//		}
+//	}
+//	return slot, false
+//}
+
+//func (relayer *Eth2TopRelayerV2) linearSearchForward(slot, maxSlot uint64) (uint64, error) {
+//	for {
+//		if slot >= maxSlot {
+//			break
+//		}
+//		known, err := relayer.blockKnownOnTop(slot + 1)
+//		if err != nil {
+//			if ethereum.IsErrorNoBlockForSlot(err) {
+//				slot += 1
+//				continue
+//			} else {
+//				logger.Error("Eth2TopRelayerV2 blockKnownOnTop error", err)
+//				return 0, err
+//			}
+//		}
+//		if known {
+//			slot += 1
+//			logger.Debug("curr top known slot: %v,maxSlot: %v", slot, maxSlot)
+//		} else {
+//			break
+//		}
+//	}
+//	logger.Debug("linearSearchForward return slot: %v", slot)
+//	return slot, nil
+//}
+
+//func (relayer *Eth2TopRelayerV2) linearSearchBackward(startSlot, lastSlot uint64) (uint64, error) {
+//	slot := lastSlot
+//	lastFalseSlot := slot + 1
+//	for {
+//		if slot <= startSlot {
+//			break
+//		}
+//		known, err := relayer.blockKnownOnTop(slot)
+//		if err != nil {
+//			if beaconrpc.IsErrorNoBlockForSlot(err) {
+//				slot -= 1
+//				continue
+//			} else {
+//				logger.Error("Eth2TopRelayerV2 blockKnownOnTop error", err)
+//				return 0, err
+//			}
+//		}
+//		if known {
+//			break
+//		} else {
+//			lastFalseSlot = slot
+//			slot -= 1
+//		}
+//	}
+//	return lastFalseSlot - 1, nil
+//}
+
+//func (relayer *Eth2TopRelayerV2) linerSlotSearch(slot, finalizedSlot, lastEthSlot uint64) (uint64, error) {
+//	if slot == finalizedSlot {
+//		logger.Info("slot equal finalizedSlot %v go forward,greater than lastEthSlot:%v", slot, lastEthSlot)
+//		return relayer.linearSearchForward(slot, lastEthSlot)
+//	}
+//	known, err := relayer.blockKnownOnTop(slot)
+//	if err != nil {
+//		if beaconrpc.IsErrorNoBlockForSlot(err) {
+//			leftSlot, known := relayer.findLeftNonErrorSlot(slot+1, lastEthSlot+1)
+//			if known {
+//				return relayer.linearSearchForward(leftSlot, lastEthSlot)
+//			} else {
+//				return relayer.linearSearchForward(finalizedSlot, leftSlot-1)
+//			}
+//		} else {
+//			logger.Error("Eth2TopRelayerV2 blockKnownOnTop error", err)
+//			return 0, err
+//		}
+//	}
+//	if known {
+//		logger.Debug("slot %v known, go forward", slot)
+//		return relayer.linearSearchForward(slot, lastEthSlot)
+//	} else {
+//		logger.Debug("slot %v unknown, go backward", slot)
+//		return relayer.linearSearchBackward(finalizedSlot, slot)
+//	}
+//}
+
+//func (relayer *Eth2TopRelayerV2) getMaxSlotForSubmission() (uint64, error) {
+//	slot, err := relayer.beaconClient.GetLastSlotNumber()
+//	if err != nil {
+//		return 0, err
+//	}
+//	return uint64(slot), nil
+//}
+
+//func (relayer *Eth2TopRelayerV2) getLastEth2SlotOnTop(lastEthSlot uint64) (uint64, error) {
+//	finalizedSlot, err := relayer.callerSession.FinalizedBeaconBlockSlot()
+//	if err != nil {
+//		logger.Error("Eth2TopRelayerV2 FinalizedBeaconBlockSlot error", err)
+//		return 0, nil
+//	}
+//	lastSubmittedSlot := relayer.lastSlot
+//	slot := finalizedSlot
+//	if lastSubmittedSlot > finalizedSlot {
+//		slot = lastSubmittedSlot
+//	}
+//	logger.Debug("getLastEth2SlotOnTop finalizedSlot: %v, lastSubmittedSlot: %v, slot: %v", finalizedSlot, lastSubmittedSlot, slot)
+//	return relayer.linerSlotSearch(slot, finalizedSlot, lastEthSlot)
+//}
+
+func (relayer *Eth2TopRelayerV2) getLastFinalizedSlotOnTop() (primitives.Slot, error) {
+	slotVal, err := relayer.callerSession.FinalizedBeaconBlockSlot()
 	if err != nil {
-		return false, err
+		return 0, err
 	}
-	return relayer.callerSession.IsKnownExecutionHeader(height)
+	return primitives.Slot(slotVal), nil
 }
 
-func (relayer *Eth2TopRelayerV2) findLeftNonErrorSlot(leftSlot, rightSlot uint64) (uint64, bool) {
-	slot := leftSlot
-	for slot != rightSlot {
-		known, err := relayer.blockKnownOnTop(slot)
-		if err != nil {
-			slot += 1
-		} else {
-			return slot, known
-		}
-	}
-	return slot, false
-}
-
-func (relayer *Eth2TopRelayerV2) linearSearchForward(slot, maxSlot uint64) (uint64, error) {
-	for {
-		if slot >= maxSlot {
-			break
-		}
-		known, err := relayer.blockKnownOnTop(slot + 1)
-		if err != nil {
-			if beaconrpc.IsErrorNoBlockForSlot(err) {
-				slot += 1
-				continue
-			} else {
-				logger.Error("Eth2TopRelayerV2 blockKnownOnTop error", err)
-				return 0, err
-			}
-		}
-		if known {
-			slot += 1
-			logger.Debug("curr top known slot: %v,maxSlot: %v", slot, maxSlot)
-		} else {
-			break
-		}
-	}
-	logger.Debug("linearSearchForward return slot: %v", slot)
-	return slot, nil
-}
-
-func (relayer *Eth2TopRelayerV2) linearSearchBackward(startSlot, lastSlot uint64) (uint64, error) {
-	slot := lastSlot
-	lastFalseSlot := slot + 1
-	for {
-		if slot <= startSlot {
-			break
-		}
-		known, err := relayer.blockKnownOnTop(slot)
-		if err != nil {
-			if beaconrpc.IsErrorNoBlockForSlot(err) {
-				slot -= 1
-				continue
-			} else {
-				logger.Error("Eth2TopRelayerV2 blockKnownOnTop error", err)
-				return 0, err
-			}
-		}
-		if known {
-			break
-		} else {
-			lastFalseSlot = slot
-			slot -= 1
-		}
-	}
-	return lastFalseSlot - 1, nil
-}
-
-func (relayer *Eth2TopRelayerV2) linerSlotSearch(slot, finalizedSlot, lastEthSlot uint64) (uint64, error) {
-	if slot == finalizedSlot {
-		logger.Info("slot equal finalizedSlot %v go forward,greater than lastEthSlot:%v", slot, lastEthSlot)
-		return relayer.linearSearchForward(slot, lastEthSlot)
-	}
-	known, err := relayer.blockKnownOnTop(slot)
+func (relayer *Eth2TopRelayerV2) getLastFinalizedSlotOnEth() (primitives.Slot, error) {
+	slotVal, err := relayer.consensusLayerClient.GetLastFinalizedSlotNumber()
 	if err != nil {
-		if beaconrpc.IsErrorNoBlockForSlot(err) {
-			leftSlot, known := relayer.findLeftNonErrorSlot(slot+1, lastEthSlot+1)
-			if known {
-				return relayer.linearSearchForward(leftSlot, lastEthSlot)
-			} else {
-				return relayer.linearSearchForward(finalizedSlot, leftSlot-1)
-			}
-		} else {
-			logger.Error("Eth2TopRelayerV2 blockKnownOnTop error", err)
-			return 0, err
-		}
+		return 0, err
 	}
-	if known {
-		logger.Debug("slot %v known, go forward", slot)
-		return relayer.linearSearchForward(slot, lastEthSlot)
-	} else {
-		logger.Debug("slot %v unknown, go backward", slot)
-		return relayer.linearSearchBackward(finalizedSlot, slot)
-	}
+	return slotVal, nil
 }
 
-func (relayer *Eth2TopRelayerV2) getMaxSlotForSubmission() (uint64, error) {
-	return relayer.beaconrpcclient.GetLastSlotNumber()
-}
-
-func (relayer *Eth2TopRelayerV2) getLastEth2SlotOnTop(lastEthSlot uint64) (uint64, error) {
-	finalizedSlot, err := relayer.callerSession.FinalizedBeaconBlockSlot()
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 FinalizedBeaconBlockSlot error", err)
-		return 0, nil
-	}
-	lastSubmittedSlot := relayer.lastSlot
-	slot := finalizedSlot
-	if lastSubmittedSlot > finalizedSlot {
-		slot = lastSubmittedSlot
-	}
-	logger.Debug("getLastEth2SlotOnTop finalizedSlot: %v, lastSubmittedSlot: %v, slot: %v", finalizedSlot, lastSubmittedSlot, slot)
-	return relayer.linerSlotSearch(slot, finalizedSlot, lastEthSlot)
-}
-
-func (relayer *Eth2TopRelayerV2) getLastFinalizedSlotOnTop() (uint64, error) {
-	return relayer.callerSession.FinalizedBeaconBlockSlot()
-}
-
-func (relayer *Eth2TopRelayerV2) getLastFinalizedSlotOnEth() (uint64, error) {
-	return relayer.beaconrpcclient.GetLastFinalizedSlotNumber()
-}
-
-func (relayer *Eth2TopRelayerV2) sendRegularLightClientUpdate(lastFinalizedTopSlot, lastFinalizedEthSlot uint64) error {
-	lastPeriodOnTOP, lastPeriodOnEth := beaconrpc.GetPeriodForSlot(lastFinalizedTopSlot), beaconrpc.GetPeriodForSlot(lastFinalizedEthSlot)
-	var data *beaconrpc.LightClientUpdate
+func (relayer *Eth2TopRelayerV2) sendRegularLightClientUpdate(lastFinalizedTopSlot, lastFinalizedEthSlot primitives.Slot) error {
+	lastPeriodOnTOP, lastPeriodOnEth := ethereum.GetPeriodForSlot(lastFinalizedTopSlot), ethereum.GetPeriodForSlot(lastFinalizedEthSlot)
+	var data *light_client.LightClientUpdate
 	var err error
 	if lastPeriodOnTOP == lastPeriodOnEth {
-		data, err = relayer.beaconrpcclient.GetFinalizedLightClientUpdateByEthSlot(lastFinalizedEthSlot)
+		data, err = relayer.consensusLayerClient.GetPrysmFinalityLightClientUpdate()
 		if err != nil {
 			logger.Error("Eth2TopRelayerV2 GetLightClientUpdate at same period error:", err)
 			return err
 		}
-	} else if lastPeriodOnTOP+1 == lastPeriodOnEth {
-		data, err = relayer.beaconrpcclient.GetLastFinalizedLightClientUpdateV2WithNextSyncCommitteeByEthSlot(lastFinalizedEthSlot)
-		if err != nil {
-			logger.Error("Eth2TopRelayerV2 GetLightClientUpdate at next period error:", err)
-			return err
-		}
 	} else {
-		data, err = relayer.beaconrpcclient.GetLightClientUpdateV2(lastPeriodOnTOP + 1)
+		logger.Info("Eth2TopRelayerV2 calling GetLightClientUpdateV2 with period %d", lastPeriodOnTOP + 1)
+		data, err = relayer.consensusLayerClient.GetPrysmLightClientUpdate(lastPeriodOnTOP + 1)
 		if err != nil {
 			logger.Error("Eth2TopRelayerV2 GetLightClientUpdate at near period error:", err)
 			return err
@@ -324,8 +331,9 @@ func (relayer *Eth2TopRelayerV2) sendLightClientUpdatesWithChecks() error {
 		logger.Error("Eth2TopRelayerV2 getLastFinalizedSlotOnEth error:", err)
 		return err
 	}
-	lastPeriodOnTOP, lastPeriodOnEth := beaconrpc.GetPeriodForSlot(lastFinalizedSlotOnTop), beaconrpc.GetPeriodForSlot(lastFinalizedSlotOnEth)
-	logger.Info("Eth2TopRelayerV2 lastFinalizedSlot TOP(Period:%d,slot:%d), ETH(period:%d,slot:%d)", lastPeriodOnTOP, lastFinalizedSlotOnTop, lastPeriodOnEth, lastFinalizedSlotOnEth)
+	lastEpochOnTOP, lastEpochOnEth := ethereum.GetEpochForSlot(lastFinalizedSlotOnTop), ethereum.GetEpochForSlot(lastFinalizedSlotOnEth)
+	lastPeriodOnTOP, lastPeriodOnEth := ethereum.GetPeriodForEpoch(lastEpochOnTOP), ethereum.GetPeriodForEpoch(lastEpochOnEth)
+	logger.Info("Eth2TopRelayerV2 lastFinalizedSlot TOP(Period:%d,Epoch:%d,Slot:%d), ETH(Period:%d,Epoch:%d,Slot:%d)", lastPeriodOnTOP, lastEpochOnTOP, lastFinalizedSlotOnTop, lastPeriodOnEth, lastEpochOnEth, lastFinalizedSlotOnEth)
 	if !relayer.isEnoughBlocksForLightClientUpdate(lastFinalizedSlotOnTop, lastFinalizedSlotOnEth) {
 		return errors.New("no need to submit LightClientUpdate")
 	}
@@ -375,7 +383,7 @@ func (relayer *Eth2TopRelayerV2) submitHeaders() error {
 		return err
 	}
 	logger.Info("Eth2TopRelayerV2 lastBlockNumberOnTop Finalized:%v, Tail:%v", lastFinalizedBlockNumber, currentBlockNumber+1)
-	minBlockNumberInBatch := math.Max(lastFinalizedBlockNumber+1, currentBlockNumber-beaconrpc.HEADER_BATCH_SIZE+1)
+	minBlockNumberInBatch := math.Max(lastFinalizedBlockNumber+1, currentBlockNumber-ethereum.HEADER_BATCH_SIZE+1)
 	headers, err := relayer.getExecutionBlocksBetweenByNumber(minBlockNumberInBatch, currentBlockNumber)
 	if err != nil {
 		return err
@@ -399,7 +407,7 @@ func (relayer *Eth2TopRelayerV2) getMaxBlockNumber() (uint64, error) {
 	if slot, err := relayer.getLastFinalizedSlotOnTop(); err != nil {
 		return 0, err
 	} else {
-		return relayer.beaconrpcclient.GetBlockNumberForSlot(slot)
+		return relayer.consensusLayerClient.GetBlockNumberForSlot(slot)
 	}
 }
 
@@ -463,15 +471,34 @@ func (relayer *Eth2TopRelayerV2) signTransaction(addr common.Address, tx *types.
 	return nil, fmt.Errorf("Eth2TopRelayer address:%v not available", addr)
 }
 
-func (relayer *Eth2TopRelayerV2) getExecutionBlocksBetween(start, end uint64) ([]*types.Header, error) {
-	curSlot := start
-	logger.Info("Eth2TopRelayerV2 getExecutionBlocksBetween start:%v,end:%v", start, end)
+//func (relayer *Eth2TopRelayerV2) getExecutionBlocksBetween(start, end primitives.Slot) ([]*types.Header, error) {
+//	curSlot := start
+//	logger.Info("Eth2TopRelayerV2 getExecutionBlocksBetween start:%v,end:%v", start, end)
+//	var headers []*types.Header
+//	for curSlot <= end {
+//		header, err := relayer.getExecutionBlockBySlot(curSlot)
+//		curSlot += 1
+//		if err != nil {
+//			if beaconrpc.IsErrorNoBlockForSlot(err) {
+//				continue
+//			}
+//			logger.Error("Eth2TopRelayerV2 getExecutionBlockBySlot error", err)
+//			return nil, err
+//		}
+//		headers = append(headers, header)
+//	}
+//	return headers, nil
+//}
+
+func (relayer *Eth2TopRelayerV2) getExecutionBlocksBetweenByNumber(low, height uint64) ([]*types.Header, error) {
+	curNumber := low
+	logger.Info("Eth2TopRelayerV2 SubmitBlocksNumber start:%v,end:%v", low, height)
 	var headers []*types.Header
-	for curSlot <= end {
-		header, err := relayer.getExecutionBlockBySlot(curSlot)
-		curSlot += 1
+	for curNumber <= height {
+		header, err := relayer.getExecutionBlockByNumber(curNumber)
+		curNumber += 1
 		if err != nil {
-			if beaconrpc.IsErrorNoBlockForSlot(err) {
+			if ethereum.IsErrorNoBlockForSlot(err) {
 				continue
 			}
 			logger.Error("Eth2TopRelayerV2 getExecutionBlockBySlot error", err)
@@ -482,23 +509,12 @@ func (relayer *Eth2TopRelayerV2) getExecutionBlocksBetween(start, end uint64) ([
 	return headers, nil
 }
 
-func (relayer *Eth2TopRelayerV2) getExecutionBlocksBetweenByNumber(low, height uint64) ([]*types.Header, error) {
-	curNumber := low
-	logger.Info("Eth2TopRelayerV2 SubmitBlocksNumber start:%v,end:%v", low, height)
-	var headers []*types.Header
-	for curNumber <= height {
-		header, err := relayer.getExecutionBlockByNumber(curNumber)
-		curNumber += 1
-		if err != nil {
-			if beaconrpc.IsErrorNoBlockForSlot(err) {
-				continue
-			}
-			logger.Error("Eth2TopRelayerV2 getExecutionBlockBySlot error", err)
-			return nil, err
-		}
-		headers = append(headers, header)
-	}
-	return headers, nil
+type Output struct {
+	HeaderRLP    string   `json:"header_rlp"`
+	MerkleRoot   string   `json:"merkle_root"`
+	Elements     []string `json:"elements"`
+	MerkleProofs []string `json:"merkle_proofs"`
+	ProofLength  uint64   `json:"proof_length"`
 }
 
 func (relayer *Eth2TopRelayerV2) encodeEthHeaders(headers []*types.Header) ([]byte, error) {
@@ -509,7 +525,7 @@ func (relayer *Eth2TopRelayerV2) encodeEthHeaders(headers []*types.Header) ([]by
 			logger.Error("rlp encode error: ", err)
 			return nil, err
 		}
-		if outBytes, err := rlp.EncodeToBytes(ethashapp.Output{
+		if outBytes, err := rlp.EncodeToBytes(Output{
 			HeaderRLP: string(rlpBytes),
 		}); err != nil {
 			logger.Error("Eth2TopRelayerV2 Output rlp encode error: ", err)
@@ -522,21 +538,21 @@ func (relayer *Eth2TopRelayerV2) encodeEthHeaders(headers []*types.Header) ([]by
 	return encodedHeaders, nil
 }
 
-func (relayer *Eth2TopRelayerV2) getExecutionBlockBySlot(slot uint64) (*types.Header, error) {
-	number, err := relayer.beaconrpcclient.GetBlockNumberForSlot(slot)
-	if err != nil {
-		return nil, err
-	}
-	header, err := relayer.ethrpcclient.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(number))
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 HeaderByNumber error:", err)
-		return nil, err
-	}
-	return header, nil
-}
+//func (relayer *Eth2TopRelayerV2) getExecutionBlockBySlot(slot primitives.Slot) (*types.Header, error) {
+//	number, err := relayer.beaconClient.GetBlockNumberForSlot(slot)
+//	if err != nil {
+//		return nil, err
+//	}
+//	header, err := relayer.ethrpcclient.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(number))
+//	if err != nil {
+//		logger.Error("Eth2TopRelayerV2 HeaderByNumber error:", err)
+//		return nil, err
+//	}
+//	return header, nil
+//}
 
 func (relayer *Eth2TopRelayerV2) getExecutionBlockByNumber(number uint64) (*types.Header, error) {
-	header, err := relayer.ethrpcclient.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(number))
+	header, err := relayer.executionLayerClient.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(number))
 	if err != nil {
 		logger.Error("Eth2TopRelayerV2 HeaderByNumber error:", err)
 		return nil, err
@@ -544,19 +560,19 @@ func (relayer *Eth2TopRelayerV2) getExecutionBlockByNumber(number uint64) (*type
 	return header, nil
 }
 
-func (relayer *Eth2TopRelayerV2) isEnoughBlocksForLightClientUpdate(lastFinalizedTopSlot, lastFinalizedEthSlot uint64) bool {
+func (relayer *Eth2TopRelayerV2) isEnoughBlocksForLightClientUpdate(lastFinalizedTopSlot, lastFinalizedEthSlot primitives.Slot) bool {
 	if lastFinalizedTopSlot >= lastFinalizedEthSlot {
 		return false
 	}
-	lastPeriodOnEth := beaconrpc.GetPeriodForSlot(lastFinalizedEthSlot)
-	lastPeriodOnTop := beaconrpc.GetPeriodForSlot(lastFinalizedTopSlot)
+	lastPeriodOnEth := ethereum.GetPeriodForSlot(lastFinalizedEthSlot)
+	lastPeriodOnTop := ethereum.GetPeriodForSlot(lastFinalizedTopSlot)
 	//if lastPeriodOnEth == lastPeriodOnTop+1 {
 	//	if beaconrpc.GetFinalizedSlotForPeriod(lastPeriodOnEth) >= lastFinalizedEthSlot {
 	//		return false
 	//	}
 	//}
 	if lastPeriodOnEth == lastPeriodOnTop {
-		if (lastFinalizedEthSlot - lastFinalizedTopSlot) < beaconrpc.ONE_EPOCH_IN_SLOTS*3 {
+		if (lastFinalizedEthSlot - lastFinalizedTopSlot) < ethereum.ONE_EPOCH_IN_SLOTS*3 {
 			return false
 		}
 		//submitFinalizedSlot, err := relayer.beaconrpcclient.GetLastFinalizedLightClientUpdateV2FinalizedSlot()
@@ -571,86 +587,90 @@ func (relayer *Eth2TopRelayerV2) isEnoughBlocksForLightClientUpdate(lastFinalize
 	return true
 }
 
-func FilterSyncCommitteeVotes(committeeKeys [][]byte, sync *eth.SyncAggregate) ([]bls.PublicKey, error) {
-	if sync.SyncCommitteeBits.Len() > uint64(len(committeeKeys)) {
-		return nil, errors.New("bits length exceeds committee length")
-	}
-	votedKeys := make([]bls.PublicKey, 0, len(committeeKeys))
-	for i := uint64(0); i < sync.SyncCommitteeBits.Len(); i++ {
-		if sync.SyncCommitteeBits.BitAt(i) {
-			pubKey, err := bls.PublicKeyFromBytes(committeeKeys[i])
-			if err != nil {
-				return nil, err
-			}
-			votedKeys = append(votedKeys, pubKey)
-		}
-	}
-	return votedKeys, nil
-}
+//func FilterSyncCommitteeVotes(committeeKeys [][]byte, sync *eth.SyncAggregate) ([]bls.PublicKey, error) {
+//	if sync.SyncCommitteeBits.Len() > uint64(len(committeeKeys)) {
+//		return nil, errors.New("bits length exceeds committee length")
+//	}
+//	votedKeys := make([]bls.PublicKey, 0, len(committeeKeys))
+//	for i := uint64(0); i < sync.SyncCommitteeBits.Len(); i++ {
+//		if sync.SyncCommitteeBits.BitAt(i) {
+//			pubKey, err := bls.PublicKeyFromBytes(committeeKeys[i])
+//			if err != nil {
+//				return nil, err
+//			}
+//			votedKeys = append(votedKeys, pubKey)
+//		}
+//	}
+//	return votedKeys, nil
+//}
 
-func (relayer *Eth2TopRelayerV2) isCorrectFinalityUpdate(update *ethtypes.LightClientUpdate, committee *eth.SyncCommittee) error {
-	pubKeys, err := FilterSyncCommitteeVotes(committee.Pubkeys, update.SyncAggregate)
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 FilterSyncCommitteeVotes error:", err)
-		return err
-	}
+//func (relayer *Eth2TopRelayerV2) isCorrectFinalityUpdate(update *ethtypes.LightClientUpdate, committee *eth.SyncCommittee) error {
+//	pubKeys, err := FilterSyncCommitteeVotes(committee.Pubkeys, update.SyncAggregate)
+//	if err != nil {
+//		logger.Error("Eth2TopRelayerV2 FilterSyncCommitteeVotes error:", err)
+//		return err
+//	}
+//
+//	domain, err := signing.ComputeDomain(ethtypes.DomainSyncCommittee, ethtypes.BellatrixForkVersion, ethtypes.GenesisValidatorsRoot[:])
+//	if err != nil {
+//		logger.Error("Eth2TopRelayerV2 ComputeDomain error:", err)
+//		return err
+//	}
+//	pbr, err := update.AttestedBeaconHeader.HashTreeRoot()
+//	if err != nil {
+//		logger.Error("Eth2TopRelayerV2 HashTreeRoot error:", err)
+//		return err
+//	}
+//	sszBytes := p2pType.SSZBytes(pbr[:])
+//	signingRoot, err := signing.ComputeSigningRoot(&sszBytes, domain)
+//	if err != nil {
+//		logger.Error("Eth2TopRelayerV2 ComputeSigningRoot error:", err)
+//		return err
+//	}
+//
+//	aggregateSign, err := bls.SignatureFromBytes(update.SyncAggregate.SyncCommitteeSignature)
+//	if err != nil {
+//		logger.Error("Eth2TopRelayerV2 SignatureFromBytes error:", err)
+//		return err
+//	}
+//	if !aggregateSign.Eth2FastAggregateVerify(pubKeys, signingRoot) {
+//		return errors.New("invalid sync committee signature")
+//	}
+//	return nil
+//}
 
-	domain, err := signing.ComputeDomain(ethtypes.DomainSyncCommittee, ethtypes.BellatrixForkVersion, ethtypes.GenesisValidatorsRoot[:])
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 ComputeDomain error:", err)
-		return err
-	}
-	pbr, err := update.AttestedBeaconHeader.HashTreeRoot()
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 HashTreeRoot error:", err)
-		return err
-	}
-	sszBytes := p2pType.SSZBytes(pbr[:])
-	signingRoot, err := signing.ComputeSigningRoot(&sszBytes, domain)
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 ComputeSigningRoot error:", err)
-		return err
-	}
-
-	aggregateSign, err := bls.SignatureFromBytes(update.SyncAggregate.SyncCommitteeSignature)
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 SignatureFromBytes error:", err)
-		return err
-	}
-	if !aggregateSign.Eth2FastAggregateVerify(pubKeys, signingRoot) {
-		return errors.New("invalid sync committee signature")
-	}
-	return nil
-}
-
-func (relayer *Eth2TopRelayerV2) verify_bls_signature_for_finality_update(update *ethtypes.LightClientUpdate) error {
-	signatureSlotPeriod := beaconrpc.GetPeriodForSlot(update.SignatureSlot)
-	topFinalizedBeaconBlockSlot, err := relayer.callerSession.FinalizedBeaconBlockSlot()
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 FinalizedBeaconBlockSlot error:", err)
-		return err
-	}
-	finalizedSlotPeriod := beaconrpc.GetPeriodForSlot(topFinalizedBeaconBlockSlot)
-	stateBytes, err := relayer.callerSession.GetLightClientState()
-	if err != nil {
-		logger.Error("Eth2TopRelayerV2 GetLightClientState error:", err)
-		return err
-	}
-	var state ethtypes.LightClientState
-	rlp.DecodeBytes(stateBytes, state)
-	var committee *eth.SyncCommittee
-	if signatureSlotPeriod == finalizedSlotPeriod {
-		committee = state.CurrentSyncCommittee
-	} else {
-		committee = state.NextSyncCommittee
-	}
-	return relayer.isCorrectFinalityUpdate(update, committee)
-}
+//func (relayer *Eth2TopRelayerV2) verify_bls_signature_for_finality_update(update *ethtypes.LightClientUpdate) error {
+//	signatureSlotPeriod := beaconrpc.GetPeriodForSlot(update.SignatureSlot)
+//	topFinalizedBeaconBlockSlot, err := relayer.callerSession.FinalizedBeaconBlockSlot()
+//	if err != nil {
+//		logger.Error("Eth2TopRelayerV2 FinalizedBeaconBlockSlot error:", err)
+//		return err
+//	}
+//	finalizedSlotPeriod := beaconrpc.GetPeriodForSlot(topFinalizedBeaconBlockSlot)
+//	stateBytes, err := relayer.callerSession.GetLightClientState()
+//	if err != nil {
+//		logger.Error("Eth2TopRelayerV2 GetLightClientState error:", err)
+//		return err
+//	}
+//	var state ethtypes.LightClientState
+//	err = rlp.DecodeBytes(stateBytes, state)
+//	if err != nil {
+//		logger.Error("Eth2TopRelayerV2 DecodeBytes error:", err)
+//		return err
+//	}
+//	var committee *eth.SyncCommittee
+//	if signatureSlotPeriod == finalizedSlotPeriod {
+//		committee = state.CurrentSyncCommittee
+//	} else {
+//		committee = state.NextSyncCommittee
+//	}
+//	return relayer.isCorrectFinalityUpdate(update, committee)
+//}
 
 type ExtendedBeaconBlockHeader struct {
-	Header             *beaconrpc.BeaconBlockHeader
-	BeaconBlockRoot    []byte
-	ExecutionBlockHash []byte
+	Header             *light_client.BeaconBlockHeader
+	BeaconBlockRoot    [fieldparams.RootLength]byte
+	ExecutionBlockHash [fieldparams.RootLength]byte
 }
 
 func (h *ExtendedBeaconBlockHeader) Encode() ([]byte, error) {
@@ -726,13 +746,13 @@ func (init *InitInput) Encode() ([]byte, error) {
 }
 
 func (relayer *Eth2TopRelayerV2) GetInitData() ([]byte, error) {
-	lastSlot, err := relayer.beaconrpcclient.GetLastFinalizedSlotNumber()
+	lastSlot, err := relayer.consensusLayerClient.GetLastFinalizedSlotNumber()
 	if err != nil {
 		logger.Error("GetLastFinalizedSlotNumber error:", err)
 		return nil, err
 	}
-	lastPeriod := beaconrpc.GetPeriodForSlot(lastSlot)
-	lastUpdate, err := relayer.beaconrpcclient.GetLightClientUpdate(lastPeriod)
+	lastPeriod := ethereum.GetPeriodForSlot(lastSlot)
+	lastUpdate, err := relayer.consensusLayerClient.GetPrysmLightClientUpdate(lastPeriod)
 	if err != nil {
 		logger.Error("GetLightClientUpdate error:", err)
 		return nil, err
@@ -742,37 +762,41 @@ func (relayer *Eth2TopRelayerV2) GetInitData() ([]byte, error) {
 	// 	logger.Error("GetLightClientUpdate error:", err)
 	// 	return nil, err
 	// }
-	prevUpdate, err := relayer.beaconrpcclient.GetNextSyncCommitteeUpdate(lastPeriod - 1)
+	prevUpdate, err := relayer.consensusLayerClient.GetNextSyncCommitteeUpdate(lastPeriod - 1)
 	if err != nil {
 		logger.Error("GetNextSyncCommitteeUpdate error:", err)
 		return nil, err
 	}
 
 	var beaconHeader eth.BeaconBlockHeader
-	beaconHeader.Slot = primitives.Slot(lastUpdate.FinalizedUpdate.HeaderUpdate.BeaconHeader.Slot)
-	beaconHeader.ProposerIndex = primitives.ValidatorIndex(lastUpdate.FinalizedUpdate.HeaderUpdate.BeaconHeader.ProposerIndex)
-	beaconHeader.BodyRoot = lastUpdate.FinalizedUpdate.HeaderUpdate.BeaconHeader.BodyRoot
-	beaconHeader.ParentRoot = lastUpdate.FinalizedUpdate.HeaderUpdate.BeaconHeader.ParentRoot
-	beaconHeader.StateRoot = lastUpdate.FinalizedUpdate.HeaderUpdate.BeaconHeader.StateRoot
+	beaconHeader.Slot = lastUpdate.FinalityUpdate.HeaderUpdate.BeaconHeader.Slot
+	beaconHeader.ProposerIndex = lastUpdate.FinalityUpdate.HeaderUpdate.BeaconHeader.ProposerIndex
+	beaconHeader.BodyRoot = lastUpdate.FinalityUpdate.HeaderUpdate.BeaconHeader.BodyRoot[:]
+	beaconHeader.ParentRoot = lastUpdate.FinalityUpdate.HeaderUpdate.BeaconHeader.ParentRoot[:]
+	beaconHeader.StateRoot = lastUpdate.FinalityUpdate.HeaderUpdate.BeaconHeader.StateRoot[:]
 	root, err := beaconHeader.HashTreeRoot()
 	if err != nil {
 		logger.Error("HashTreeRoot error:", err)
 		return nil, err
 	}
 	finalizedHeader := new(ExtendedBeaconBlockHeader)
-	finalizedHeader.BeaconBlockRoot = root[:]
-	finalizedHeader.Header = lastUpdate.FinalizedUpdate.HeaderUpdate.BeaconHeader
-	finalizedHeader.ExecutionBlockHash = lastUpdate.FinalizedUpdate.HeaderUpdate.ExecutionBlockHash
+	finalizedHeader.BeaconBlockRoot = root
+	finalizedHeader.Header = lastUpdate.FinalityUpdate.HeaderUpdate.BeaconHeader
+	finalizedHeader.ExecutionBlockHash = lastUpdate.FinalityUpdate.HeaderUpdate.ExecutionBlockHash
 
-	finalitySlot := lastUpdate.FinalizedUpdate.HeaderUpdate.BeaconHeader.Slot
-	finalizeBody, err := relayer.beaconrpcclient.GetBeaconBlockBodyForBlockId(strconv.FormatUint(finalitySlot, 10))
+	finalitySlot := lastUpdate.FinalityUpdate.HeaderUpdate.BeaconHeader.Slot
+	finalizeBody, err := relayer.consensusLayerClient.GetBeaconBlockBody(beacon.StateOrBlockId(strconv.FormatUint(uint64(finalitySlot), 10)))
 	if err != nil {
 		logger.Error("GetBeaconBlockBodyForBlockId error:", err)
 		return nil, err
 	}
-	number := finalizeBody.GetExecutionPayload().BlockNumber
+	executionData, err := finalizeBody.Execution()
+	if err != nil {
+		return nil, err
+	}
+	number := executionData.BlockNumber()
 
-	header, err := relayer.ethrpcclient.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(number))
+	header, err := relayer.executionLayerClient.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(number))
 	if err != nil {
 		logger.Error("HeaderByNumber error:", err)
 		return nil, err
