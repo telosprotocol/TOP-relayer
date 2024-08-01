@@ -305,7 +305,7 @@ func (relayer *Eth2TopRelayerV2) sendRegularLightClientUpdate(lastFinalizedTopSl
 			return err
 		}
 	} else {
-		logger.Info("Eth2TopRelayerV2 calling GetLightClientUpdateV2 with period %d", lastPeriodOnTOP + 1)
+		logger.Info("Eth2TopRelayerV2 calling GetLightClientUpdateV2 with period %d", lastPeriodOnTOP+1)
 		data, err = relayer.consensusLayerClient.GetPrysmLightClientUpdate(lastPeriodOnTOP + 1)
 		if err != nil {
 			logger.Error("Eth2TopRelayerV2 GetLightClientUpdate at near period error:", err)
@@ -554,7 +554,7 @@ func (relayer *Eth2TopRelayerV2) encodeEthHeaders(headers []*types.Header) ([]by
 func (relayer *Eth2TopRelayerV2) getExecutionBlockByNumber(number uint64) (*types.Header, error) {
 	header, err := relayer.executionLayerClient.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(number))
 	if err != nil {
-		logger.Error("Eth2TopRelayerV2 HeaderByNumber error:", err)
+		logger.Error("Eth2TopRelayerV2 HeaderByNumber error:", err, " number:", number)
 		return nil, err
 	}
 	return header, nil
