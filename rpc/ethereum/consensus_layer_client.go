@@ -100,7 +100,7 @@ func (c *BeaconClient) GetSignedBeaconBlock(blockId beacon.StateOrBlockId) (inte
 		return nil, err
 	}
 
-	signedBeaconBlock, err := blocks.NewSignedBeaconBlock(&signedBeaconBlockPb)
+	signedBeaconBlock, err := blocks.NewSignedBeaconBlock(signedBeaconBlockPb)
 	if err != nil {
 		logger.Error("NewSignedBeaconBlock error:%s", err.Error())
 		return nil, err
