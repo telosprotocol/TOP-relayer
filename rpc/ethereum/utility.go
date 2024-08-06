@@ -117,7 +117,119 @@ func VecObjectHashTreeRoot(data []ssz.HashRoot, lenLimit uint64) ([32]byte, erro
 	return root, err
 }
 
-func BeaconBlockBodyMerkleTreeNew(b interfaces.ReadOnlyBeaconBlockBody) (MerkleTreeNode, error) {
+func BeaconBlockBodyMerkleTreeCapella(b interfaces.ReadOnlyBeaconBlockBody) (MerkleTreeNode, error) {
+	leaves := make([][32]byte, 11)
+
+	// Field (0) 'RandaoReveal'
+	randao := b.RandaoReveal()
+	if hashRoot, err := BytesHashTreeRoot(randao[:], 96, "RandaoReveal"); err != nil {
+		return nil, err
+	} else {
+		leaves[0] = hashRoot
+	}
+
+	// Field (1) 'Eth1Data'
+	if hashRoot, err := b.Eth1Data().HashTreeRoot(); err != nil {
+		return nil, err
+	} else {
+		leaves[1] = hashRoot
+	}
+
+	// Field (2) 'Graffiti'
+	graffiti := b.Graffiti()
+	if hashRoot, err := BytesHashTreeRoot(graffiti[:], len(graffiti), "Graffiti"); err != nil {
+		return nil, err
+	} else {
+		leaves[2] = hashRoot
+	}
+
+	// Field (3) 'ProposerSlashings'
+	hrs := make([]ssz.HashRoot, len(b.ProposerSlashings()))
+	for i, v := range b.ProposerSlashings() {
+		hrs[i] = v
+	}
+	if hashRoot, err := VecObjectHashTreeRoot(hrs, 16); err != nil {
+		return nil, err
+	} else {
+		leaves[3] = hashRoot
+	}
+
+	// Field (4) 'AttesterSlashings'
+	hrs = make([]ssz.HashRoot, len(b.AttesterSlashings()))
+	for i, v := range b.AttesterSlashings() {
+		hrs[i] = v
+	}
+	if hashRoot, err := VecObjectHashTreeRoot(hrs, 2); err != nil {
+		return nil, err
+	} else {
+		leaves[4] = hashRoot
+	}
+
+	// Field (5) 'Attestations'
+	hrs = make([]ssz.HashRoot, len(b.Attestations()))
+	for i, v := range b.Attestations() {
+		hrs[i] = v
+	}
+	if hashRoot, err := VecObjectHashTreeRoot(hrs, 128); err != nil {
+		return nil, err
+	} else {
+		leaves[5] = hashRoot
+	}
+
+	// Field (6) 'Deposits'
+	hrs = make([]ssz.HashRoot, len(b.Deposits()))
+	for i, v := range b.Deposits() {
+		hrs[i] = v
+	}
+	if hashRoot, err := VecObjectHashTreeRoot(hrs, 16); err != nil {
+		return nil, err
+	} else {
+		leaves[6] = hashRoot
+	}
+
+	// Field (7) 'VoluntaryExits'
+	hrs = make([]ssz.HashRoot, len(b.VoluntaryExits()))
+	for i, v := range b.VoluntaryExits() {
+		hrs[i] = v
+	}
+	if hashRoot, err := VecObjectHashTreeRoot(hrs, 16); err != nil {
+		return nil, err
+	} else {
+		leaves[7] = hashRoot
+	}
+
+	// Field (8) 'SyncAggregate'
+	leaves[8] = [32]byte{0}
+	if syncAggregate, err := b.SyncAggregate(); err == nil {
+		if hashRoot, err := syncAggregate.HashTreeRoot(); err == nil {
+			leaves[8] = hashRoot
+		}
+	}
+
+	// Field (9) 'ExecutionPayload'
+	leaves[9] = [32]byte{0}
+	if executionPayload, err := b.Execution(); err == nil {
+		if hashRoot, err := executionPayload.HashTreeRoot(); err == nil {
+			leaves[9] = hashRoot
+		}
+	}
+
+	// Field (10) 'BlsToExecutionChanges'
+	leaves[10] = [32]byte{0}
+	if blsToExecutionChanges, err := b.BLSToExecutionChanges(); err == nil {
+		hrs = make([]ssz.HashRoot, len(blsToExecutionChanges))
+		for i, v := range blsToExecutionChanges {
+			hrs[i] = v
+		}
+		if hashRoot, err := VecObjectHashTreeRoot(hrs, 16); err == nil {
+			leaves[10] = hashRoot
+		}
+	}
+
+	return create(leaves, BeaconBlockBodyTreeDepth), nil
+}
+
+func BeaconBlockBodyMerkleTreeDeneb(b interfaces.ReadOnlyBeaconBlockBody) (MerkleTreeNode, error) {
 	leaves := make([][32]byte, 12)
 
 	// Field (0) 'RandaoReveal'
@@ -324,8 +436,7 @@ func specialFieldBlobKzgCommitmentsHashTreeRoot(kzgCommitments [][]byte) ([32]by
 	return hh.HashRoot()
 }
 
-func ExecutionPayloadMerkleTreeNew(executionData interfaces.ExecutionData) (MerkleTreeNode, error) {
-	var depth = ExecutionPayloadTreeDepth
+func ExecutionPayloadMerkleTreeShanghai(executionData interfaces.ExecutionData) (MerkleTreeNode, error) {
 	leaves := make([][32]byte, 15)
 
 	// Field (0) 'ParentHash'
@@ -456,8 +567,152 @@ func ExecutionPayloadMerkleTreeNew(executionData interfaces.ExecutionData) (Merk
 	// Field (14) 'Withdrawals'
 	leaves[14] = [32]byte{0}
 	withdrawals, err := executionData.Withdrawals()
+	hrs := make([]ssz.HashRoot, len(withdrawals))
+	for i, v := range withdrawals {
+		hrs[i] = v
+	}
+	if hashRoot, err := VecObjectHashTreeRoot(hrs, 16); err != nil {
+		return nil, err
+	} else {
+		leaves[14] = hashRoot
+	}
+	return create(leaves, ExecutionPayloadTreeDepth), nil
+}
+
+func ExecutionPayloadMerkleTreeCancun(executionData interfaces.ExecutionData) (MerkleTreeNode, error) {
+	var depth = ExecutionPayloadTreeDepth
+	leaves := make([][32]byte, 15)
+
+	// Field (0) 'ParentHash'
+	parentHash := executionData.ParentHash()
+	if hashRoot, err := BytesHashTreeRoot(parentHash, 32, "ParentHash"); err != nil {
+		logger.Error("ExecutionPayloadMerkleTreeCancun BytesHashTreeRoot(parentHash) error ", err)
+		return nil, err
+	} else {
+		leaves[0] = hashRoot
+	}
+
+	// Field (1) 'FeeRecipient'
+	feeRecipient := executionData.FeeRecipient()
+	if hashRoot, err := BytesHashTreeRoot(feeRecipient, 20, "FeeRecipient"); err != nil {
+		logger.Error("ExecutionPayloadMerkleTreeCancun BytesHashTreeRoot(feeRecipient) error ", err)
+		return nil, err
+	} else {
+		leaves[1] = hashRoot
+	}
+
+	// Field (2) 'StateRoot'
+	stateRoot := executionData.StateRoot()
+	if hashRoot, err := BytesHashTreeRoot(stateRoot, 32, "StateRoot"); err != nil {
+		logger.Error("ExecutionPayloadMerkleTreeCancun BytesHashTreeRoot(stateRoot) error ", err)
+		return nil, err
+	} else {
+		leaves[2] = hashRoot
+	}
+
+	// Field (3) 'ReceiptsRoot'
+	receiptsRoot := executionData.ReceiptsRoot()
+	if hashRoot, err := BytesHashTreeRoot(receiptsRoot, 32, "ReceiptsRoot"); err != nil {
+		logger.Error("ExecutionPayloadMerkleTreeCancun BytesHashTreeRoot(receiptsRoot) error ", err)
+		return nil, err
+	} else {
+		leaves[3] = hashRoot
+	}
+
+	// Field (4) 'LogsBloom'
+	logsBloom := executionData.LogsBloom()
+	if hashRoot, err := BytesHashTreeRoot(logsBloom, 256, "LogsBloom"); err != nil {
+		logger.Error("ExecutionPayloadMerkleTreeCancun BytesHashTreeRoot(logsBloom) error ", err)
+		return nil, err
+	} else {
+		leaves[4] = hashRoot
+	}
+
+	// Field (5) 'PrevRandao'
+	prevRandao := executionData.PrevRandao()
+	if hashRoot, err := BytesHashTreeRoot(prevRandao, 32, "PrevRandao"); err != nil {
+		logger.Error("ExecutionPayloadMerkleTreeCancun BytesHashTreeRoot(prevRandao) error ", err)
+		return nil, err
+	} else {
+		leaves[5] = hashRoot
+	}
+
+	// Field (6) 'BlockNumber'
+	if hashRoot, err := Uint64HashTreeRoot(executionData.BlockNumber()); err != nil {
+		logger.Error("ExecutionPayloadMerkleTreeCancun Uint64HashTreeRoot(executionData.BlockNumber()) error ", err)
+		return nil, err
+	} else {
+		leaves[6] = hashRoot
+	}
+
+	// Field (7) 'GasLimit'
+	if hashRoot, err := Uint64HashTreeRoot(executionData.GasLimit()); err != nil {
+		logger.Error("ExecutionPayloadMerkleTreeCancun Uint64HashTreeRoot(executionData.GasLimit()) error ", err)
+		return nil, err
+	} else {
+		leaves[7] = hashRoot
+	}
+
+	// Field (8) 'GasUsed'
+	if hashRoot, err := Uint64HashTreeRoot(executionData.GasUsed()); err != nil {
+		logger.Error("ExecutionPayloadMerkleTreeCancun Uint64HashTreeRoot(executionData.GasUsed()) error ", err)
+		return nil, err
+	} else {
+		leaves[8] = hashRoot
+	}
+
+	// Field (9) 'Timestamp'
+	if hashRoot, err := Uint64HashTreeRoot(executionData.Timestamp()); err != nil {
+		logger.Error("ExecutionPayloadMerkleTreeCancun Uint64HashTreeRoot(executionData.Timestamp()) error ", err)
+		return nil, err
+	} else {
+		leaves[9] = hashRoot
+	}
+
+	// Field (10) 'ExtraData'
+	if hashRoot, err := specialFieldExtraDataHashTreeRoot(executionData.ExtraData()); err != nil {
+		logger.Error("ExecutionPayloadMerkleTreeCancun specialFieldExtraDataHashTreeRoot(executionData.ExtraData() error ", err)
+		return nil, err
+	} else {
+		leaves[10] = hashRoot
+	}
+
+	// Field (11) 'BaseFeePerGas'
+	baseFeePerGas := executionData.BaseFeePerGas()
+	if hashRoot, err := BytesHashTreeRoot(baseFeePerGas, len(baseFeePerGas), "BaseFeePerGas"); err != nil {
+		logger.Error("ExecutionPayloadMerkleTreeCancun BytesHashTreeRoot(baseFeePerGas) error ", err)
+		return nil, err
+	} else {
+		leaves[11] = hashRoot
+	}
+
+	// Field (12) 'BlockHash'
+	blockHash := executionData.BlockHash()
+	if hashRoot, err := BytesHashTreeRoot(blockHash, len(blockHash), "BlockHash"); err != nil {
+		logger.Error("ExecutionPayloadMerkleTreeCancun BytesHashTreeRoot(blockHash) error ", err)
+		return nil, err
+	} else {
+		leaves[12] = hashRoot
+	}
+
+	// Field (13) 'Transactions'
+	transactions, err := executionData.Transactions()
+	leaves[13] = [32]byte{}
 	if err != nil {
-		logger.Error("executionData doesn't support Withdrawals")
+		logger.Error("ExecutionPayloadMerkleTreeCancun executionData.Transactions() error ", err)
+	} else {
+		if hashRoot, err := specialFieldTransactionsHashTreeRoot(transactions); err != nil {
+			logger.Error("ExecutionPayloadMerkleTreeCancun specialFieldTransactionsHashTreeRoot(transactions) error ", err)
+		} else {
+			leaves[13] = hashRoot
+		}
+	}
+
+	// Field (14) 'Withdrawals'
+	leaves[14] = [32]byte{0}
+	withdrawals, err := executionData.Withdrawals()
+	if err != nil {
+		logger.Error("ExecutionPayloadMerkleTreeCancun executionData.Withdrawals() error: ", err)
 	} else {
 		hrs := make([]ssz.HashRoot, len(withdrawals))
 		for i, v := range withdrawals {
@@ -471,10 +726,11 @@ func ExecutionPayloadMerkleTreeNew(executionData interfaces.ExecutionData) (Merk
 	// Field (15) 'BlobGasUsed'
 	blobGasUsed, err := executionData.BlobGasUsed()
 	if err != nil {
-		logger.Error("executionData doesn't support BlobGasUsed")
+		logger.Error("ExecutionPayloadMerkleTreeCancun executionData.BlobGasUsed() error: ", err)
 	} else {
-		logger.Error("ExecutionPayloadMerkleTreeNew executionData.BlobGasUsed() error: ", err)
-		if hashRoot, err := Uint64HashTreeRoot(blobGasUsed); err == nil {
+		if hashRoot, err := Uint64HashTreeRoot(blobGasUsed); err != nil {
+			logger.Error("ExecutionPayloadMerkleTreeCancun Uint64HashTreeRoot(blobGasUsed) error: ", err)
+		} else {
 			depth += 1
 			leaves = append(leaves, hashRoot)
 		}
@@ -483,9 +739,11 @@ func ExecutionPayloadMerkleTreeNew(executionData interfaces.ExecutionData) (Merk
 	// Field (16) 'ExcessBlobGas'
 	excessBlobGas, err := executionData.ExcessBlobGas()
 	if err != nil {
-		logger.Error("ExecutionPayloadMerkleTreeNew executionData.ExcessBlobGas() error: ", err)
+		logger.Error("ExecutionPayloadMerkleTreeCancun executionData.ExcessBlobGas() error: ", err)
 	} else {
-		if hashRoot, err := Uint64HashTreeRoot(excessBlobGas); err == nil {
+		if hashRoot, err := Uint64HashTreeRoot(excessBlobGas); err != nil {
+			logger.Error("ExecutionPayloadMerkleTreeCancun Uint64HashTreeRoot(excessBlobGas) error: ", err)
+		} else {
 			leaves = append(leaves, hashRoot)
 		}
 	}
