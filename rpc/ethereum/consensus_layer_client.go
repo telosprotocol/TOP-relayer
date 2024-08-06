@@ -627,14 +627,25 @@ func (c *BeaconClient) constructFromBeaconBlockBody(beaconBlockBody interfaces.R
 	copy(finalizedBlockBodyHash[:], blockHash[:])
 
 	var beaconBlockMerkleTree, executionPayloadMerkleTree MerkleTreeNode
-	if beaconBlockMerkleTree, err = BeaconBlockBodyMerkleTreeNew(beaconBlockBody); err != nil {
-		logger.Error("BeaconClient BeaconBlockBodyMerkleTreeNew error: ", err)
-		return nil, err
+	if beaconBlockBody.Version() >= version.Deneb {
+		if beaconBlockMerkleTree, err = BeaconBlockBodyMerkleTreeDeneb(beaconBlockBody); err != nil {
+			logger.Error("BeaconClient BeaconBlockBodyMerkleTreeDeneb error: ", err)
+			return nil, err
+		}
+		if executionPayloadMerkleTree, err = ExecutionPayloadMerkleTreeCancun(executionPayload); err != nil {
+			logger.Error("BeaconClient ExecutionPayloadMerkleTreeNew error: ", err)
+			return nil, err
+		}
+	} else {
+		if beaconBlockMerkleTree, err = BeaconBlockBodyMerkleTreeCapella(beaconBlockBody); err != nil {
+			logger.Error("BeaconClient BeaconBlockBodyMerkleTree error: ", err)
+			return nil, err
+		}
+		if executionPayloadMerkleTree, err = ExecutionPayloadMerkleTreeShanghai(executionPayload); err != nil {
+			return nil, err
+		}
 	}
-	if executionPayloadMerkleTree, err = ExecutionPayloadMerkleTreeNew(executionPayload); err != nil {
-		logger.Error("BeaconClient ExecutionPayloadMerkleTreeNew error: ", err)
-		return nil, err
-	}
+
 	_, l1ExecutionPayloadProof := generateProof(beaconBlockMerkleTree, L1BeaconBlockBodyTreeExecutionPayloadIndex, L1BeaconBlockBodyProofSize)
 	_, blockProof := generateProof(executionPayloadMerkleTree, L2ExecutionPayloadTreeExecutionBlockIndex, l2ExecutionPayloadProofSize)
 	blockProof = append(blockProof, l1ExecutionPayloadProof...)
