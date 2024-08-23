@@ -260,14 +260,6 @@ type LightClientUpdateMsg struct {
 	Data LightClientUpdateData `json:"data"`
 }
 
-type LightClientUpdateDataNoCommittee struct {
-	AttestedHeader  *BeaconBlockHeaderJson `json:"attested_header"`
-	FinalizedHeader *BeaconBlockHeaderJson `json:"finalized_header"`
-	FinalityBranch  []string               `json:"finality_branch"`
-	SyncAggregate   *SyncAggregateJson     `json:"sync_aggregate"`
-	SignatureSlot   string                 `json:"signature_slot"`
-}
-
 type PrysmBeaconBlockHeaderJson struct {
 	Slot          string `json:"slot"`
 	ProposerIndex string `json:"proposer_index"`
