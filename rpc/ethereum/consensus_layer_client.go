@@ -487,69 +487,6 @@ func (c *BeaconClient) GetPrysmLightClientUpdate(period uint64) (*light_client.L
 	return c.PrysmLightClientUpdateDataConvert(&result[0].Data)
 }
 
-func (c *BeaconClient) GetPrysmFinalityLightClientUpdate() (*light_client.LightClientUpdate, error) {
-	str := fmt.Sprintf("%s/eth/v1/beacon/light_client/finality_update", c.Client.NodeURL())
-	resp, err := c.httpClient.Get(str)
-	if err != nil {
-		logger.Error("http Get error:", err)
-		return nil, err
-	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			logger.Error("close http error:", err)
-		}
-	}(resp.Body)
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		logger.Error("io.ReadAll error:", err)
-		return nil, err
-	}
-	if len(body) == 0 {
-		logger.Error("body empty")
-		return nil, errors.New("http body empty")
-	}
-
-	var result light_client.PrysmLightClientUpdateJson
-	if err = json.Unmarshal(body, &result); err != nil {
-		err = fmt.Errorf("unmarshal error:%s body: %s", err.Error(), string(body))
-		logger.Error(err)
-		return nil, err
-	}
-	return c.PrysmLightClientUpdateDataConvert(&result.Data)
-}
-
-//func (c *BeaconClient) LightClientUpdateConvertNoCommitteeConvert(data *light_client.LightClientUpdateDataNoCommittee) (*light_client.LightClientUpdate, error) {
-//	attestedHeader, err := c.BeaconHeaderConvert(data.AttestedHeader)
-//	if err != nil {
-//		logger.Error("BeaconHeaderConvert error:", err)
-//		return nil, err
-//	}
-//	aggregate, err := c.SyncAggregateConvert(data.SyncAggregate)
-//	if err != nil {
-//		logger.Error("SyncAggregateConvert error:", err)
-//		return nil, err
-//	}
-//	finalizedUpdate, err := c.FinalizedUpdateConvert(data.FinalizedHeader, data.FinalityBranch)
-//	if err != nil {
-//		logger.Error("FinalizedUpdateConvert error:", err)
-//		return nil, err
-//	}
-//	slotVal, err := strconv.ParseUint(data.SignatureSlot, 0, 64)
-//	if err != nil {
-//		logger.Error("ParseUint error:", err)
-//		return nil, err
-//	}
-//	update := new(light_client.LightClientUpdate)
-//	update.AttestedBeaconHeader = attestedHeader
-//	update.SyncAggregate = aggregate
-//	update.NextSyncCommitteeUpdate = nil
-//	update.FinalityUpdate = finalizedUpdate
-//	update.SignatureSlot = primitives.Slot(slotVal)
-//	return update, nil
-//}
-
 func (c *BeaconClient) GetAttestedSlot(lastFinalizedTopSlot primitives.Slot) (primitives.Slot, error) {
 	attestedSlot := getAttestationSlot(lastFinalizedTopSlot)
 	header, err := c.GetNonEmptyBeaconBlockHeader(attestedSlot)
