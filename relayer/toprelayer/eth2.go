@@ -298,7 +298,7 @@ func (relayer *Eth2TopRelayerV2) sendRegularLightClientUpdate(lastFinalizedTopSl
 	lastPeriodOnTOP, lastPeriodOnEth := ethereum.GetPeriodForSlot(lastFinalizedTopSlot), ethereum.GetPeriodForSlot(lastFinalizedEthSlot)
 	var data *light_client.LightClientUpdate
 	var err error
-	if lastPeriodOnTOP != lastPeriodOnEth {
+	if lastPeriodOnTOP < lastPeriodOnEth {
 		logger.Info("Eth2TopRelayerV2 calling GetLightClientUpdateV2 with period %d", lastPeriodOnTOP+1)
 		data, err = relayer.consensusLayerClient.GetPrysmLightClientUpdate(lastPeriodOnTOP + 1)
 		if err != nil {
