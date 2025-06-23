@@ -4,18 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/prysmaticlabs/prysm/v4/api/client/beacon"
-	fieldparams "github.com/prysmaticlabs/prysm/v4/config/fieldparams"
-	"github.com/prysmaticlabs/prysm/v4/consensus-types/primitives"
-	"github.com/prysmaticlabs/prysm/v4/container/slice"
-	"github.com/prysmaticlabs/prysm/v4/math"
-	eth "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
-	"github.com/wonderivan/logger"
 	"math/big"
 	"strconv"
 	"strings"
@@ -26,7 +14,22 @@ import (
 	"toprelayer/rpc/ethereum"
 	"toprelayer/rpc/ethereum/light_client"
 	"toprelayer/wallet"
+
+	"github.com/OffchainLabs/prysm/v6/api/client/beacon"
+	fieldparams "github.com/OffchainLabs/prysm/v6/config/fieldparams"
+	"github.com/OffchainLabs/prysm/v6/consensus-types/primitives"
+	"github.com/OffchainLabs/prysm/v6/container/slice"
+	"github.com/OffchainLabs/prysm/v6/math"
+	eth "github.com/OffchainLabs/prysm/v6/proto/prysm/v1alpha1"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/wonderivan/logger"
 )
+
+//"github.com/OffchainLabs/prysm/v6/config/fieldparams" parameters of eth consensus chain
 
 var (
 	eth2ClientSystemContract = common.HexToAddress("0xff00000000000000000000000000000000000009")

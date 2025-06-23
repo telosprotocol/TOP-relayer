@@ -1,6 +1,6 @@
 package config
 
-import "github.com/prysmaticlabs/prysm/v4/consensus-types/primitives"
+import "github.com/OffchainLabs/prysm/v6/consensus-types/primitives"
 
 type ProofSize struct {
 	BeaconBlockBodyTreeDepth                   uint64

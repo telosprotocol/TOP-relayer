@@ -1,9 +1,8 @@
 package config
 
 import (
+	"github.com/OffchainLabs/prysm/v6/consensus-types/primitives"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/prysmaticlabs/prysm/v4/consensus-types/primitives"
-	"math"
 )
 
 const (
@@ -52,6 +51,9 @@ type NetworkConfig struct {
 
 	DenebForkVersion Version
 	DenebForkEpoch   Epoch
+
+	ElectraForkVersion Version
+	ElectraForkEpoch   Epoch
 }
 
 func NewNetworkConfig(networkId NetworkId) *NetworkConfig {
@@ -68,7 +70,9 @@ func NewNetworkConfig(networkId NetworkId) *NetworkConfig {
 			CapellaForkVersion:    Version{0x03, 0x00, 0x00, 0x00},
 			CapellaForkEpoch:      194048,
 			DenebForkVersion:      Version{0x04, 0x00, 0x00, 0x00},
-			DenebForkEpoch:        Epoch(math.MaxUint64),
+			DenebForkEpoch:        269568,
+			ElectraForkVersion:    Version{0x05, 0x00, 0x00, 0x00},
+			ElectraForkEpoch:      364032,
 		}
 	case SEPOLIA:
 		return &NetworkConfig{
@@ -83,6 +87,8 @@ func NewNetworkConfig(networkId NetworkId) *NetworkConfig {
 			CapellaForkEpoch:      56832,
 			DenebForkVersion:      Version{0x90, 0x00, 0x00, 0x73},
 			DenebForkEpoch:        132608,
+			ElectraForkVersion:    Version{0x90, 0x00, 0x00, 0x74},
+			ElectraForkEpoch:      222464,
 		}
 	default:
 		return nil
@@ -90,6 +96,9 @@ func NewNetworkConfig(networkId NetworkId) *NetworkConfig {
 }
 
 func (nc *NetworkConfig) ComputeForkVersion(epoch Epoch) Version {
+	if epoch >= nc.ElectraForkEpoch {
+		return nc.ElectraForkVersion
+	}
 	if epoch >= nc.DenebForkEpoch {
 		return nc.DenebForkVersion
 	}

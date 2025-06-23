@@ -1,10 +1,10 @@
 package light_client
 
 import (
+	fieldparams "github.com/OffchainLabs/prysm/v6/config/fieldparams"
+	"github.com/OffchainLabs/prysm/v6/consensus-types/primitives"
+	eth "github.com/OffchainLabs/prysm/v6/proto/prysm/v1alpha1"
 	"github.com/ethereum/go-ethereum/rlp"
-	fieldparams "github.com/prysmaticlabs/prysm/v4/config/fieldparams"
-	"github.com/prysmaticlabs/prysm/v4/consensus-types/primitives"
-	eth "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
 )
 
 type BeaconBlockHeader struct {
@@ -246,20 +246,6 @@ type SyncCommitteeJson struct {
 	AggregatePubkey string   `json:"aggregate_pubkey"`
 }
 
-type LightClientUpdateData struct {
-	AttestedHeader          *BeaconLightClientUpdateHeaderData `json:"attested_header"`
-	FinalizedHeader         *BeaconLightClientUpdateHeaderData `json:"finalized_header"`
-	FinalityBranch          []string                           `json:"finality_branch"`
-	SyncAggregate           *SyncAggregateJson                 `json:"sync_aggregate"`
-	NextSyncCommittee       *SyncCommitteeJson                 `json:"next_sync_committee"`
-	NextSyncCommitteeBranch []string                           `json:"next_sync_committee_branch"`
-	SignatureSlot           string                             `json:"signature_slot"`
-}
-
-type LightClientUpdateMsg struct {
-	Data LightClientUpdateData `json:"data"`
-}
-
 type PrysmBeaconBlockHeaderJson struct {
 	Slot          string `json:"slot"`
 	ProposerIndex string `json:"proposer_index"`
@@ -276,9 +262,4 @@ type PrysmLightClientUpdateDataJson struct {
 	NextSyncCommittee       *SyncCommitteeJson          `json:"next_sync_committee"`
 	NextSyncCommitteeBranch []string                    `json:"next_sync_committee_branch"`
 	SignatureSlot           string                      `json:"signature_slot"`
-}
-
-type PrysmLightClientUpdateJson struct {
-	Version string                         `json:"version"`
-	Data    PrysmLightClientUpdateDataJson `json:"data"`
 }

@@ -3,20 +3,22 @@ package util
 import (
 	"context"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/prysmaticlabs/prysm/v4/api/client/beacon"
-	"github.com/prysmaticlabs/prysm/v4/consensus-types/primitives"
-	eth "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
-	"github.com/wonderivan/logger"
 	"math/big"
 	"strconv"
 	"toprelayer/relayer/toprelayer/ethtypes"
 	"toprelayer/rpc/ethereum"
 	beaconrpc "toprelayer/rpc/ethereum"
 	lightclient "toprelayer/rpc/ethereum/light_client"
+
+	"github.com/OffchainLabs/prysm/v6/api/client"
+	"github.com/OffchainLabs/prysm/v6/api/client/beacon"
+	"github.com/OffchainLabs/prysm/v6/consensus-types/primitives"
+	eth "github.com/OffchainLabs/prysm/v6/proto/prysm/v1alpha1"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/wonderivan/logger"
 )
 
 type ExtendedBeaconBlockHeader struct {
@@ -98,7 +100,7 @@ func (init *InitInput) Encode() ([]byte, error) {
 }
 
 func getEthInitData(eth1, prysm string) ([]byte, error) {
-	consensusLayerClient, err := ethereum.NewBeaconClient(prysm)
+	consensusLayerClient, err := ethereum.NewBeaconClient(prysm, client.WithMaxBodySize(client.MaxBodySizeState))
 	if err != nil {
 		logger.Error("getEthInitData NewBeaconGrpcClient error:", err)
 		return nil, err
@@ -177,7 +179,7 @@ func getEthInitData(eth1, prysm string) ([]byte, error) {
 }
 
 func getEthInitDataWithHeight(eth1, prysm, slot string) ([]byte, error) {
-	consensusLayerClient, err := beaconrpc.NewBeaconClient(prysm)
+	consensusLayerClient, err := beaconrpc.NewBeaconClient(prysm, client.WithMaxBodySize(client.MaxBodySizeState))
 	if err != nil {
 		logger.Error("getEthInitData NewBeaconGrpcClient error:", err)
 		return nil, err

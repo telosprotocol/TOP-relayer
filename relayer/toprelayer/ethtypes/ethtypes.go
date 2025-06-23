@@ -2,9 +2,10 @@ package ethtypes
 
 import (
 	"fmt"
+
+	"github.com/OffchainLabs/prysm/v6/encoding/bytesutil"
+	eth "github.com/OffchainLabs/prysm/v6/proto/prysm/v1alpha1"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/prysmaticlabs/prysm/v4/encoding/bytesutil"
-	eth "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
 )
 
 const (
